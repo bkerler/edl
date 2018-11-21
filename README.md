@@ -27,9 +27,13 @@ Replace python with python3 on Linux :)
 - "python edl.py -printgpt -memory ufs -lun 0" -> to print gpt on first lun on device with ufs
 - "python edl.py -printgpt -memory emmc" -> to print gpt on device with emmc
 - "python edl.py -rf flash.bin -memory emmc" -> to dump whole flash on device with emmc
+- "python edl.py -r recovery recovery.bin -memory emmc" -> to dump recovery partition as recovery.bin
+- "python edl.py -rs 0 12 dump.bin -memory emmc" -> to dump sector 0 with size of 12 sectors as dump.bin
 - "python edl.py -w recovery recovery.bin -memory emmc" -> write recovery.bin to recovery partition
+- "python edl.py -ws 16 data.bin -memory emmc" -> write data.bin to starting sector 16
 - "python edl.py -peek 0x200000 0x10000 -memory emmc" -> peek memory, offset 0x200000, length 0x10000 (if supported by loader)
 - "python edl.py -rpbl -memory emmc" -> dump pbl (boot rom), if supported by loader
+etc.
 
 Remarks
 =======
