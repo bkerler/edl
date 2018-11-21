@@ -1,4 +1,4 @@
-# Qualcomm Sahara / Firehose Attack Client
+# Qualcomm Sahara / Firehose Client
 (c) B. Kerler 2018
 
 Why
