@@ -1,4 +1,4 @@
-# Qualcomm Sahara / Firehose Client
+# Qualcomm Sahara / Firehose Client V1.0
 (c) B. Kerler 2018
 
 Why
@@ -19,11 +19,14 @@ Windows:
 
 Run
 ===
-- "python edl.py -h" -> to see help
+- "python edl.py -h" -> to see help with all other exciting options and features
 - "python edl.py -loader firehoseloader.elf -printgpt -memory emmc" -> if you use your own Loader
 - "python edl.py -printgpt -memory ufs -lun 0" -> to print gpt on first lun on device with ufs
 - "python edl.py -printgpt -memory emmc" -> to print gpt on device with emmc
 - "python edl.py -rf flash.bin -memory emmc" -> to dump whole flash on device with emmc
+- "python edl.py -w recovery recovery.bin -memory emmc" -> write recovery.bin to recovery partition
+- "python edl.py -peek 0x200000 0x10000 -memory emmc" -> peek memory, offset 0x200000, length 0x10000 (if supported by loader)
+- "python edl.py -rpbl -memory emmc" -> dump pbl (boot rom), if supported by loader
 
 Remarks
 =======
@@ -34,6 +37,10 @@ Issues
 ======
 - Tested with : Oneplus One, Oneplus X, Oneplus 3T, BQ X, BQ X5, Xiaomi Mi A1, Xiaomi Mi A2, Gigaset ME Pure, etc.
 - Secure loader with SDM660 on Xiaomi not yet supported, but regular SDM660/845 is supported
+
+ToDo
+====
+- Implement Poke (Write memory)
  
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.

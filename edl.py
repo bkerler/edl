@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-Licensed under MIT License, (c) B. Kerler 2018
+Licensed under MIT License, (c) B. Kerler 2018, info at revskills.de
 '''
 
 import argparse
