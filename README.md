@@ -11,14 +11,17 @@ Installation
 - Get python 3.7 64-Bit
 
 Linux/Windows: 
-- "python -m pip install pyusb pyserial"
+- "python3 -m pip install pyusb pyserial"
 
 Windows:
+- "python -m pip install pyusb pyserial"
 - Use Filter Installer to install libusb filter driver 
   on Qualcomm 9008 port otherwise we won't detect the device
 
 Run
 ===
+Replace python with python3 on Linux :)
+
 - "python edl.py -h" -> to see help with all other exciting options and features
 - "python edl.py -loader firehoseloader.elf -printgpt -memory emmc" -> if you use your own Loader
 - "python edl.py -printgpt -memory ufs -lun 0" -> to print gpt on first lun on device with ufs
