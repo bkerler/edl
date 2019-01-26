@@ -15,9 +15,7 @@ class gpt:
         ('last_usable_lba', 'Q'),
         ('disk_guid', '16s'),
         ('part_entry_start_lba', 'Q'),
-        ('num_part_entries', 'L'),
-        ('part_entry_size', 'L'),
-        ('crc32_part_array', 'L')]
+    ]
 
     gpt_partition = [
         ('type', '16s'),
@@ -114,6 +112,15 @@ class gpt:
         EFI_VMWARE_VMFS         = 0xAA31E02A
         EFI_VMWARE_RESERVED     = 0x9198EFFC
 
+    def __init__(self, num_part_entries=None, part_entry_size=None, part_entry_start_lba=None, *args, **kwargs):
+        self.num_part_entries = num_part_entries
+        self.part_entry_size = part_entry_size
+        self.part_entry_start_lba = part_entry_start_lba
+        if num_part_entries is None:
+            self.gpt_header += [('num_part_entries', 'L'),]
+            if part_entry_size is None:
+                self.gpt_header += [('part_entry_size', 'L'),]
+
     def parse(self, gptdata, sectorsize=512):
         self.header = read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)
         self.sectorsize=sectorsize
@@ -123,8 +130,14 @@ class gpt:
         if self.header["revision"]!=0x100:
             print("Unknown GPT revision.")
             return False
-        start=self.header["part_entry_start_lba"]*sectorsize
-        entrysize=self.header["part_entry_size"]
+        if self.part_entry_start_lba is not None:
+            start = self.part_entry_start_lba
+        else:
+            start=self.header["part_entry_start_lba"]*sectorsize
+        if "part_entry_size" in self.header:
+            entrysize=self.header["part_entry_size"]
+        else:
+            entrysize=self.part_entry_size
         self.partentries=[]
 
         class partf:
@@ -134,8 +147,13 @@ class gpt:
             flags=0
             type=b""
             name=b""
+        
+        if "num_part_entries" in self.header:
+            num_part_entries=self.header["num_part_entries"]
+        else:
+            num_part_entries=self.num_part_entries
 
-        for idx in range(0,self.header["num_part_entries"]):
+        for idx in range(0, num_part_entries):
             data=gptdata[start+(idx*entrysize):start+(idx*entrysize)+entrysize]
             partentry=read_object(data,self.gpt_partition)
             pa=partf()
