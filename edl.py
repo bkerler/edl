@@ -107,6 +107,10 @@ def main():
     parser.add_argument('-setbootablestoragedrive', metavar="<number>",
                         help='[CMD:Firehose] Set the physical partition number active for booting',default='')
     parser.add_argument('-x', metavar="<xmldata>", help='[CMD:Firehose] XML to run in firehose mode', default='')
+    parser.add_argument('-gpt-num-part-entries', metavar="<number>", type=int, help='[CMD:Firehose] Number of partitions', default=None)
+    parser.add_argument('-gpt-part-entry-size', metavar="<number>", type=int, help='[CMD:Firehose] Size of partition entry', default=None)
+    parser.add_argument('-gpt-part-entry-start-lba', metavar="<number>", type=int, help='[CMD:Firehose] Beginning of partition entries', default=None)
+
 
     args = parser.parse_args()
     xml = xmlparser()
@@ -192,7 +196,11 @@ def main():
         elif args.printgpt==True:
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES)
             if data!='':
-                guid_gpt=gpt()
+                guid_gpt = gpt(
+                    num_part_entries=args.gpt_num_part_entries,
+                    part_entry_size=args.gpt_part_entry_size,
+                    part_entry_start_lba=args.gpt_part_entry_start_lba,
+                )
                 guid_gpt.parse(data,cfg.SECTOR_SIZE_IN_BYTES)
                 guid_gpt.print()
             else:
@@ -205,7 +213,11 @@ def main():
             partitionname=args.r[0]
             filename=args.r[1]
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
-            guid_gpt = gpt()
+            guid_gpt = gpt(
+                num_part_entries=args.gpt_num_part_entries,
+                part_entry_size=args.gpt_part_entry_size,
+                part_entry_start_lba=args.gpt_part_entry_start_lba,
+            )
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 
             for partition in guid_gpt.partentries:
@@ -218,7 +230,11 @@ def main():
         elif args.rf!='':
             filename=args.rf
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
-            guid_gpt = gpt()
+            guid_gpt = gpt(
+                num_part_entries=args.gpt_num_part_entries,
+                part_entry_size=args.gpt_part_entry_size,
+                part_entry_start_lba=args.gpt_part_entry_start_lba,
+            )
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
             data = fh.cmd_read(args.lun, 0, guid_gpt.totalsectors, filename)
             print(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
@@ -268,7 +284,11 @@ def main():
         elif args.footer!='':
             filename=args.footer
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
-            guid_gpt = gpt()
+            guid_gpt = gpt(
+                num_part_entries=args.gpt_num_part_entries,
+                part_entry_size=args.gpt_part_entry_size,
+                part_entry_start_lba=args.gpt_part_entry_start_lba,
+            )
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
             pnames=["userdata2","metadata","userdata","reserved1","reserved2","reserved3"]
             for partition in guid_gpt.partentries:
@@ -321,7 +341,11 @@ def main():
                 print(f"Error: Couldn't find file: {filename}")
                 exit(0)
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
-            guid_gpt = gpt()
+            guid_gpt = gpt(
+                num_part_entries=args.gpt_num_part_entries,
+                part_entry_size=args.gpt_part_entry_size,
+                part_entry_start_lba=args.gpt_part_entry_start_lba,
+            )
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 
             for partition in guid_gpt.partentries:
@@ -354,7 +378,11 @@ def main():
         elif args.e != '':
             partitionname=args.e
             data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
-            guid_gpt = gpt()
+            guid_gpt=gpt(
+                    num_part_entries=args.gpt_num_part_entries,
+                    part_entry_size=args.gpt_part_entry_size,
+                    part_entry_start_lba=args.gpt_part_entry_start_lba,
+                )
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 
             for partition in guid_gpt.partentries:
