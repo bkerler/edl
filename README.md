@@ -9,8 +9,34 @@ Why
 Installation
 =============
 - Get python 3.7 64-Bit
+- Install capstone + keystone engine:
+
+```
+cd ~
+git clone https://github.com/keystone-engine/keystone --recursive
+cd keystone && mkdir -p build && cd build && cmake .. 
+../make-lib.sh
+sudo make install 
+cd ../bindings/python
+sudo python3 setup.py build install
+```
+```
+cd ~
+git clone https://github.com/aquynh/capstone --recursive
+cd capstone
+./make.sh
+sudo ./make.sh install
+cd ../bindings/python
+sudo python3 setup.py build install
+```
+
 
 Linux/Windows: 
+- Add "blacklist qcserial" as last line to /etc/modprobe.d/blacklist.conf
+- Copy 51-edl.rules to /etc/udev/rules.d
+- Copy 50-android.rules to /etc/udev/rules.d
+- sudo apt install adb
+- sudo apt install fastboot
 - "python3 -m pip install pyusb pyserial"
 
 Windows:

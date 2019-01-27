@@ -347,16 +347,27 @@ class qualcomm_sahara():
                 if self.hwidstr in self.loaderdb:
                     if self.pkhash[0:16]=="cc3153a80293939b":
                         print("Unfused device detected, so any loader should be fine...")
-                        for loader in self.loaderdb[self.hwidstr]:
-                            fname = self.loaderdb[self.hwidstr][loader]
-                            print(f"Possible loader available: {fname}")
+                        if self.pkhash[0:16] in self.loaderdb[self.hwidstr]:
+                            fname=self.loaderdb[self.hwidstr][self.pkhash[0:16]]
+                            print(f"Trying loader: {fname}")
+                        else:
+                            for loader in self.loaderdb[self.hwidstr]:
+                                fname = self.loaderdb[self.hwidstr][loader]
+                                print(f"Possible loader available: {fname}")
+                            for loader in self.loaderdb[self.hwidstr]:
+                                fname = self.loaderdb[self.hwidstr][loader]
+                                print(f"Trying loader: {fname}")
+                                break
+                    elif self.pkhash[0:16] in self.loaderdb[self.hwidstr]:
+                        fname=self.loaderdb[self.hwidstr][self.pkhash[0:16]]
+                        print(f"Detected loader: {fname}")
+                    else:
                         for loader in self.loaderdb[self.hwidstr]:
                             fname = self.loaderdb[self.hwidstr][loader]
                             print(f"Trying loader: {fname}")
                             break
-                    elif self.pkhash[0:16] in self.loaderdb[self.hwidstr]:
-                        fname=self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        print(f"Detected loader: {fname}")
+                        #print("Couldn't find a loader for given hwid and pkhash :(")
+                        #exit(0)
                 else:
                     print("Couldn't find a loader for given hwid and pkhash :(")
                     exit(0)

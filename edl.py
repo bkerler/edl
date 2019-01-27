@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-Licensed under MIT License, (c) B. Kerler 2018, info at revskills.de
+Licensed under MIT License, (c) B. Kerler 2018
 '''
 
 import argparse
@@ -45,7 +45,7 @@ infotbl={
     "MSM7227A":[[], [], []],
     "MSM8210": [[], [], []],
     "MSM8212": [[], [], []],
-    "MSM8909": [[0x100000, 0x18000], [0x5C000, 0x1000], []],
+    "MSM8909": [[0x100000, 0x18000], [0x5C000, 0x1000], [0x200000, 0x24000]],
     "MSM8916": [[0x100000, 0x18000], [0x5C000, 0x1000], [0x200000, 0x24000]],
     "MSM8917": [[0x100000, 0x18000], [0xA0000, 0x6FFF], [0x200000, 0x24000]],
     "MSM8926": [[], [], []],
@@ -75,8 +75,8 @@ def main():
     parser = argparse.ArgumentParser(description=info)
     print("\n"+info+"\n\n")
     parser.add_argument('-loader',metavar="none,<filename>",help='[Option] Flash programmer to load e.g. prog_emmc_firehose.elf', default='')
-    parser.add_argument('-vid',metavar="<vid>",help='[Option] Specify vid, default=0x05c6)',type=int, default=0x05C6)
-    parser.add_argument('-pid',metavar="<pid>", help='[Option] Specify pid, default=0x9008)', type=int, default=0x9008)
+    parser.add_argument('-vid',metavar="<vid>",help='[Option] Specify vid, default=0x05c6)', default="0x05C6")
+    parser.add_argument('-pid',metavar="<pid>", help='[Option] Specify pid, default=0x9008)', default="0x9008")
     parser.add_argument('-maxpayload',metavar="<bytes>",help='[Option] The max bytes to transfer in firehose mode (default=1048576)', type=int, default=1048576)
     parser.add_argument('-skipwrite', help='[Option] Do not write actual data to disk (use this for UFS provisioning)', action="store_true")
     parser.add_argument('-skipstorageinit', help='[Option] Do not initialize storage device (use this for UFS provisioning)',action="store_true")
@@ -91,9 +91,10 @@ def main():
     parser.add_argument('-r', metavar=("<PartName>","<filename>"), help='[CMD:Firehose] Dump entire partition based on partition name', nargs=2,default=[])
     parser.add_argument('-rf', metavar=("<filename>"),help='[CMD:Firehose] Dump whole lun', default="")
     parser.add_argument('-rs', metavar=("<start_sector>","<sectors>","<filename>"), help='[CMD:Firehose] Dump from start sector to end sector to file', nargs=3,default=[])
-    parser.add_argument('-rpbl', metavar=("<filename>"),help='[CMD:Firehose] Dump boot rom (pbl)', default="")
-    parser.add_argument('-rqfp', metavar=("<filename>"), help='[CMD:Firehose] Dump qfprom', default="")
-    parser.add_argument('-rtbl', metavar=("<filename>"), help='[CMD:Firehose] Dump memory table', default="")
+    parser.add_argument('-pbl', metavar=("<filename>"),help='[CMD:Firehose] Dump boot rom (pbl)', default="")
+    parser.add_argument('-qfp', metavar=("<filename>"), help='[CMD:Firehose] Dump qfprom', default="")
+    parser.add_argument('-memtbl', metavar=("<filename>"), help='[CMD:Firehose] Dump memory table', default="")
+    parser.add_argument('-footer', metavar=("<filename>"), help='[CMD:Firehose] Dump crypto footer', default="")
     parser.add_argument('-gpt', metavar="<filename>", help='[CMD:Firehose] Dump gpt to file', default="")
     parser.add_argument('-printgpt', help='[CMD:Firehose] Print gpt', action="store_true")
     parser.add_argument('-peek', metavar=("<offset>","<length>","<filename>"),help='[CMD:Firehose] Read memory from offset,length to file', nargs=3, default=[])
@@ -112,8 +113,10 @@ def main():
 
     mode=""
     loop=0
-    vid=args.vid
-    pid=args.pid
+    if args.vid!="":
+        vid=int(args.vid,16)
+    if args.pid!="":
+        pid=int(args.pid,16)
     cdc = usb_class(vid=vid, pid=pid)
     sahara = qualcomm_sahara(cdc)
 
@@ -183,11 +186,11 @@ def main():
         fh = qualcomm_firehose(cdc,xml,cfg)
         info=fh.connect(0)
         if args.gpt!='':
-            fh.cmd_read(args.lun, 0, 0x4000//512, args.gpt)
+            fh.cmd_read(args.lun, 0, 0x4000//cfg.SECTOR_SIZE_IN_BYTES, args.gpt)
             print(f"Dumped GPT to {args.gpt}")
             exit(0)
         elif args.printgpt==True:
-            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // 512)
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES)
             if data!='':
                 guid_gpt=gpt()
                 guid_gpt.parse(data,cfg.SECTOR_SIZE_IN_BYTES)
@@ -201,7 +204,7 @@ def main():
                 exit(0)
             partitionname=args.r[0]
             filename=args.r[1]
-            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // 512,False)
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
             guid_gpt = gpt()
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 
@@ -214,14 +217,14 @@ def main():
             exit(0)
         elif args.rf!='':
             filename=args.rf
-            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // 512,False)
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
             guid_gpt = gpt()
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
             data = fh.cmd_read(args.lun, 0, guid_gpt.totalsectors, filename)
             print(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
             exit(0)
-        elif args.rpbl!='':
-            filename=args.rpbl
+        elif args.pbl!='':
+            filename=args.pbl
             if fh.cfg.TargetName in infotbl:
                 v=infotbl[fh.cfg.TargetName]
                 if len(v[0])>0:
@@ -234,8 +237,8 @@ def main():
                 print("Unknown target chipset")
             print("Error on dumping pbl")
             exit(0)
-        elif args.rqfp!='':
-            filename=args.rqfp
+        elif args.qfp!='':
+            filename=args.qfp
             if fh.cfg.TargetName in infotbl:
                 v=infotbl[fh.cfg.TargetName]
                 if len(v[1])>0:
@@ -248,8 +251,8 @@ def main():
                 print("Unknown target chipset")
             print("Error on dumping pbl")
             exit(0)
-        elif args.rtbl!='':
-            filename=args.rtbl
+        elif args.memtbl!='':
+            filename=args.memtbl
             if fh.cfg.TargetName in infotbl:
                 v=infotbl[fh.cfg.TargetName]
                 if len(v[2])>0:
@@ -261,6 +264,24 @@ def main():
             else:
                 print("Unknown target chipset")
             print("Error on dumping pbl")
+            exit(0)
+        elif args.footer!='':
+            filename=args.footer
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
+            guid_gpt = gpt()
+            guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
+            pnames=["userdata2","metadata","userdata","reserved1","reserved2","reserved3"]
+            for partition in guid_gpt.partentries:
+                if partition.name in pnames:
+                    print(f"Detected partition: {partition.name}")
+                    data = fh.cmd_read_buffer(args.lun, partition.sector+(partition.sectors-(0x4000 // cfg.SECTOR_SIZE_IN_BYTES)), (0x4000 // cfg.SECTOR_SIZE_IN_BYTES), filename)
+                    val=struct.unpack("<I",data[:4])[0]
+                    if ((val&0xFFFFFFF0)==0xD0B5B1C0):
+                        with open(filename,"wb") as wf:
+                            wf.write(data)
+                            print(f"Dumped footer from {partition.name} as {filename}.")
+                            exit(0)
+            print(f"Error: Couldn't detect partition: {partitionname}")
             exit(0)
         elif len(args.rs)!=0:
             if len(args.rs)!=3:
@@ -299,7 +320,7 @@ def main():
             if not os.path.exists(filename):
                 print(f"Error: Couldn't find file: {filename}")
                 exit(0)
-            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // 512,False)
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
             guid_gpt = gpt()
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 
@@ -332,7 +353,7 @@ def main():
             exit(0)
         elif args.e != '':
             partitionname=args.e
-            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // 512,False)
+            data = fh.cmd_read_buffer(args.lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES,False)
             guid_gpt = gpt()
             guid_gpt.parse(data, cfg.SECTOR_SIZE_IN_BYTES)
 

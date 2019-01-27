@@ -5,19 +5,19 @@ class gpt:
     from enum import Enum
     gpt_header = [
         ('signature', '8s'),
-        ('revision', '>L'),
-        ('header_size', 'L'),
-        ('crc32', 'L'),
-        ('reserved', 'L'),
+        ('revision', '>I'),
+        ('header_size', 'I'),
+        ('crc32', 'I'),
+        ('reserved', 'I'),
         ('current_lba', 'Q'),
         ('backup_lba', 'Q'),
         ('first_usable_lba', 'Q'),
         ('last_usable_lba', 'Q'),
         ('disk_guid', '16s'),
         ('part_entry_start_lba', 'Q'),
-        ('num_part_entries', 'L'),
-        ('part_entry_size', 'L'),
-        ('crc32_part_array', 'L')]
+        ('num_part_entries', 'I'),
+        ('part_entry_size', 'I'),
+        ('crc32_part_array', 'I')]
 
     gpt_partition = [
         ('type', '16s'),
