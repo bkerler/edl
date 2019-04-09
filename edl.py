@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''
-Licensed under MIT License, (c) B. Kerler 2018
+Licensed under MIT License, (c) B. Kerler 2018-2019
 '''
 
 import argparse
@@ -71,7 +71,7 @@ infotbl={
 }
 
 def main():
-    info='Qualcomm Sahara / Firehose Client (c) B.Kerler 2018.'
+    info='Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.'
     parser = argparse.ArgumentParser(description=info)
     print("\n"+info+"\n\n")
     parser.add_argument('-loader',metavar="none,<filename>",help='[Option] Flash programmer to load e.g. prog_emmc_firehose.elf', default='')

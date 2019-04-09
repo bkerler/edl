@@ -117,9 +117,9 @@ class gpt:
         self.part_entry_size = part_entry_size
         self.part_entry_start_lba = part_entry_start_lba
         if num_part_entries is None:
-            self.gpt_header += [('num_part_entries', 'L'),]
+            self.gpt_header += [('num_part_entries', 'I'),]
             if part_entry_size is None:
-                self.gpt_header += [('part_entry_size', 'L'),]
+                self.gpt_header += [('part_entry_size', 'I'),]
 
 
     def parse(self, gptdata, sectorsize=512):
