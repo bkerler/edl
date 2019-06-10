@@ -348,7 +348,11 @@ class qualcomm_firehose:
             self.cfg.MaxPayloadSizeToTargetInBytes=int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
             self.cfg.MaxPayloadSizeToTargetInBytesSupported=int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
             self.cfg.MaxXMLSizeInBytes=int(rsp[1]["MaxXMLSizeInBytes"])
-            self.cfg.MaxPayloadSizeFromTargetInBytes=int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+            if "MaxPayloadSizeFromTargetInBytes" in rsp[1]:
+                 self.cfg.MaxPayloadSizeFromTargetInBytes=int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+            else:
+                 print("Unknown cmd structure, please issue this to github: "+str(rsp[1]))
+                 exit(0)
             self.cfg.TargetName=rsp[1]["TargetName"]
             if "MSM" not in self.cfg.TargetName:
                 self.cfg.TargetName="MSM"+self.cfg.TargetName
