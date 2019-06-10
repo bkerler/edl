@@ -353,10 +353,16 @@ class qualcomm_firehose:
             else:
                  #print("Unknown cmd structure, please issue this to github: "+str(rsp[1]))
                  self.cfg.MaxPayloadSizeFromTargetInBytes=self.cfg.MaxXMLSizeInBytes
-            self.cfg.TargetName=rsp[1]["TargetName"]
-            if "MSM" not in self.cfg.TargetName:
-                self.cfg.TargetName="MSM"+self.cfg.TargetName
-            self.cfg.Version=rsp[1]["Version"]
+            if "TargetName" in rsp[1]:
+                self.cfg.TargetName=rsp[1]["TargetName"]
+                if "MSM" not in self.cfg.TargetName:
+                    self.cfg.TargetName="MSM"+self.cfg.TargetName
+            else:
+                self.cfg.TargetName="Unknown"
+            if "Version" in rsp[1]:
+                self.cfg.Version=rsp[1]["Version"]
+            else:
+                self.cfg.Version="0"
         else:
             if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
                 self.cfg.MemoryName = rsp[1]["MemoryName"]
