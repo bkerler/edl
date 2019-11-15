@@ -55,6 +55,7 @@ Allows to send commands to the qc diag port
 Issues
 ======
 - Secure loader with SDM660 on Xiaomi not yet supported
+- EFS directory write and file read has to be added
 
 Tested with
 ===========
