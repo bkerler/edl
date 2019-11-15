@@ -2,7 +2,7 @@ import binascii
 import os
 import time
 from Library.utils import *
-from Library.firehose import qualcomm_firehose
+logger = logging.getLogger(__name__)
 
 class qualcomm_sahara():
     SAHARA_VERSION=2
@@ -27,6 +27,7 @@ class qualcomm_sahara():
       SAHARA_64BIT_MEMORY_DEBUG=0x10
       SAHARA_64BIT_MEMORY_READ=0x11
       SAHARA_64BIT_MEMORY_READ_DATA=0x12
+      SAHARA_RESET_STATE_MACHINE_ID=0x13
 
     class exec_cmd:
       SAHARA_EXEC_CMD_NOP=0x00
@@ -38,7 +39,7 @@ class qualcomm_sahara():
       SAHARA_EXEC_CMD_READ_DEBUG_DATA=0x06
       SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL=0x07
 
-    class mode:
+    class sahara_mode:
       SAHARA_MODE_IMAGE_TX_PENDING=0x0
       SAHARA_MODE_IMAGE_TX_COMPLETE=0x1
       SAHARA_MODE_MEMORY_DEBUG=0x2
@@ -133,6 +134,13 @@ class qualcomm_sahara():
         for (dirpath, dirnames, filenames) in os.walk("Loaders"):
             for filename in filenames:
                 fn = os.path.join(dirpath, filename)
+                found=False
+                for ext in [".bin",".mbn",".elf"]:
+                    if ext in filename[-4:]:
+                        found=True
+                        break
+                if found==False:
+                    continue  
                 try:
                     hwid = filename.split("_")[0].lower()
                     pkhash = filename.split("_")[1].lower()
@@ -181,6 +189,15 @@ class qualcomm_sahara():
         ('data_len', 'Q')
     ]
 
+    pkt_memory_debug=[
+        ('memory_table_addr', 'I'),
+        ('memory_table_length', 'I')
+    ]
+
+    pkt_memory_debug_64=[
+        ('memory_table_addr', 'Q'),
+        ('memory_table_length', 'Q')
+    ]
     '''
     execute_cmd=[
         ('cmd', 'I'),
@@ -214,10 +231,27 @@ class qualcomm_sahara():
         ('pbl_sw','I')
     ]
 
+    parttbl = [
+        ('save_pref', 'I'),
+        ('mem_base', 'I'),
+        ('length', 'I'),
+        ('desc', '20s'),
+        ('filename', '20s')
+    ]
+
+    parttbl_64bit=[
+        ('save_pref','Q'),
+        ('mem_base','Q'),
+        ('length','Q'),
+        ('desc', '20s'),
+        ('filename', '20s')
+    ]
+
     def __init__(self,cdc):
         self.cdc = cdc
         self.init_loader_db()
         self.programmer=None
+        self.mode=""
 
     def get_rsp(self):
         v = self.cdc.read()
@@ -238,6 +272,12 @@ class qualcomm_sahara():
         elif (pkt["cmd"] == self.cmd.SAHARA_READ_DATA):
             self.bit64 = False
             data = read_object(v[0x8:0x8 + 0x3 * 0x4], self.pkt_read_data)
+        elif (pkt["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_DEBUG):
+            self.bit64 = True
+            data = read_object(v[0x8:0x8 + 0x2 * 0x8], self.pkt_memory_debug_64)
+        elif (pkt["cmd"] == self.cmd.SAHARA_MEMORY_DEBUG):
+            self.bit64 = False
+            data = read_object(v[0x8:0x8 + 0x2 * 0x4], self.pkt_memory_debug)
         elif (pkt["cmd"] == self.cmd.SAHARA_EXECUTE_RSP):
             data =read_object(v[0:0x4*0x4], self.pkt_execute_rsp_cmd)
         elif (pkt["cmd"] == self.cmd.SAHARA_CMD_READY):
@@ -262,33 +302,44 @@ class qualcomm_sahara():
         try:
             v = self.cdc.read()
             if b"<?xml" in v:
-                return "Firehose"
+                return ["firehose",None]
             elif v[0]==0x01:
                 cmd = read_object(v[0:0x2 * 0x4], self.pkt_cmd_hdr)
                 if cmd['cmd'] == self.cmd.SAHARA_HELLO_REQ:
                     data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
                     self.pktsize = data['max_cmd_len']
                     self.version_min = data['version_min']
-                    return "Sahara"
+                    return ["sahara", data]
+            elif v[0] == 0x04:
+                    return ["sahara", v]
         except:
             try:
+                    data = "<?xml version=\"1.0\" ?><data><nop /></data>"
+                    val = self.cdc.write(data, 4096)
+                    res = self.cdc.read()
+                    if (b"<?xml" in res):
+                        return ["firehose", None]
+            except:
+                self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                 data = "<?xml version=\"1.0\" ?><data><nop /></data>"
-                val = self.cdc.write(data,4096)
+                val = self.cdc.write(data, 4096)
                 res = self.cdc.read()
                 if (b"<?xml" in res):
-                    return "Firehose"
-            except:
-                return "Unknown"
-        return "Unknown"
+                    return ["firehose", None]
+                else:
+                    return ["",None]
+        self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
+        cmd, pkt = self.get_rsp()
+        return ["sahara",pkt]
 
     def enter_command_mode(self):
-        if self.cmd_hello(self.mode.SAHARA_MODE_COMMAND)==False:
+        if self.cmd_hello(self.sahara_mode.SAHARA_MODE_COMMAND)==False:
             return False
         cmd, pkt = self.get_rsp()
         if (cmd["cmd"] == self.cmd.SAHARA_CMD_READY):
             return True
         elif "status" in pkt:
-            print(self.get_error_desc(pkt["status"]))
+            logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -338,41 +389,43 @@ class qualcomm_sahara():
             self.model_id = "{:04x}".format(self.model_id)
             self.msm_str="{:08x}".format(self.msm_id)
 
-            print(f"\n------------------------\n" +
+            logger.info(f"\n------------------------\n" +
                   f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str},OEM_ID:0x{self.oem_str},MODEL_ID:0x{self.model_id})\n" +
                   f"PK_HASH:           0x{self.pkhash}\n" +
                   f"Serial:            0x{self.serial}\n" +
                   f"SBL Version:       0x{self.sblversion}\n")
             if self.programmer==None:
                 if self.hwidstr in self.loaderdb:
+                    mt=self.loaderdb[self.hwidstr]
                     if self.pkhash[0:16]=="cc3153a80293939b":
-                        print("Unfused device detected, so any loader should be fine...")
-                        if self.pkhash[0:16] in self.loaderdb[self.hwidstr]:
-                            fname=self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                            print(f"Trying loader: {fname}")
+                        logger.info("Unfused device detected, so any loader should be fine...")
+                        if self.pkhash[0:16] in mt:
+                            fname=mt[self.pkhash[0:16]]
+                            logger.info(f"Trying loader: {fname}")
                         else:
-                            for loader in self.loaderdb[self.hwidstr]:
-                                fname = self.loaderdb[self.hwidstr][loader]
-                                print(f"Possible loader available: {fname}")
-                            for loader in self.loaderdb[self.hwidstr]:
-                                fname = self.loaderdb[self.hwidstr][loader]
-                                print(f"Trying loader: {fname}")
+                            for loader in mt:
+                                fname = mt[loader]
+                                logger.info(f"Possible loader available: {fname}")
+                            for loader in mt:
+                                fname = mt[loader]
+                                logger.info(f"Trying loader: {fname}")
                                 break
-                    elif self.pkhash[0:16] in self.loaderdb[self.hwidstr]:
+                    elif self.pkhash[0:16] in mt:
                         fname=self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        print(f"Detected loader: {fname}")
+                        logger.info(f"Detected loader: {fname}")
                     else:
                         for loader in self.loaderdb[self.hwidstr]:
                             fname = self.loaderdb[self.hwidstr][loader]
-                            print(f"Trying loader: {fname}")
+                            logger.info(f"Trying loader: {fname}")
                             break
                         #print("Couldn't find a loader for given hwid and pkhash :(")
                         #exit(0)
                 else:
-                    print("Couldn't find a loader for given hwid and pkhash :(")
+                    logger.error("Couldn't find a loader for given hwid and pkhash :(")
                     exit(0)
                 with open(fname,"rb") as rf:
                     self.programmer=rf.read()
+            self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
             return True
         return False
 
@@ -384,7 +437,7 @@ class qualcomm_sahara():
             return True
         elif cmd["cmd"]==self.cmd.SAHARA_END_TRANSFER:
             if pkt["status"] == self.status.SAHARA_NAK_INVALID_CMD:
-                print("Invalid Transfer command received.")
+                logger.error("Invalid Transfer command received.")
                 return False
         return True
 
@@ -394,38 +447,145 @@ class qualcomm_sahara():
         if cmd["cmd"]==self.cmd.SAHARA_RESET_RSP:
             return True
         elif "status" in pkt:
-            print(self.get_error_desc(pkt["status"]))
+            logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
+
+    def read_memory(self,addr,bytestoread,Display=False, wf=None):
+        data = b""
+        old = 0
+        pos = 0
+        total = bytestoread
+        if Display:
+            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        while (bytestoread>0):
+            if bytestoread>0x080000:
+                length=0x080000
+            else:
+                length=bytestoread
+            bytesread = 0
+            try:
+                self.cdc.read(1,1)
+            except:
+                pass
+            if self.bit64:
+                if self.cdc.write(struct.pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8+8+8, addr+pos,length))==False:
+                    return None
+            else:
+                if self.cdc.write(struct.pack("<IIII", self.cmd.SAHARA_MEMORY_READ, 0x8+4+4, addr+pos, length))==False:
+                    return None
+            while (length>0):
+                try:
+                    tmp=self.cdc.read(length)
+                except:
+                    return None
+                length-=len(tmp)
+                pos+=len(tmp)
+                bytesread+=len(tmp)
+                if wf!=None:
+                    wf.write(tmp)
+                else:
+                    data+=tmp
+                if Display:
+                    prog = int(float(pos) / float(total) * float(100))
+                    if (prog > old):
+                        if Display:
+                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                            old=prog
+            bytestoread-=bytesread
+            if Display:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        '''
+        try:
+            self.cdc.read(0)
+        except:
+            return data
+        '''
+        return data
+
 
     def debug_mode(self):
-        self.cmd_modeswitch(self.mode.SAHARA_MODE_COMMAND)
-        if self.connect()==False:
+        if self.cmd_hello(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)==False:
             return False
-        if self.cmd_hello(self.mode.SAHARA_MODE_MEMORY_DEBUG)==False:
-            return False
+        if os.path.exists("memory"):
+            rmrf("memory")
+        os.mkdir("memory")
         cmd, pkt = self.get_rsp()
-        if (cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER):
-            if pkt["status"]==self.status.SAHARA_NAK_MEMORY_DEBUG_NOT_SUPPORTED:
-                print("Sorry, Memory Debug is not supported !")
-                return False
+        if (cmd["cmd"]==self.cmd.SAHARA_MEMORY_DEBUG or cmd["cmd"]==self.cmd.SAHARA_64BIT_MEMORY_DEBUG):
+            memory_table_addr=pkt["memory_table_addr"]
+            memory_table_length=pkt["memory_table_length"]
+            if self.bit64:
+                pktsize=8+8+8+20+20
+                if memory_table_length%pktsize==0:
+                    if memory_table_length!=0:
+                        print(f"Reading 64-Bit partition from {hex(memory_table_addr)} with length of {hex(memory_table_length)}")
+                        ptbldata=self.read_memory(memory_table_addr,memory_table_length)
+                        num_entries=len(ptbldata)//pktsize
+                        partition=[]
+                        for id in range(0,num_entries):
+                            pd=read_object(ptbldata[id*pktsize:(id*pktsize)+pktsize],self.parttbl_64bit)
+                            desc=pd["desc"].replace(b"\x00",b"").decode('utf-8')
+                            filename=pd["filename"].replace(b"\x00",b"").decode('utf-8')
+                            mem_base=pd["mem_base"]
+                            save_pref=pd["save_pref"]
+                            length=pd["length"]
+                            partition.append(dict(desc=desc,filename=filename,mem_base=mem_base,length=length,save_pref=save_pref))
+                            print(f"{filename}({desc}): Offset {hex(mem_base)}, Length {hex(length)}, SavePref {hex(save_pref)}")
+
+
+                        for part in partition:
+                            filename=part["filename"]
+                            desc=part["desc"]
+                            mem_base=part["mem_base"]
+                            length=part["length"]
+                            print(f"Dumping {filename}({desc}) at {hex(mem_base)}, length {hex(length)}")
+                            fname=os.path.join("memory",filename)
+                            with open(fname,"wb") as wf:
+                                self.read_memory(mem_base,length,True,wf)
+                            self.cmd_reset()
+                        print("Done dumping memory")
+                        return True
+
+                    return True
             else:
-                state=str(pkt["status"])
-                print(f"Error occured on memory debug: {state}")
-                return False
-        elif (cmd["cmd"]==self.cmd.SAHARA_MEMORY_DEBUG or cmd["cmd"]==self.cmd.SAHARA_64BIT_MEMORY_DEBUG):
-            return True
+                pktsize=(4+4+4+20+20)
+                if memory_table_length%pktsize==0:
+                    if memory_table_length!=0:
+                        print(f"Reading 32-Bit partition from {hex(memory_table_addr)} with length of {hex(memory_table_length)}")
+                        ptbldata=self.read_memory(memory_table_addr, memory_table_length)
+                        num_entries=len(ptbldata)//pktsize
+                        partition = []
+                        for id in range(0,num_entries):
+                            pd=read_object(ptbldata[id * pktsize:(id * pktsize) + pktsize], self.parttbl)
+                            desc=pd["desc"].replace(b"\x00",b"").decode('utf-8')
+                            filename=pd["filename"].replace(b"\x00",b"").decode('utf-8')
+                            mem_base=pd["mem_base"]
+                            save_pref=pd["save_pref"]
+                            length=pd["length"]
+                            partition.append(dict(desc=desc,filename=filename,mem_base=mem_base,length=length,save_pref=save_pref))
+                            print(f"{filename}({desc}): Offset {hex(mem_base)}, Length {hex(length)}, SavePref {hex(save_pref)}")
+
+                        for part in partition:
+                            filename=part["filename"]
+                            desc=part["desc"]
+                            mem_base=part["mem_base"]
+                            length=part["length"]
+                            print(f"Dumping {filename}({desc}) at {hex(mem_base)}, length {hex(length)}")
+                            fname=os.path.join("memory",filename)
+                            with open(fname,"wb") as wf:
+                                ret=self.read_memory(mem_base,length,True,wf)
+                        print("Done dumping memory")
+                        self.cmd_reset()
+                        return True
+                    return True
         elif "status" in pkt:
-            print(self.get_error_desc(pkt["status"]))
+            logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
-    def upload_firehoseloader(self):
-        self.cmd_modeswitch(self.mode.SAHARA_MODE_COMMAND)
-        if self.connect()==False:
-            return False
-        if self.cmd_hello(self.mode.SAHARA_MODE_IMAGE_TX_PENDING)==False:
-            return False
+    def upload_loader(self):
+        if self.cmd_hello(self.sahara_mode.SAHARA_MODE_IMAGE_TX_PENDING)==False:
+            return ""
 
         try:
             datalen=len(self.programmer)
@@ -439,31 +599,36 @@ class qualcomm_sahara():
                 elif (cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER):
                     if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:
                         self.cmd_done()
-                        return True
+                        return self.mode
                     else:
-                        return False
+                        return ""
                 elif "status" in pkt:
-                    print(self.get_error_desc(pkt["status"]))
-                    return False
+                    logger.error(self.get_error_desc(pkt["status"]))
+                    return ""
                 else:
-                    print("Unexpected error on uploading")
-                    return False
+                    logger.error("Unexpected error on uploading")
+                    return ""
+                self.id = pkt["id"]
+                if self.id==0x7:
+                    self.mode="nandprg"
+                elif self.id==0xB:
+                    self.mode="enandprg"
+                elif self.id>=0xC:
+                    self.mode="firehose"
                 data_offset=pkt["data_offset"]
                 data_len=pkt["data_len"]
                 data_to_send=self.programmer[data_offset:data_offset+data_len]
                 self.cdc.write(data_to_send,self.pktsize)
                 datalen-=data_len
-
             cmd, pkt = self.get_rsp()
             if (cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER):
                 if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:
                     self.cmd_done()
-                    return True
-            return False
+                    return self.mode
+            return ""
         except:
-            print("Unexpected error on uploading, maybe signature of loader wasn't accepted ?")
+            logger.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?")
             return False
-
 
     def cmd_modeswitch(self,mode):
         data = struct.pack("<III", self.cmd.SAHARA_SWITCH_MODE, 0xC, mode)
@@ -482,6 +647,6 @@ class qualcomm_sahara():
             payload=self.cdc.read(pkt["data_len"])
             return payload
         elif "status" in pkt:
-            print(self.get_error_desc(pkt["status"]))
+            logger.error(self.get_error_desc(pkt["status"]))
             return None
-        return None
+        return [cmd, pkt]

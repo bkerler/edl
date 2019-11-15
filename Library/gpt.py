@@ -184,3 +184,10 @@ class gpt:
         for partition in self.partentries:
             print("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
         print("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
+
+    def tostring(self):
+        str=("\nGPT Table:\n-------------")
+        for partition in self.partentries:
+            str+=("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
+        str+=("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
+        return str

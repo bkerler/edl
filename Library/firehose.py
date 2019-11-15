@@ -1,39 +1,7 @@
-import xml.etree.ElementTree as ET
 import binascii
 import time
-import os
 from Library.utils import *
-
-class xmlparser():
-    def getresponse(self,input):
-        lines=input.split(b"<?xml")
-        content = {}
-        for line in lines:
-            if line==b'':
-                continue
-            line=b"<?xml"+line
-            parser = ET.XMLParser(encoding="utf-8")
-            tree = ET.fromstring(line, parser=parser)
-            e = ET.ElementTree(tree).getroot()
-            for atype in e.findall('response'):
-                for field in atype.attrib:
-                    content[field]=atype.attrib[field]
-        return content
-
-    def getlog(self,input):
-        lines=input.split(b"<?xml")
-        data = ''
-        for line in lines:
-            if line==b'':
-                continue
-            line=b"<?xml"+line
-            parser = ET.XMLParser(encoding="utf-8")
-            tree = ET.fromstring(line, parser=parser)
-            e = ET.ElementTree(tree).getroot()
-            for atype in e.findall('log'):
-                if 'value' in atype.attrib:
-                    data+=atype.attrib['value']
-        return data
+logger = logging.getLogger(__name__)
 
 class qualcomm_firehose:
     class cfg:
@@ -43,7 +11,8 @@ class qualcomm_firehose:
         ZLPAwareHost = 1
         SkipStorageInit = 0
         SkipWrite = 0
-        MaxPayloadSizeToTargetInBytes = 0x100000
+        MaxPayloadSizeToTargetInBytes = 1048576
+        MaxPayloadSizeFromTargetInBytes = 8192
         SECTOR_SIZE_IN_BYTES=512
         MaxXMLSizeInBytes=4096
         bit64=True
@@ -62,46 +31,59 @@ class qualcomm_firehose:
                 return True
         return False
 
-    def xmlsend(self,data):
+    def xmlsend(self,data,response=True):
         self.cdc.write(data,self.cfg.MaxXMLSizeInBytes)
         data=bytearray()
-        while b"<response" not in data:
-            try:
-                data+=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            except:
-                break
-        resp = self.xml.getresponse(data)
-        return [self.getstatus(resp),resp,data]
+        counter=0
+        timeout=20
+        resp={"value":"NAK"}
+        status=False
+        if response:
+            while b"<response" not in data:
+                try:
+                    data+=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                    if data==b"":
+                        counter+=1
+                        time.sleep(0.3)
+                        if counter>timeout:
+                                break
+                except:
+                    break
+                resp = self.xml.getresponse(data)
+                status=self.getstatus(resp)
+            else:
+                status=True
+        return [status,resp,data]
 
     def cmd_reset(self):
         data = "<?xml version=\"1.0\" ?><data><power value=\"reset\"/></data>"
         val=self.xmlsend(data)
         if val[0]==True:
-            print("Reset succeeded.")
+            logger.info("Reset succeeded.")
             return True
         else:
-            print("Reset failed.")
+            logger.error("Reset failed.")
             return False
 
-    def cmd_xml(self,data):
-        val=self.xmlsend(data)
-        if val[0]==True:
-            print("Command succeeded.")
-            print(val[2])
-            return val[2]
-        else:
-            print("Command failed:")
-            print(val[2])
-            return val[2]
+    def cmd_xml(self,filename):
+        with open(filename,'rb') as rf:
+            data=rf.read()
+            val=self.xmlsend(data)
+            if val[0]==True:
+                logger.info("Command succeeded."+val[2])
+                return val[2]
+            else:
+                logger.error("Command failed:"+val[2])
+                return val[2]
 
     def cmd_nop(self):
         data="<?xml version=\"1.0\" ?><data><nop /></data>"
         val=self.xmlsend(data)
         if val[0]==True:
-            print("Nop succeeded.")
+            logger.info("Nop succeeded.")
             return True
         else:
-            print("Nop failed.")
+            logger.error("Nop failed.")
             return False
 
     def cmd_getsha256digest(self,physical_partition_number,start_sector,num_partition_sectors):
@@ -112,25 +94,40 @@ class qualcomm_firehose:
         val=self.xmlsend(data)
         if val[0]==True:
             res = self.xml.getlog(val[2])
-            print(res)
+            logger.info(res)
             if "Digest " in res:
                 return res.split("Digest ")[1]
             else:
                 return res
         else:
-            print("GetSha256Digest failed.")
+            logger.error("GetSha256Digest failed.")
             return False
 
     def cmd_setbootablestoragedrive(self,partition_number):
-        data=f"<?xml version=\"1.0\" ?><data>\n<setbootablestoragedrive value=\"{hex(partition_number)}\" /></data>"
+        data=f"<?xml version=\"1.0\" ?><data>\n<setbootablestoragedrive value=\"{str(partition_number)}\" /></data>"
         val=self.xmlsend(data)
         if val[0]==True:
-            print("Setbootablestoragedrive succeeded.")
+            logger.info("Setbootablestoragedrive succeeded.")
             return True
         else:
-            print("Setbootablestoragedrive failed.")
+            logger.error("Setbootablestoragedrive failed: %s" % val[2])
             return False
 
+    def cmd_send(self,content,response=True):
+        data=f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
+        if response:
+            val=self.xmlsend(data)
+            if val[0]==True:
+                logger.info(f"{content} succeeded.")
+                return val[2]
+            else:
+                logger.error(f"{content} failed.")
+                logger.error(f"{val[2]}")
+                return False
+
+        else:
+            self.xmlsend(data,False)
+            return True
 
     def cmd_write(self,physical_partition_number,start_sector,filename,Display=True):
         size = os.stat(filename).st_size
@@ -140,7 +137,7 @@ class qualcomm_firehose:
             if (size%self.cfg.SECTOR_SIZE_IN_BYTES)!=0:
                 num_partition_sectors+=1
             if Display:
-                print(
+                logger.info(
                     f"\nWriting to physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             data=f"<?xml version=\"1.0\" ?><data>\n"+\
                  f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
@@ -180,15 +177,15 @@ class qualcomm_firehose:
                 if rsp["value"]=="ACK":
                     return True
                 else:
-                    print(f"Error:{info[1]}")
+                    logger.error(f"Error:{info[1]}")
             else:
-                print(f"Error:{rsp}")
+                logger.error(f"Error:{rsp}")
                 return False
             return False
 
     def cmd_erase(self,physical_partition_number,start_sector,num_partition_sectors,Display=True):
         if Display:
-            print(f"\nErasing from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            logger.info(f"\nErasing from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             data=f"<?xml version=\"1.0\" ?><data>\n"+\
                  f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
                  f" num_partition_sectors=\"{num_partition_sectors}\""+\
@@ -225,15 +222,15 @@ class qualcomm_firehose:
                 if rsp["value"]=="ACK":
                     return True
                 else:
-                    print(f"Error:{info[1]}")
+                    logger.error(f"Error:{info[1]}")
             else:
-                print(f"Error:{rsp}")
+                logger.error(f"Error:{rsp}")
                 return False
             return False
 
     def cmd_read_buffer(self,physical_partition_number,start_sector,num_partition_sectors,Display=True):
         if Display:
-            print(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
         data=f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
              f" num_partition_sectors=\"{num_partition_sectors}\""+\
              f" physical_partition_number=\"{physical_partition_number}\""+\
@@ -241,6 +238,10 @@ class qualcomm_firehose:
         rsp=self.xmlsend(data)
         resData=bytearray()
         if (rsp[0])==True:
+            if "value" in rsp[1]:
+                if rsp[1]["value"]=="NAK":
+                    logger.error(rsp[2].decode('utf-8'))
+                    return ""
             bytesToRead=self.cfg.SECTOR_SIZE_IN_BYTES*num_partition_sectors
             total=bytesToRead
             dataread=0
@@ -266,16 +267,16 @@ class qualcomm_firehose:
             if rsp["value"]=="ACK":
                 return resData
             else:
-                print(f"Error:{info[1]}")
+                logger.error(f"Error:{info[1]}")
                 return ""
         else:
-            print(f"Error:{rsp[2]}")
+            logger.error(f"Error:{rsp[2]}")
             return ""
         return ""
 
     def cmd_read(self,physical_partition_number,start_sector,num_partition_sectors,filename,Display=True):
         if Display:
-            print(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
         with open(filename,"wb") as wf:
             data=f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
                  f" num_partition_sectors=\"{num_partition_sectors}\""+\
@@ -310,23 +311,29 @@ class qualcomm_firehose:
                 if rsp["value"]=="ACK":
                     return tmp
                 else:
-                    print(f"Error:{tmp}")
+                    logger.error(f"Error:{tmp}")
                     return ""
             else:
-                print(f"Error:{rsp[1]}")
+                logger.error(f"Error:{rsp[1]}")
                 return ""
             return ""
 
     def connect(self,lvl):
         v = b'-1'
-        try:
+        #try:
+        if lvl!=1:
+            #self.cdc.timeout = 50
             while v != b'':
-                v = self.cdc.read()
-                info=self.xml.getlog(v)
-                print(info)
-        except:
-            lvl=lvl
-        data=f"<?xml version =\"1.0\" ?><data>"+\
+                    v = self.cdc.read()
+                    info=self.xml.getlog(v)
+                    if info=='':
+                        break
+                    print(info)
+            #self.cdc.timeout = None
+        #except:
+        #    pass
+
+        connectcmd=f"<?xml version =\"1.0\" ?><data>"+\
              f"<configure MemoryName=\"{self.cfg.MemoryName}\" ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" "+\
              f"SkipStorageInit=\"{str(int(self.cfg.SkipStorageInit))}\" SkipWrite=\"{str(int(self.cfg.SkipWrite))}\" "+\
              f"MaxPayloadSizeToTargetInBytes=\"{str(self.cfg.MaxPayloadSizeToTargetInBytes)}\"/>"+\
@@ -337,32 +344,31 @@ class qualcomm_firehose:
                 "MaxPayloadSizeToTargetInBytesSupported=\"1048576\" MaxXMLSizeInBytes=\"4096\" Version=\"1\" TargetName=\"8953\" />" \
                 "</data>"
         '''
-        rsp=self.xmlsend(data)
-        try:
-            self.cdc.read()
-        except:
-            lvl=lvl
+        rsp=self.xmlsend(connectcmd)
 
         if rsp[0]==True:
+            self.cdc.read()
             self.cfg.MemoryName=rsp[1]["MemoryName"]
             self.cfg.MaxPayloadSizeToTargetInBytes=int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
             self.cfg.MaxPayloadSizeToTargetInBytesSupported=int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
             self.cfg.MaxXMLSizeInBytes=int(rsp[1]["MaxXMLSizeInBytes"])
             if "MaxPayloadSizeFromTargetInBytes" in rsp[1]:
-                 self.cfg.MaxPayloadSizeFromTargetInBytes=int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+                self.cfg.MaxPayloadSizeFromTargetInBytes=int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
             else:
-                 #print("Unknown cmd structure, please issue this to github: "+str(rsp[1]))
-                 self.cfg.MaxPayloadSizeFromTargetInBytes=self.cfg.MaxXMLSizeInBytes
+                self.cfg.MaxPayloadSizeFromTargetInBytes=8192
+                logging.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
             if "TargetName" in rsp[1]:
                 self.cfg.TargetName=rsp[1]["TargetName"]
                 if "MSM" not in self.cfg.TargetName:
                     self.cfg.TargetName="MSM"+self.cfg.TargetName
             else:
                 self.cfg.TargetName="Unknown"
+                logger.warning("Couldn't detect TargetName")
             if "Version" in rsp[1]:
                 self.cfg.Version=rsp[1]["Version"]
             else:
-                self.cfg.Version="0"
+                self.cfg.Version=0
+                logger.warning("Couldn't detect Version")
         else:
             if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
                 self.cfg.MemoryName = rsp[1]["MemoryName"]
@@ -377,11 +383,11 @@ class qualcomm_firehose:
                 if lvl==0:
                     return self.connect(lvl+1)
                 else:
-                    print(f"Error:{rsp}")
+                    logger.error(f"Error:{rsp}")
                     exit(0)
-        print(f"TargetName={self.cfg.TargetName}")
-        print(f"MemoryName={self.cfg.MemoryName}")
-        print(f"Version={self.cfg.Version}")
+        logger.info(f"TargetName={self.cfg.TargetName}")
+        logger.info(f"MemoryName={self.cfg.MemoryName}")
+        logger.info(f"Version={self.cfg.Version}")
         if self.cfg.MemoryName.lower()=="emmc":
             self.cfg.SECTOR_SIZE_IN_BYTES=512
         elif self.cfg.MemoryName.lower()=="ufs":
@@ -392,35 +398,124 @@ class qualcomm_firehose:
 
     def cmd_writeimei(self,imei):
         if len(imei)!=16:
-            print("IMEI must be 16 digits")
+            logger.info("IMEI must be 16 digits")
             return False
         data="<?xml version=\"1.0\" ?><data><writeIMEI len=\"16\"/></data>"
         val=self.xmlsend(data)
         if val[0]==True:
-            print("writeIMEI succeeded.")
+            logger.info("writeIMEI succeeded.")
             return True
         else:
-            print("writeIMEI failed.")
+            logger.error("writeIMEI failed.")
             return False
 
     def cmd_getstorageinfo(self):
         data="<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val=self.xmlsend(data)
         if val[0]==True:
-            print(f"GetStorageInfo:\n--------------------\n")
-            print(val[1])
+            logger.info(f"GetStorageInfo:\n--------------------\n")
+            logger.info(val[1])
             return True
         else:
-            print("GetStorageInfo command isn't supported.")
+            logger.warning("GetStorageInfo command isn't supported.")
             return False
 
-    def cmd_peek(self,address,SizeInBytes,filename):
-        print(f"Peek: Address({hex(address)}),Size({hex(SizeInBytes)})")
-        with open(filename,"wb") as wf:
+    def cmd_getstorageinfo_string(self):
+        data="<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
+        val=self.xmlsend(data)
+        resp=""
+        if val[0]==True:
+            resp+=(f"GetStorageInfo:\n--------------------\n")
+            resp+=(val[1])
+            return resp
+        else:
+            return ""
+
+    def cmd_poke(self,address,data,filename="",info=False):
+        rf=None
+        if filename!="":
+            rf = open(filename, "rb")
+            SizeInBytes=os.stat(filename).st_size
+        else:
+            SizeInBytes=len(data)
+        if info:
+            logger.info(f"Poke: Address({hex(address)}),Size({hex(SizeInBytes)})")
+        '''
+        <?xml version="1.0" ?><data><poke address64="1048576" SizeInBytes="90112" value="0x22 0x00 0x00"/></data>
+        '''
+        maxsize = 8
+        lengthtowrite=SizeInBytes
+        if lengthtowrite < maxsize:
+            maxsize = lengthtowrite
+        pos=0
+        old=0
+        datawritten=0
+        mode=0
+        if info:
+            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        while (lengthtowrite>0):
+            if rf != None:
+                content=hex(int(hexlify(rf.read(maxsize)).decode('utf-8'),16))
+            else:
+                content=0
+                if lengthtowrite<maxsize:
+                    maxsize=lengthtowrite
+                for i in range(0,maxsize):
+                    content=(content<<8)+int(hexlify(data[pos+maxsize-i-1:pos+maxsize-i]).decode('utf-8'),16)
+                #content=hex(int(hexlify(data[pos:pos+maxsize]).decode('utf-8'),16))
+                content=hex(content)
+            if mode==0:
+                xdata=f"<?xml version=\"1.0\" ?><data><poke address64=\"{str(address+pos)}\" size_in_bytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
+            else:
+                xdata = f"<?xml version=\"1.0\" ?><data><poke address64=\"{str(address + pos)}\" SizeInBytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
+            try:
+                self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
+            except:
+                pass
+            addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+            if (b"SizeInBytes" in addrinfo):
+                tmp = b""
+                while b"NAK" not in tmp and b"ACK" not in tmp:
+                    tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                xdata = f"<?xml version=\"1.0\" ?><data><poke address64=\"{str(address + pos)}\" SizeInBytes=\"{str(count)}\" value64=\"{content}\" /></data>\n"
+                self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
+                addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                if b'<response' in addrinfo and 'NAK' in addrinfo:
+                    print(f"Error:{addrinfo}")
+                    return
+            if (b"address" in addrinfo and b"can\'t" in addrinfo):
+                tmp = b""
+                while b"NAK" not in tmp and b"ACK" not in tmp:
+                    tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                logger.error(f"Error:{addrinfo}")
+                return
+
+            addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+            if b'<response' in addrinfo and b'NAK' in addrinfo:
+                print(f"Error:{addrinfo}")
+                return
+            pos+=maxsize
+            datawritten+=maxsize
+            lengthtowrite-=maxsize
+            if info:
+                    prog = int(float(datawritten) / float(SizeInBytes) * float(100))
+                    if (prog > old):
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                        old=prog
+            if info:
+                logger.info("Done writing.")
+        return True
+
+    def cmd_peek(self, address, SizeInBytes, filename="", info=False):
+            if info:
+                logger.info(f"Peek: Address({hex(address)}),Size({hex(SizeInBytes)})")
+            wf = None
+            if filename != "":
+                wf = open(filename, "wb")
             '''
             <?xml version="1.0" ?><data><peek address64="1048576" SizeInBytes="90112" /></data>
             '''
-            data=f"<?xml version=\"1.0\" ?><data><peek address64=\"{address}\" SizeInBytes=\"{SizeInBytes}\" /></data>\n"
+            data = f"<?xml version=\"1.0\" ?><data><peek address64=\"{address}\" size_in_bytes=\"{SizeInBytes}\" /></data>\n"
             '''
             <?xml version="1.0" encoding="UTF-8" ?><data><log value="Using address 00100000" /></data> 
             <?xml version="1.0" encoding="UTF-8" ?><data><log value="0x22 0x00 0x00 0xEA 0x70 0x00 0x00 0xEA 0x74 0x00 0x00 0xEA 0x78 0x00 0
@@ -432,44 +527,67 @@ class qualcomm_firehose:
             try:
                 self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
             except:
-                data=data
-            addrinfo=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if (b"size_in_bytes" in addrinfo):
-                tmp=b""
+                pass
+            addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+            if (b"SizeInBytes" in addrinfo):
+                tmp = b""
                 while b"NAK" not in tmp and b"ACK" not in tmp:
-                    tmp+=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                data = f"<?xml version=\"1.0\" ?><data><peek address64=\"{hex(address)}\" size_in_bytes=\"{hex(SizeInBytes)}\" /></data>"
+                    tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                data = f"<?xml version=\"1.0\" ?><data><peek address64=\"{hex(address)}\" SizeInBytes=\"{hex(SizeInBytes)}\" /></data>"
                 self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
                 addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if b'<response' in addrinfo and 'NAK' in addrinfo:
                     print(f"Error:{addrinfo}")
                     return
             if (b"address" in addrinfo and b"can\'t" in addrinfo):
-                tmp=b""
+                tmp = b""
                 while b"NAK" not in tmp and b"ACK" not in tmp:
-                    tmp+=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                print(f"Error:{addrinfo}")
-                return
+                    tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                logger.error(f"Error:{addrinfo}")
+                return False
 
-            data=bytearray()
-            dataread=0
-            old=0
-            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            resp = b""
+            dataread = 0
+            old = 0
+            if info:
+                print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             while (True):
-                tmp=self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if b'<response' in tmp or b"ERROR" in tmp:
                     break
-                tmp2=binascii.unhexlify(self.xml.getlog(tmp).replace("0x","").replace(" ",""))
-                dataread+=len(tmp2)
-                wf.write(tmp2)
-                prog = int(float(dataread) / float(SizeInBytes) * float(100))
-                if (prog > old):
-                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    old=prog
+                rdata=self.xml.getlog(tmp).replace("0x", "").replace(" ", "")
+                try:
+                    tmp2 = binascii.unhexlify(rdata)
+                except:
+                    print(rdata)
+                    exit(0)
+                dataread += len(tmp2)
+                if wf != None:
+                    wf.write(tmp2)
+                else:
+                    resp += tmp2
+                if info:
+                    prog = int(float(dataread) / float(SizeInBytes) * float(100))
+                    if (prog > old):
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                        old = prog
 
-            if b'<response' in tmp and b'ACK' in tmp:
-                print(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
+            if wf != None:
+                wf.close()
+                if b'<response' in tmp and b'ACK' in tmp:
+                    if info:
+                        logger.info(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
+                    return True
+                else:
+                    logger.error(f"Error:{addrinfo}")
+                    return False
                 return True
             else:
-                print(f"Error:{addrinfo}")
-            return True
+                return resp
+
+    def cmd_memcpy(self,destaddress,sourceaddress,size):
+        data=self.cmd_peek(sourceaddress,size)
+        if data!=b"" and data!=False:
+            if self.cmd_poke(destaddress,data):
+                return True
+        return False

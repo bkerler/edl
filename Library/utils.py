@@ -1,8 +1,26 @@
 import sys
 import struct
-from capstone import *
-from keystone import *
+import logging
+
+logging.basicConfig(level=logging.INFO,format="%(name)s - %(message)s")
+
 import codecs
+from binascii import hexlify, unhexlify
+import struct
+import os
+import shutil
+import stat
+
+def del_rw(action, name, exc):
+    os.chmod(name, stat.S_IWRITE)
+    os.remove(name)
+
+def rmrf(path):
+    if os.path.exists(path):
+        if os.path.isfile(path):
+            del_rw("",path,"")
+        else:
+            shutil.rmtree(path, onerror=del_rw)
 
 class elf:
     class memorysegment:
@@ -13,8 +31,9 @@ class elf:
         file_end_addr=0
 
 
-    def __init__(self,indata):
+    def __init__(self,indata,filename):
         self.data=indata
+        self.filename=filename
         self.header, self.pentry = self.parse()
         self.memorylayout = []
         for entry in self.pentry:
@@ -68,6 +87,9 @@ class elf:
             start=0x28
         elif self.elfclass==2: #64Bit
             start=0x34
+        else:
+            print("Error on parsing "+self.filename)
+            return ['','']
         elfheadersize, programheaderentrysize, programheaderentrycount = struct.unpack("<HHH", self.data[start:start + 3 * 2])
         programheadersize = programheaderentrysize * programheaderentrycount
         header = self.data[0:elfheadersize+programheadersize]
@@ -242,6 +264,27 @@ def read_object(data, definition):
         obj[name] = struct.unpack(stype, data[pos:pos+struct.calcsize(stype)])[0]
         pos+=struct.calcsize(stype)
     obj['object_size'] = object_size
+    obj['raw_data'] = data
+    return obj
+
+def write_object(definition,*args):
+    '''
+    Unpacks a structure using the given data and definition.
+    '''
+    obj = {}
+    object_size = 0
+    data=b""
+    i=0
+    for (name, stype) in definition:
+        object_size += struct.calcsize(stype)
+        arg=args[i]
+        try:
+            data += struct.pack(stype, arg)
+        except Exception as e:
+            print("Error:"+str(e))
+            break
+        i+=1
+    obj['object_size'] = len(data)
     obj['raw_data'] = data
     return obj
 

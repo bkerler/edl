@@ -656,3 +656,7 @@ ENV{adb_user}=="yes", MODE="0660", GROUP="adbusers", TAG+="uaccess", SYMLINK+="a
 # Devices listed here {begin...end} are connected by USB
 LABEL="android_usb_rules_end"
 
+#Suzy-Q
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="d002", MODE="0660", 
+GROUP="plugdev", SYMLINK+="android%n"
+
