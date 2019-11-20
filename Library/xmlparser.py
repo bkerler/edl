@@ -17,7 +17,7 @@ class xmlparser():
 
     def getlog(self,input):
         lines=input.split(b"<?xml")
-        data = ''
+        data = []
         for line in lines:
             if line==b'':
                 continue
@@ -27,5 +27,5 @@ class xmlparser():
             e = ET.ElementTree(tree).getroot()
             for atype in e.findall('log'):
                 if 'value' in atype.attrib:
-                    data+=atype.attrib['value']
+                    data.append(atype.attrib['value'])
         return data

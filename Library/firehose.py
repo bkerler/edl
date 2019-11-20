@@ -1,6 +1,7 @@
 import binascii
 import time
 from Library.utils import *
+from Library.gpt import gpt
 logger = logging.getLogger(__name__)
 
 class qualcomm_firehose:
@@ -29,7 +30,9 @@ class qualcomm_firehose:
             value = resp["value"]
             if value == "ACK":
                 return True
-        return False
+            else:
+                return False
+        return True
 
     def xmlsend(self,data,response=True):
         self.cdc.write(data,self.cfg.MaxXMLSizeInBytes)
@@ -81,7 +84,7 @@ class qualcomm_firehose:
         val=self.xmlsend(data)
         if val[0]==True:
             logger.info("Nop succeeded.")
-            return True
+            return self.xml.getlog(val[2])
         else:
             logger.error("Nop failed.")
             return False
@@ -94,7 +97,8 @@ class qualcomm_firehose:
         val=self.xmlsend(data)
         if val[0]==True:
             res = self.xml.getlog(val[2])
-            logger.info(res)
+            for line in res:
+                logger.info(line)
             if "Digest " in res:
                 return res.split("Digest ")[1]
             else:
@@ -174,10 +178,15 @@ class qualcomm_firehose:
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp=self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if rsp["value"]=="ACK":
-                    return True
+                if "value" in rsp:
+                    if rsp["value"]=="ACK":
+                        return True
+                    else:
+                        logger.error(f"Error:")
+                        for line in info:
+                            logger.error(line)
                 else:
-                    logger.error(f"Error:{info[1]}")
+                    return True
             else:
                 logger.error(f"Error:{rsp}")
                 return False
@@ -219,10 +228,15 @@ class qualcomm_firehose:
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp=self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if rsp["value"]=="ACK":
-                    return True
+                if "value" in rsp:
+                    if rsp["value"]=="ACK":
+                        return True
+                    else:
+                        logger.error(f"Error:")
+                        for line in info:
+                            logger.error(line)
                 else:
-                    logger.error(f"Error:{info[1]}")
+                    return True
             else:
                 logger.error(f"Error:{rsp}")
                 return False
@@ -264,15 +278,30 @@ class qualcomm_firehose:
             time.sleep(0.2)
             info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
             rsp=self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-            if rsp["value"]=="ACK":
-                return resData
-            else:
-                logger.error(f"Error:{info[1]}")
-                return ""
+            if "value" in rsp:
+                if rsp["value"]=="ACK":
+                    return resData
+                else:
+                    logger.error(f"Error:")
+                    for line in info:
+                        logger.error(line)
+                    return ""
         else:
             logger.error(f"Error:{rsp[2]}")
             return ""
-        return ""
+        return resData
+
+    def get_gpt(self,lun,gpt_num_part_entries,gpt_part_entry_size,gpt_part_entry_start_lba):
+        data = self.cmd_read_buffer(lun, 0, 0x4000 // self.cfg.SECTOR_SIZE_IN_BYTES * 4, False)
+        if data=="":
+            return None
+        guid_gpt = gpt(
+            num_part_entries=gpt_num_part_entries,
+            part_entry_size=gpt_part_entry_size,
+            part_entry_start_lba=gpt_part_entry_start_lba,
+        )
+        guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+        return guid_gpt
 
     def cmd_read(self,physical_partition_number,start_sector,num_partition_sectors,filename,Display=True):
         if Display:
@@ -308,11 +337,16 @@ class qualcomm_firehose:
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if rsp["value"]=="ACK":
-                    return tmp
+                if "value" in rsp:
+                    if rsp["value"]=="ACK":
+                        return tmp
+                    else:
+                        logger.error(f"Error:")
+                        for line in info:
+                            logger.error(line)
+                        return ""
                 else:
-                    logger.error(f"Error:{tmp}")
-                    return ""
+                    return tmp
             else:
                 logger.error(f"Error:{rsp[1]}")
                 return ""
@@ -323,12 +357,27 @@ class qualcomm_firehose:
         #try:
         if lvl!=1:
             #self.cdc.timeout = 50
+            info=[]
             while v != b'':
                     v = self.cdc.read()
-                    info=self.xml.getlog(v)
+                    if v==b'':
+                        break
+                    data=self.xml.getlog(v)
+                    if len(data)>0:
+                        info.append(data[0])
                     if info=='':
                         break
-                    print(info)
+            #if info==[]:
+            #    info=self.cmd_nop()
+
+            supfunc=False
+            supported_functions = []
+            for line in info:
+                if supfunc == True and not "end of supported functions" in line.lower():
+                    supported_functions.append(line.replace("\n", ""))
+                if "supported functions" in line.lower():
+                    supfunc = True
+
             #self.cdc.timeout = None
         #except:
         #    pass
@@ -392,7 +441,7 @@ class qualcomm_firehose:
             self.cfg.SECTOR_SIZE_IN_BYTES=512
         elif self.cfg.MemoryName.lower()=="ufs":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
-        return True
+        return supported_functions
 
 # OEM Stuff here below --------------------------------------------------
 
@@ -473,7 +522,7 @@ class qualcomm_firehose:
             except:
                 pass
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if (b"SizeInBytes" in addrinfo):
+            if (b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo):
                 tmp = b""
                 while b"NAK" not in tmp and b"ACK" not in tmp:
                     tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -529,7 +578,7 @@ class qualcomm_firehose:
             except:
                 pass
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if (b"SizeInBytes" in addrinfo):
+            if (b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo):
                 tmp = b""
                 while b"NAK" not in tmp and b"ACK" not in tmp:
                     tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -555,7 +604,7 @@ class qualcomm_firehose:
                 tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if b'<response' in tmp or b"ERROR" in tmp:
                     break
-                rdata=self.xml.getlog(tmp).replace("0x", "").replace(" ", "")
+                rdata=self.xml.getlog(tmp)[0].replace("0x", "").replace(" ", "")
                 try:
                     tmp2 = binascii.unhexlify(rdata)
                 except:
