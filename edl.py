@@ -1028,7 +1028,7 @@ def handle_firehose(args, cdc, sahara):
             for partition in guid_gpt.partentries:
                 print(partition.name)
         exit(0)
-    elif len(args.rl) != "":
+    elif len(args.rl) != 0:
         if len(args.rl) != 2:
             print("Usage: -rl <lun> <directory_to_save_files>")
             exit(0)
