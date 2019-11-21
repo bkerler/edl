@@ -526,7 +526,7 @@ def do_firehose_server(args,cdc,sahara):
                                     guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
                                                           args.gpt_part_entry_start_lba)
                                     if guid_gpt == None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         fh.cmd_read(args.lun, 0, guid_gpt.totalsectors, filename)
@@ -635,7 +635,7 @@ def do_firehose_server(args,cdc,sahara):
                                     guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
                                                           args.gpt_part_entry_start_lba)
                                     if guid_gpt == None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2", "reserved3"]
@@ -878,7 +878,7 @@ def do_firehose_server(args,cdc,sahara):
                                         guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
                                                               args.gpt_part_entry_start_lba)
                                         if guid_gpt == None:
-                                            response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                            response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
                                             found=False
@@ -924,7 +924,7 @@ def do_firehose_server(args,cdc,sahara):
                                     guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
                                                           args.gpt_part_entry_start_lba)
                                     if guid_gpt == None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         found=False
