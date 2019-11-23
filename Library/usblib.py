@@ -152,11 +152,13 @@ class usb_class():
                     pass
         return True
 
-    def read(self,length=0x80000):
+    def read(self,length=0x80000, timeout=None):
         tmp=b''
+        if timeout==None:
+            timeout=self.timeout
         while (bytearray(tmp) == b''):
                 try:
-                    tmp=self.device.read(self.EP_IN, length,self.timeout)
+                    tmp=self.device.read(self.EP_IN, length,timeout)
                 except usb.core.USBError as e:
                     if "timed out" in e.strerror:
                         #time.sleep(0.05)

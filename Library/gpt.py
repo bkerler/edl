@@ -112,13 +112,13 @@ class gpt:
         EFI_VMWARE_VMFS         = 0xAA31E02A
         EFI_VMWARE_RESERVED     = 0x9198EFFC
 
-    def __init__(self, num_part_entries=None, part_entry_size=None, part_entry_start_lba=None, *args, **kwargs):
+    def __init__(self, num_part_entries=0, part_entry_size=0, part_entry_start_lba=0, *args, **kwargs):
         self.num_part_entries = num_part_entries
         self.part_entry_size = part_entry_size
         self.part_entry_start_lba = part_entry_start_lba
-        if num_part_entries is None:
+        if num_part_entries is 0:
             self.gpt_header += [('num_part_entries', 'I'),]
-            if part_entry_size is None:
+            if part_entry_size is 0:
                 self.gpt_header += [('part_entry_size', 'I'),]
 
 
@@ -131,7 +131,7 @@ class gpt:
         if self.header["revision"]!=0x100:
             print("Unknown GPT revision.")
             return False
-        if self.part_entry_start_lba is not None:
+        if self.part_entry_start_lba is not 0:
             start = self.part_entry_start_lba
         else:
             start=self.header["part_entry_start_lba"]*sectorsize

@@ -1,9 +1,9 @@
 import socket
 
 class tcpclient():
-    def __init__(self):
+    def __init__(self, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = ("localhost", 1340)
+        server_address = ("localhost", port)
         print("connecting to %s port %s" % server_address)
         self.sock.connect(server_address)
 

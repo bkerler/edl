@@ -1,14 +1,107 @@
 #!/usr/bin/env python3
-'''
-Licensed under MIT License, (c) B. Kerler 2018-2019
-'''
+# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.
+# Licensed under MIT License
+"""
+Usage:
+    edl.py -h | --help
+    edl.py [--vid=vid] [--pid=pid]
+    edl.py [--loader=filename]
+    edl.py [--debugmode]
+    edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
+    edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
+    edl.py server [--tcpport=portnumber]
+    edl.py printgpt [--lun=lun]
+    edl.py gpt <filename> [--memory=memtype] [--lun=lun]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite]
+    edl.py footer <filename> [--memory=memtype] [--lun=lun]
+    edl.py peek <offset> <length> <filename>
+    edl.py peekhex <offset> <length>
+    edl.py peekdword <offset>
+    edl.py peekqword <offset>
+    edl.py memtbl <filename>
+    edl.py poke <offset> <filename>
+    edl.py pokehex <offset> <data>
+    edl.py pokedword <offset> <data>
+    edl.py pokeqword <offset> <data>
+    edl.py memcpy <srcoffset> <dstoffset> <size>
+    edl.py secureboot
+    edl.py pbl <filename>
+    edl.py qfp <filename>
+    edl.py getstorageinfo
+    edl.py setbootablestoragedrive <lun>
+    edl.py send <command>
+    edl.py xml <xmlfile>
+    edl.py reset
+    edl.py nop
 
-import argparse
+Description:
+    server [--tcpport=portnumber]                                                # Run tcp/ip server
+    printgpt [--lun=lun]                                                         # Print GPT Table information
+    gpt <filename> [--memory=memtype] [--lun=lun]                                # Save gpt table to file
+    r <partitionname> <filename> [--memory=memtype] [--lun=lun]                  # Read flash to filename
+    rl <directory> [--memory=memtype] [--lun=lun]                                # Read all partitions from flash to a directory
+    rf <filename> [--memory=memtype] [--lun=lun]                                 # Read whole flash to file
+    rs <start_sector> <sectors> <filename> [--lun=lun]                           # Read sectors starting at start_sector to filename
+    w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to partition to flash
+    wl <directory> [--memory=memtype] [--lun=lun]                                # Write all files from directory to flash
+    wf <filename> [--memory=memtype] [--lun=lun]                                 # Write whole filename to flash
+    ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to flash at start_sector
+    e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun]               # Erase partition from flash
+    es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite]     # Erase sectors at start_sector from flash
+    footer <filename> [--memory=memtype] [--lun=lun]                             # Read crypto footer from flash
+    peek <offset> <length> <filename>                                            # Dump memory at offset with given length to filename
+    peekhex <offset> <length>                                                    # Dump memory at offset and given length as hex string
+    peekdword <offset>                                                           # Dump DWORD at memory offset
+    peekqword <offset>                                                           # Dump QWORD at memory offset
+    memtbl <filename>                                                            # Dump memory table to file
+    poke <offset> <filename>                                                     # Write filename to memory at offset to memory
+    pokehex <offset> <data>                                                      # Write hex string data at offset to memory
+    pokedword <offset> <data>                                                    # Write DWORD to memory at offset
+    pokeqword <offset> <data>                                                    # Write QWORD to memory at offset
+    memcpy <srcoffset> <dstoffset> <size>                                        # Copy memory from srcoffset with given size to dstoffset
+    secureboot                                                                   # Print secureboot fields from qfprom fuses
+    pbl <filename>                                                               # Dump primary bootloader to filename
+    qfp <filename>                                                               # Dump QFPROM fuses to filename
+    getstorageinfo                                                               # Print storage info in firehose mode
+    setbootablestoragedrive <lun>                                                # Change bootable storage drive to lun number
+    send <command>                                                               # Send firehose command
+    xml <xmlfile>                                                                # Send firehose xml file
+    reset                                                                        # Send firehose reset command
+    nop                                                                          # Send firehose nop command
+
+Options:
+    --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
+    --vid=vid                          Set usb vendor id used for EDL [default: 0x05c6]
+    --pid=pid                          Set usb product id used for EDL [default: 0x9008]
+    --lun=lun                          Set lun to read from (UFS memory only) [default: 0]
+    --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
+    --sectorsize=bytes                 Set default sector size [default: 0x200]
+    --memory=memtype                   Set memory type (EMMC or UFS) [default: eMMC]
+    --skipwrite                        Do not allow any writes to flash (simulate only)
+    --skipstorageinit                  Skip storage initialisation
+    --debugmode                        Enable verbose mode
+    --gpt-num-part-entries=number      Set GPT entry count [default: 0]
+    --gpt-part-entry-size=number       Set GPT entry size [default: 0]
+    --gpt-part-entry-start-lba=number  Set GPT entry start lba sector [default: 0]
+    --tcpport=portnumber               Set port for tcp server [default:1340]
+"""
+print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
+
+from docopt import docopt
+args = docopt(__doc__, version='EDL 2.0')
+
 import time
-import os
 from Library.utils import *
 from Library.usblib import usb_class
-from Library.gpt import gpt
 from Library.sahara import qualcomm_sahara
 from Library.firehose import qualcomm_firehose
 from Library.streaming import qualcomm_streaming
@@ -245,88 +338,21 @@ def check_cmd(supported_funcs,func):
     return False
 
 def main():
-    info='Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.'
-    parser = argparse.ArgumentParser(description=info)
-    print("\n"+info+"\n\n")
-    parser.add_argument('-loader',metavar="none,<filename>",help='[Option] Flash programmer to load e.g. prog_emmc_firehose.elf', default='')
-    parser.add_argument('-vid',metavar="<vid>",help='[Option] Specify vid, default=0x05c6)', default="0x05C6")
-    parser.add_argument('-pid',metavar="<pid>", help='[Option] Specify pid, default=0x9008)', default="0x9008")
-    parser.add_argument('-maxpayload',metavar="<bytes>",help='[Option] The max bytes to transfer in firehose mode (default=1048576)', type=int, default=1048576)
-    parser.add_argument('-skipwrite', help='[Option] Do not write actual data to disk (use this for UFS provisioning)', action="store_true")
-    parser.add_argument('-skipstorageinit', help='[Option] Do not initialize storage device (use this for UFS provisioning)',action="store_true")
-    parser.add_argument('-memory', metavar="<UFS/eMMC>",help='[Option] Memory type (default=UFS)',default='UFS')
-    parser.add_argument('-sectorsize', metavar="<bytes>",help='[Option] Define Disk Sector Size (default=512)',type=int,default=512)
-    #parser.add_argument('-lun', metavar="<num>",help='[Option] Define LUN',type=int,default=0)
-    #parser.add_argument('-debug', help='[Option] Enable debug output', action="store_true")
-    parser.add_argument('-debugmode', help='[CMD:Sahara] Switch to Memory Dump mode (Debug only)',action="store_true")
-    parser.add_argument('-debugread', help='[CMD:Sahara] Read Debug Logs',action="store_true")
-    parser.add_argument('-dmss', help='[CMD:Sahara] Switch to DMSS Download mode',action="store_true")
-    parser.add_argument('-streaming', help='[CMD:Sahara] Switch to Streaming Download mode', action="store_true")
-
-    parser.add_argument('-r', metavar=("<lun>","<PartName>","<filename>"), help='[CMD:Firehose] Dump partition based on partition name', nargs=3,default=[])
-    parser.add_argument('-rl', metavar=("<lun>", "<directory>"), help='[CMD:Firehose] Dump whole lun/flash partitions to a directory', nargs=2,default=[])
-    parser.add_argument('-rf', metavar=("<lun>","<filename>"),help='[CMD:Firehose] Dump whole lun/flash', nargs=2, default=[])
-    parser.add_argument('-rs', metavar=("<lun>","<start_sector>","<sectors>","<filename>"), help='[CMD:Firehose] Dump from start sector to end sector to file', nargs=4,default=[])
-    parser.add_argument('-w', metavar=("<lun>","<partitionname>","<filename>"), help='[CMD:Firehose] Write filename to GPT partition', nargs=3, default=[])
-    parser.add_argument('-ws', metavar=("<lun>","<start_sector>","<filename>"), help='[CMD:Firehose] Write filename at sector <start_sector>', nargs=3, default=[])
-    parser.add_argument('-e', metavar=("<lun>","<partitionname>"), help='[CMD:Firehose] Erase the entire partition specified',nargs=2, default=[])
-    parser.add_argument('-es', metavar=("<lun>","<start_sector>","<num_sectors>"), help='[CMD:Firehose] Erase disk from start sector for number of sectors',nargs=3,default=[])
-    parser.add_argument('-gpt', metavar="<lun>,<filename>", help='[CMD:Firehose] Dump gpt to file', nargs=2, default=[])
-    parser.add_argument('-printgpt', help='[CMD:Firehose] Print gpt', default="")
-    parser.add_argument('-footer', metavar=("<lun>","<filename>"), help='[CMD:Firehose] Dump crypto footer', nargs=2, default=[])
-
-    parser.add_argument('-pbl', metavar=("<filename>"),help='[CMD:Firehose] Dump boot rom (pbl)', default="")
-    parser.add_argument('-qfp', metavar=("<filename>"), help='[CMD:Firehose] Dump qfprom', default="")
-    parser.add_argument('-secureboot', help='[CMD:Firehose] Get secure boot info', action="store_true")
-    parser.add_argument('-memtbl', metavar=("<filename>"), help='[CMD:Firehose] Dump memory table', default="")
-
-    parser.add_argument('-peek', metavar=("<offset>","<length>","<filename>"),help='[CMD:Firehose] Read memory from offset,length to file', nargs=3, default=[])
-    parser.add_argument('-peekhex', metavar=("<offset>","<length>"),help='[CMD:Firehose] Read memory from offset, length and display', nargs=2, default=[])
-    parser.add_argument('-peekdword', metavar=("<offset>"),help='[CMD:Firehose] Read dword (hex) from offset, length and display', nargs=1, default=[])
-    parser.add_argument('-peekqword', metavar=("<offset>"),help='[CMD:Firehose] Read qword (hex) from offset, length and display', nargs=1, default=[])
-    parser.add_argument('-poke', metavar=("<offset>", "<filename>"),help='[CMD:Firehose] write data at offset from file', nargs=2, default=[])
-    parser.add_argument('-pokehex', metavar=("<offset>", "<data>"),help='[CMD:Firehose] write data at offset as hexstring to memory', nargs=2, default=[])
-    parser.add_argument('-pokedword', metavar=("<offset>", "<data>"),help='[CMD:Firehose] write dword (hex) at offset to memory', nargs=2, default=[])
-    parser.add_argument('-pokeqword', metavar=("<offset>", "<data>"), help='[CMD:Firehose] write qword (hex) at offset to memory', nargs=2, default=[])
-    parser.add_argument('-memcpy', metavar=("<srcoffset>", "<dstoffset>", "<size>"), help='[CMD:Firehose] copy memory offset from src to dst', nargs=3, default=[])
-    parser.add_argument('-reset', help='[CMD:Firehose] Reset device', action="store_true")
-    parser.add_argument('-nop', help='[CMD:Firehose] NOP', action="store_true")
-    parser.add_argument('-getstorageinfo', help='[CMD:Firehose] Get Storage/Flash Info', action="store_true")
-    parser.add_argument('-setbootablestoragedrive', metavar="<number>",
-                        help='[CMD:Firehose] Set the physical partition number active for booting',default='')
-    parser.add_argument('-send', metavar="<command>", help='[CMD:Firehose] Send xml command', default='')
-    parser.add_argument('-xml', metavar="<xmlfile>", help='[CMD:Firehose] XML to run in firehose mode', default='')
-    parser.add_argument('-gpt-num-part-entries', metavar="<number>", type=int, help='[CMD:Firehose] Number of partitions', default=None)
-    parser.add_argument('-gpt-part-entry-size', metavar="<number>", type=int, help='[CMD:Firehose] Size of partition entry', default=None)
-    parser.add_argument('-gpt-part-entry-start-lba', metavar="<number>", type=int, help='[CMD:Firehose] Beginning of partition entries', default=None)
-    parser.add_argument('-server', help='Run as a TCP/IP Server, listing on port 1336', action="store_true")
-
-
-    args = parser.parse_args()
-
     mode=""
     loop=0
-    if args.vid!="":
-        vid=int(args.vid,16)
-    if args.pid!="":
-        pid=int(args.pid,16)
+    vid=int(args["--vid"],16)
+    pid=int(args["--pid"],16)
     cdc = usb_class(vid=vid, pid=pid)
     sahara = qualcomm_sahara(cdc)
 
-    if args.loader=='none':
+    if args["--loader"]=='None':
         logger.info("Trying with no loader given ...")
         sahara.programmer = None
-    elif (args.loader==""):
-        logger.info("Trying with loaders in Loader directory ...")
-        sahara.programmer = None
-    elif (args.loader!=''):
-        logger.info(f"Using loader {args.loader} ...")
-        with open(args.loader, "rb") as rf:
-            sahara.programmer = rf.read()
     else:
-        print("Sorry, you need a firehose loader (-loader) or try without loader \"-loader none\" !")
-        print("Use with -h for displaying help.")
-        exit(0)
+        loader=args["--loader"]
+        logger.info(f"Using loader {loader} ...")
+        with open(loader, "rb") as rf:
+            sahara.programmer = rf.read()
 
     logger.info("Waiting for the device")
 
@@ -402,14 +428,14 @@ def doconnect(cdc, loop, mode, resp, sahara):
 def handle_streaming(args, cdc, sahara):
     fh = qualcomm_streaming(cdc,sahara)
 
-def do_firehose_server(args,cdc,sahara):
+def do_firehose_server(mainargs,cdc,sahara):
     cfg = qualcomm_firehose.cfg()
-    cfg.MemoryName = args.memory
+    cfg.MemoryName = mainargs["--memory"]
     cfg.ZLPAwareHost = 1
-    cfg.SkipStorageInit = args.skipstorageinit
-    cfg.SkipWrite = args.skipwrite
-    cfg.MaxPayloadSizeToTargetInBytes = args.maxpayload
-    cfg.SECTOR_SIZE_IN_BYTES = args.sectorsize
+    cfg.SkipStorageInit = mainargs["--skipstorageinit"]
+    cfg.SkipWrite = mainargs["--skipwrite"]
+    cfg.MaxPayloadSizeToTargetInBytes = int(mainargs["--maxpayload"],16)
+    cfg.SECTOR_SIZE_IN_BYTES = int(mainargs["--sectorsize"],16)
     cfg.bit64 = sahara.bit64
     fh = qualcomm_firehose(cdc, xmlparser(), cfg)
     supported_functions = fh.connect(0)
@@ -422,7 +448,7 @@ def do_firehose_server(args,cdc,sahara):
 
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_address = ('localhost',1340)
+    server_address = ('localhost',int(mainargs["--tcpport"]))
     print ('starting up on %s port %s' % server_address)
     sock.bind(server_address)
     sock.listen(1)
@@ -447,12 +473,12 @@ def do_firehose_server(args,cdc,sahara):
                                 args=[args]
                             if cmd=="gpt":
                                 if len(args) != 1:
-                                    response="<NAK>\n"+"Usage: gpt:<lun>"
+                                    response="<NAK>\n"+"Usage: gpt:<lun>,<filename>"
                                     connection.sendall(bytes(response,'utf-8'))
                                 else:
                                     lun=int(args[0])
-                                    fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES*4, args.gpt)
-                                    response=f"<ACK>\n"+f"Dumped GPT to {args.gpt}"
+                                    fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES*4, args[1])
+                                    response=f"<ACK>\n"+f"Dumped GPT to {args[1]}"
                                     connection.sendall(bytes(response,'utf-8'))
                             elif cmd=="printgpt":
                                 if len(args) != 1:
@@ -460,8 +486,8 @@ def do_firehose_server(args,cdc,sahara):
                                     connection.sendall(bytes(response,'utf-8'))
                                 else:
                                     lun = int(args[0])
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt != None:
                                         response="<ACK>\n"+guid_gpt.tostring()
                                         connection.sendall(bytes(response,'utf-8'))
@@ -477,8 +503,8 @@ def do_firehose_server(args,cdc,sahara):
                                     lun = int(args[0])
                                     partitionname = args[1]
                                     filename = args[2]
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt == None:
                                         response = "<NAK>\n" + f"Error reading GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
@@ -503,8 +529,8 @@ def do_firehose_server(args,cdc,sahara):
                                     directory = args[1]
                                     if not os.path.exists(directory):
                                         os.mkdir(directory)
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt == None:
                                         response = "<NAK>\n" + f"Error reading GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
@@ -523,13 +549,13 @@ def do_firehose_server(args,cdc,sahara):
                                 else:
                                     lun=int(args[0])
                                     filename = args[1]
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt == None:
                                         response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        fh.cmd_read(args.lun, 0, guid_gpt.totalsectors, filename)
+                                        fh.cmd_read(lun, 0, guid_gpt.totalsectors, filename)
                                         response="<ACK>\n"+f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}."
                                         connection.sendall(bytes(response,'utf-8'))
                             elif cmd=="pbl":
@@ -541,7 +567,7 @@ def do_firehose_server(args,cdc,sahara):
                                         response = "<NAK>\n" + "Peek command isn't supported by edl loader"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        filename = args.pbl
+                                        filename = args[0]
                                         if TargetName in infotbl:
                                             v = infotbl[TargetName]
                                             if len(v[0]) > 0:
@@ -632,8 +658,8 @@ def do_firehose_server(args,cdc,sahara):
                                 else:
                                     lun=int(args[0])
                                     filename = args[1]
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt == None:
                                         response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
@@ -875,8 +901,9 @@ def do_firehose_server(args,cdc,sahara):
                                         response="<NAK>\n"+f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response,'utf-8'))
                                     else:
-                                        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                              args.gpt_part_entry_start_lba)
+                                        guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                                              int(mainargs["--gpt-part-entry-size"]),
+                                                              int(mainargs["--gpt-part-entry-start-lba"]))
                                         if guid_gpt == None:
                                             response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -914,6 +941,24 @@ def do_firehose_server(args,cdc,sahara):
                                         else:
                                             response="<NAK>\n"+f"Error on writing {filename} to sector {str(start)}"
                                             connection.sendall(bytes(response,'utf-8'))
+                            elif cmd=="wf":
+                                if len(args) != 2:
+                                    response="<NAK>\n"+"Usage: wf:<lun>,<filename>"
+                                    connection.sendall(bytes(response,'utf-8'))
+                                else:
+                                    lun = int(args[0])
+                                    start = 0
+                                    filename = args[1]
+                                    if not os.path.exists(filename):
+                                        response="<NAK>\n"+f"Error: Couldn't find file: {filename}"
+                                        connection.sendall(bytes(response,'utf-8'))
+                                    else:
+                                        if fh.cmd_write(lun, start, filename) == True:
+                                            response="<ACK>\n"+f"Wrote {filename} to sector {str(start)}."
+                                            connection.sendall(bytes(response,'utf-8'))
+                                        else:
+                                            response="<NAK>\n"+f"Error on writing {filename} to sector {str(start)}"
+                                            connection.sendall(bytes(response,'utf-8'))
                             elif cmd=="e":
                                 if len(args) != 2:
                                     response = "<NAK>\n" + "Usage: e:<lun>,<partname>"
@@ -921,8 +966,8 @@ def do_firehose_server(args,cdc,sahara):
                                 else:
                                     lun=int(args[0])
                                     partitionname = args[1]
-                                    guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                                                          args.gpt_part_entry_start_lba)
+                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
+                                                          int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt == None:
                                         response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
@@ -939,7 +984,7 @@ def do_firehose_server(args,cdc,sahara):
                                             connection.sendall(bytes(response,'utf-8'))
                             elif cmd=="es":
                                 if len(args) != 3:
-                                    response="<NAK>\n"+"Usage: ws:<lun>,<start_sector>,<sectors>"
+                                    response="<NAK>\n"+"Usage: es:<lun>,<start_sector>,<sectors>"
                                     connection.sendall(bytes(response,'utf-8'))
                                 else:
                                     lun=int(args[0])
@@ -972,12 +1017,12 @@ def do_firehose_server(args,cdc,sahara):
 
 def handle_firehose(args, cdc, sahara):
     cfg = qualcomm_firehose.cfg()
-    cfg.MemoryName = args.memory
+    cfg.MemoryName = args["--memory"]
     cfg.ZLPAwareHost = 1
-    cfg.SkipStorageInit = args.skipstorageinit
-    cfg.SkipWrite = args.skipwrite
-    cfg.MaxPayloadSizeToTargetInBytes = args.maxpayload
-    cfg.SECTOR_SIZE_IN_BYTES = args.sectorsize
+    cfg.SkipStorageInit = args["--skipstorageinit"]
+    cfg.SkipWrite = args["--skipwrite"]
+    cfg.MaxPayloadSizeToTargetInBytes = int(args["--maxpayload"],16)
+    cfg.SECTOR_SIZE_IN_BYTES = int(args["--sectorsize"],16)
     cfg.bit64 = sahara.bit64
     fh = qualcomm_firehose(cdc, xmlparser(), cfg)
     supported_functions = fh.connect(0)
@@ -987,34 +1032,28 @@ def handle_firehose(args, cdc, sahara):
         if hwid in msmids:
             TargetName = msmids[hwid]
 
-    if len(args.gpt) != 0:
-        if len(args.gpt) != 2:
-            print("Usage: -gpt <lun> <filename>")
-            exit(0)
-        lun=args.gpt[0]
-        filename = args.gpt[1]
+    if args["gpt"]:
+        lun=int(args["<lun>"])
+        filename = args["<filename>"]
         fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES, filename)
         print(f"Dumped GPT to {filename}")
         exit(0)
-    elif args.printgpt!="":
-        lun=int(args.printgpt)
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+    elif args["printgpt"]:
+        lun=int(args["<lun>"])
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
             guid_gpt.print()
         exit(0)
-    elif len(args.r) != 0:
-        if len(args.r) != 3:
-            print("Usage: -r <lun> <partitionname> <filename>")
-            exit(0)
-        lun = int(args.r[0])
-        partitionname = args.r[1]
-        filename = args.r[2]
+    elif args["r"]:
+        lun = int(args["--lun"])
+        partitionname = args["<partitionname>"]
+        filename = args["<filename>"]
 
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
@@ -1028,14 +1067,11 @@ def handle_firehose(args, cdc, sahara):
             for partition in guid_gpt.partentries:
                 print(partition.name)
         exit(0)
-    elif len(args.rl) != 0:
-        if len(args.rl) != 2:
-            print("Usage: -rl <lun> <directory_to_save_files>")
-            exit(0)
-        lun = int(args.rl[0])
-        directory = args.rl[1]
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+    elif args["rl"]:
+        lun = int(args["--lun"])
+        directory = args["<directory>"]
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
@@ -1048,26 +1084,23 @@ def handle_firehose(args, cdc, sahara):
                 fh.cmd_read(lun, partition.sector, partition.sectors, filename)
             exit(0)
         exit(0)
-    elif len(args.rf) != 0:
-        if len(args.r) != 2:
-            print("Usage: -r <lun> <filename>")
-            exit(0)
-        lun = int(args.rf[0])
-        filename = args.rf[1]
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+    elif args["rf"]:
+        lun = int(args["--lun"])
+        filename = args["<filename>"]
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
             fh.cmd_read(lun, 0, guid_gpt.totalsectors, filename)
             print(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
         exit(0)
-    elif args.pbl != '':
+    elif args["pbl"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            filename = args.pbl
+            filename = args["<filename>"]
             if TargetName in infotbl:
                 v = infotbl[TargetName]
                 if len(v[0]) > 0:
@@ -1080,12 +1113,12 @@ def handle_firehose(args, cdc, sahara):
                 logger.error("Unknown target chipset")
             logger.error("Error on dumping pbl")
         exit(0)
-    elif args.qfp != '':
+    elif args["qfp"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            filename = args.qfp
+            filename = args["<filename>"]
             if TargetName in infotbl:
                 v = infotbl[TargetName]
                 if len(v[1]) > 0:
@@ -1098,7 +1131,7 @@ def handle_firehose(args, cdc, sahara):
                 logger.error("Unknown target chipset")
             logger.error("Error on dumping qfprom")
         exit(0)
-    elif args.secureboot == True:
+    elif args["secureboot"] == True:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
@@ -1123,12 +1156,12 @@ def handle_firehose(args, cdc, sahara):
             else:
                 logger.error("Unknown target chipset")
         exit(0)
-    elif args.memtbl != '':
+    elif args["memtbl"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            filename = args.memtbl
+            filename = args["<filename>"]
             if TargetName in infotbl:
                 v = infotbl[TargetName]
                 if len(v[2]) > 0:
@@ -1141,14 +1174,11 @@ def handle_firehose(args, cdc, sahara):
                 logger.error("Unknown target chipset")
             logger.error("Error on dumping memtbl")
         exit(0)
-    elif len(args.footer) != 0:
-        if len(args.footer) != 2:
-            print("Usage: -footer <lun> <filename>")
-            exit(0)
-        lun = int(args.footer[0])
-        filename = args.footer[1]
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+    elif args["footer"]:
+        lun = int(args["--lun"])
+        filename = args["<filename>"]
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
@@ -1168,98 +1198,77 @@ def handle_firehose(args, cdc, sahara):
                 else:
                     logger.error(f"Error: Couldn't detect partition: {partition.name}")
         exit(0)
-    elif len(args.rs) != 0:
-        if len(args.rs) != 4:
-            print("Usage: -rs <lun> <start_sector> <sectors> <filename>")
-            exit(0)
-        lun = int(args.rs[0])
-        start = int(args.rs[1])
-        sectors = int(args.rs[2])
-        filename = args.rs[3]
+    elif args["rs"]:
+        lun = int(args["--lun"])
+        start = int(args["<start_sector>"])
+        sectors = int(args["<sectors>"])
+        filename = args["<filename"]
         data = fh.cmd_read(lun, start, sectors, filename)
         print(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
         exit(0)
-    elif len(args.peek) != 0:
-        if len(args.peek) != 3:
-            print("Usage: -peek <offset> <length> <filename>")
-            exit(0)
+    elif args["peek"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.peek[0], 16)
-            length = int(args.peek[1], 16)
-            filename = args.peek[2]
+            offset = int(args["<offset>"], 16)
+            length = int(args["<length>"], 16)
+            filename = args["<filename"]
             fh.cmd_peek(offset, length, filename, True)
         exit(0)
-    elif len(args.peekhex) != 0:
-        if len(args.peekhex) != 2:
-            print("Usage: -peekhex <offset> <length>")
-            exit(0)
+    elif args["peekhex"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.peekhex[0], 16)
-            length = int(args.peekhex[1], 16)
+            offset = int(args["<offset>"], 16)
+            length = int(args["<length>"], 16)
             resp=fh.cmd_peek(offset, length, "",True)
             print("\n")
             print(hexlify(resp))
         exit(0)
-    elif len(args.peekqword) != 0:
-        if len(args.peekqword) != 1:
-            print("Usage: -peekqword <offset>")
-            exit(0)
+    elif args["peekqword"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.peekqword[0], 16)
+            offset = int(args["<offset>"], 16)
             resp=fh.cmd_peek(offset, 8, "",True)
             print("\n")
             print(hex(unpack("<Q",resp[:8])[0]))
         exit(0)
-    elif len(args.peekdword) != 0:
-        if len(args.peekdword) != 1:
-            print("Usage: -peekdword <offset>")
-            exit(0)
+    elif args["peekdword"]:
         if not check_cmd(supported_functions,"peek"):
             logger.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.peekdword[0], 16)
+            offset = int(args["<offset>"], 16)
             resp=fh.cmd_peek(offset, 4, "",True)
             print("\n")
             print(hex(unpack("<I",resp[:4])[0]))
         exit(0)
-    elif args.send != "":
-        command = args.send
+    elif args["send"]:
+        command = args["<command>"]
         resp=fh.cmd_send(command,True)
         print("\n")
         print(resp)
         exit(0)
-    elif len(args.poke) != 0:
-        if len(args.poke) != 2:
-            print("Usage: -poke <offset> <filename>")
-            exit(0)
+    elif args["poke"]:
         if not check_cmd(supported_functions,"poke"):
             logger.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.poke[0], 16)
-            filename = unhexlify(args.poke[1])
+            offset = int(args["<offset>"], 16)
+            filename = unhexlify(args["<filename>"])
             fh.cmd_poke(offset, "", filename, True)
         exit(0)
-    elif len(args.pokehex) != 0:
-        if len(args.pokehex) != 2:
-            print("Usage: -pokehex <offset> <data>")
-            exit(0)
+    elif args["pokehex"]:
         if not check_cmd(supported_functions,"poke"):
             logger.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.pokehex[0], 16)
-            data = unhexlify(args.pokehex[1])
+            offset = int(args["<offset>"], 16)
+            data = unhexlify(args["<data>"])
             fh.cmd_poke(offset, data, "", True)
             resp = fh.cmd_peek(offset, len(data), "", True)
             if resp==data:
@@ -1267,70 +1276,61 @@ def handle_firehose(args, cdc, sahara):
             else:
                 print("Sending data failed")
         exit(0)
-    elif len(args.pokeqword) != 0:
-        if len(args.pokeqword) != 2:
-            print("Usage: -pokeqword <offset> <qword>")
-            exit(0)
+    elif args["pokeqword"]:
         if not check_cmd(supported_functions,"poke"):
             logger.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.pokeqword[0], 16)
-            data = pack("<Q",int(args.pokeqword[1],16))
+            offset = int(args["<offset>"], 16)
+            data = pack("<Q",int(args["<data>"],16))
             fh.cmd_poke(offset, data, "", True)
             resp = fh.cmd_peek(offset, 8, "", True)
             print(hex(unpack("<Q", resp[:8])[0]))
         exit(0)
-    elif len(args.pokedword) != 0:
-        if len(args.pokedword) != 2:
-            print("Usage: -pokedword <offset> <dword>")
-            exit(0)
+    elif args["pokedword"]:
         if not check_cmd(supported_functions,"poke"):
             logger.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
-            offset = int(args.pokedword[0], 16)
-            data = pack("<I",int(args.pokedword[1],16))
+            offset = int(args["<offset>"], 16)
+            data = pack("<I", int(args["<data>"], 16))
             fh.cmd_poke(offset, data, "", True)
             resp = fh.cmd_peek(offset, 4, "", True)
             print(hex(unpack("<I", resp[:4])[0]))
         exit(0)
-    elif args.reset:
+    elif args["reset"]:
         fh.cmd_reset()
         exit(0)
-    elif args.nop:
+    elif args["nop"]:
         if not check_cmd(supported_functions,"nop"):
             logger.error("Nop command isn't supported by edl loader")
             exit(0)
         else:
             print(fh.cmd_nop())
         exit(0)
-    elif args.setbootablestoragedrive != '':
+    elif args["setbootablestoragedrive"]:
         if not check_cmd(supported_functions,"setbootablestoragedrive"):
             logger.error("setbootablestoragedrive command isn't supported by edl loader")
             exit(0)
         else:
-            fh.cmd_setbootablestoragedrive(int(args.setbootablestoragedrive))
+            fh.cmd_setbootablestoragedrive(int(args["<lun>"]))
         exit(0)
-    elif args.getstorageinfo:
+    elif args["getstorageinfo"]:
         if not check_cmd(supported_functions,"getstorageinfo"):
             logger.error("getstorageinfo command isn't supported by edl loader")
             exit(0)
         else:
             fh.cmd_getstorageinfo()
         exit(0)
-    elif len(args.w) != 0:
-        if len(args.w) != 3:
-            print("Usage: -w <lun> <partitionname> <filename>")
-            exit(0)
-        lun = int(args.w[0])
-        partitionname = args.w[1]
-        filename = args.w[2]
+    elif args["w"]:
+        lun = int(args["--lun"])
+        partitionname = args["<partitionname>"]
+        filename = args["<filename>"]
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
@@ -1350,13 +1350,44 @@ def handle_firehose(args, cdc, sahara):
             else:
                 print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
         exit(0)
-    elif len(args.ws) != 0:
-        if len(args.ws) != 3:
-            print("Usage: -ws <lun> <start_sector> <filename>")
+    elif args["wl"]:
+        directory=args["<directory>"]
+        lun = int(args["--lun"])
+        if not os.path.exists(directory):
+            logger.error(f"Error: Couldn't find directory: {directory}")
             exit(0)
-        lun = int(args.ws[0])
-        start = int(args.ws[1])
-        filename = args.ws[2]
+        filenames = []
+        for dirName, subdirList, fileList in os.walk(directory):
+            for fname in fileList:
+                filenames.append(os.path.join(dirName, fname))
+
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
+        if guid_gpt == None:
+            logger.error("Error on reading GPT, maybe wrong memoryname given ?")
+        else:
+            if "partentries" in dir(guid_gpt):
+                for filename in filenames:
+                    for partition in guid_gpt.partentries:
+                        partname=filename[filename.rfind("/")+1:]
+                        if ".bin" in partname[-4:]:
+                            partname=partname[:-4]
+                        if partition.name == partname:
+                            sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
+                            if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                                sectors += 1
+                            if sectors > partition.sectors:
+                                logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                                exit(0)
+                            print(f"Writing {filename} to partition {str(partition.name)}.")
+                            fh.cmd_write(lun, partition.sector, filename)
+            else:
+                print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
+        exit(0)
+    elif args["ws"]:
+        lun = int(args["--lun"])
+        start = int(args["<start_sector>"])
+        filename = args["<filename>"]
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
@@ -1365,14 +1396,23 @@ def handle_firehose(args, cdc, sahara):
         else:
             logger.error(f"Error on writing {filename} to sector {str(start)}")
         exit(0)
-    elif len(args.e) != 0:
-        if len(args.e) != 2:
-            print("Usage: -e <lun> <partname>")
+    elif args["wf"]:
+        lun = int(args["--lun"])
+        start = 0
+        filename = args["<filename>"]
+        if not os.path.exists(filename):
+            logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        lun = args.e[0]
-        partitionname = args.e[1]
-        guid_gpt = fh.get_gpt(lun, args.gpt_num_part_entries, args.gpt_part_entry_size,
-                              args.gpt_part_entry_start_lba)
+        if fh.cmd_write(lun, start, filename) == True:
+            print(f"Wrote {filename} to sector {str(start)}.")
+        else:
+            logger.error(f"Error on writing {filename} to sector {str(start)}")
+        exit(0)
+    elif args["e"]:
+        lun = int(args["--lun"])
+        partitionname = args["<partitionname>"]
+        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                              int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
             logger.error("Error on reading GPT, maybe wrong memoryname given ?")
         else:
@@ -1388,20 +1428,17 @@ def handle_firehose(args, cdc, sahara):
                     exit(0)
             logger.error(f"Error: Couldn't detect partition: {partitionname}")
         exit(0)
-    elif len(args.es) != 0:
-        if len(args.es) != 3:
-            print("Usage: -ws <lun> <start_sector> <sectors>")
-            exit(0)
-        lun = int(args.es[0])
-        start = int(args.es[1])
-        sectors = int(args.es[2])
+    elif args["es"]:
+        lun = int(args["--lun"])
+        start = int(args["<start_sector>"])
+        sectors = int(args["<sectors"])
         fh.cmd_erase(lun, start, sectors)
         print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
         exit(0)
-    elif args.xml != '':
-        fh.cmd_xml(args.xml)
+    elif args["xml"]:
+        fh.cmd_xml(args["<xmlfile>"])
         exit(0)
-    elif args.server != '':
+    elif args["server"]:
         do_firehose_server(args,cdc,sahara)
         exit(0)
     else:

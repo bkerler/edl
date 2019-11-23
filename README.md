@@ -18,21 +18,41 @@ Installation
 - sudo apt install fastboot
 
 Linux/Windows: 
-- "python -m pip install pyusb pyserial"
+- "python -m pip install -r requirements.txt"
 
 Windows:
 - Use Filter Installer to install libusb filter driver 
   on Qualcomm 9008 port otherwise we won't detect the device
 
-Run EDL
-=======
+Run EDL (examples)
+==================
 - "./edl.py -h" -> to see help with all options
-- "./edl.py -printgpt 0 -memory ufs" -> to print gpt on lun 0 on device with ufs
-- "./edl.py -printgpt 0 -memory emmc" -> to print gpt on device with emmc
-- "./edl.py -rf 0 flash.bin -memory emmc" -> to dump whole flash on lun 0 for device with emmc
-- "./edl.py -footer 0 footer.bin -memory emmc" -> to dump the crypto footer on lun 0 for Androids
-- "./edl.py -w 0 boot boot.img -memory emmc" -> to write boot.img to the "boot" partition on lun 0 on the device with emmc flash
-- "./edl.py -memory emmc -server" -> Run TCP/IP server, see tcpclient.py for an example client
+- "./edl.py printgpt --memory=ufs --lun=0" -> to print gpt on lun 0 on device with ufs
+- "./edl.py printgpt" -> to print gpt on device with emmc
+- "./edl.py rf flash.bin" -> to dump whole flash for device with emmc
+- "./edl.py rf lun0.bin --memory=ufs --lun=0" -> to dump whole lun 0 for device with ufs
+- "./edl.py rl dumps" -> to dump all partitions to directory dumps for device with emmc
+- "./edl.py rl dumps --memory=ufs --lun=0" -> to dump all partitions from lun0 to directory dumps for device with ufs
+- "./edl.py rs 0 15 data.bin" -> to dump 15 sectors from starting sector 0 to file data.bin for device with emmc
+- "./edl.py r boot_a boot.img" -> to dump the partition "boot_a" to the filename boot.img for device with emmc
+- "./edl.py footer footer.bin" -> to dump the crypto footer for Androids with emmc flash
+- "./edl.py w boot boot.img --memory=ufs --lun=0" -> to write boot.img to the "boot" partition on lun 0 on the device with ufs flash
+- "./edl.py w boot boot.img" -> to write boot.img to the "boot" partition on lun 0 on the device with emmc flash
+- "./edl.py wl dumps" -> to write all files from "dumps" folder to according partitions to flash
+- "./edl.py wf dump.bin" -> to write the rawimage dump.bin to flash
+- "./edl.py e misc" -> to erase the partition misc on emmc flash
+- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
+- "./edl.py peek 0x200000 0x10 mem.bin" -> To dump 0x10 bytes from offset 0x200000 to file mem.bin from memory
+- "./edl.py peekhex 0x200000 0x10" -> To dump 0x10 bytes from offset 0x200000 as hex string from memory
+- "./edl.py peekqword 0x200000" -> To display a qword (8-bytes) at offset 0x200000 from memory
+- "./edl.py pokeqword 0x200000 0x400000" -> To write the q-word value 0x400000 to offset 0x200000 in memory
+- "./edl.py poke 0x200000 mem.bin" -> To write the binary file mem.bin to offset 0x200000 in memory
+- "./edl.py secureboot" -> To display secureboot fuses (only on EL3 loaders)
+- "./edl.py pbl pbl.bin" -> To dump pbl (only on EL3 loaders)
+- "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
+- "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
+- "./edl.py reset" -> To reboot the phone
+
 
 Install EDL loaders
 ===============
@@ -40,8 +60,11 @@ Install EDL loaders
 - Copy all your loaders into the examples directory
 - "./fhloaderparse.py examples" -> will autodetect and rename loader structure and copy them to the "Loaders" directory
 
-Run Diag
+Run Diag (examples)
 ========
+For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and try :
+- "./diag.py -vid 0x05c6 -pid 0x676c -interface 0 -info"
+
 Allows to send commands to the qc diag port
 - "./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -info" -> Send cmd "00" and return info
 - "./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -spc 303030303030" -> Send spc "303030303030"

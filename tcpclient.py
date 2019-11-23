@@ -6,7 +6,7 @@ class client():
         self.commands=[]
 
     def send(self):
-        self.tcp = tcpclient()
+        self.tcp = tcpclient(1340) #define Port 1340
         self.tcp.sendcommands(self.commands)
 
     def read(self,src):
