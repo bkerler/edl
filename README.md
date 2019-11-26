@@ -2,15 +2,14 @@
 (c) B. Kerler 2018-2019
 
 ## Why
-=======
+
 - Because we'd like to flexible dump smartphones
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
   
 ## Installation
-================
-- Get python >= 3.7 64-Bit
 
+- Get python >= 3.7 64-Bit
 - Add "blacklist qcserial" as last line to /etc/modprobe.d/blacklist.conf
 - Copy Drivers/51-edl.rules to /etc/udev/rules.d
 - Copy Drivers/50-android.rules to /etc/udev/rules.d
@@ -25,9 +24,9 @@ Windows:
   on Qualcomm 9008 port otherwise we won't detect the device
 
 ## Run EDL (examples)
-======================
 
 ### Generic
+
 - "./edl.py -h" -> to see help with all options
 - "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
 - "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
@@ -35,6 +34,7 @@ Windows:
 
 
 ### For EMMC Flash
+
 - "./edl.py printgpt" -> to print gpt on device with emmc
 - "./edl.py rf flash.bin" -> to dump whole flash for device with emmc
 - "./edl.py rl dumps" -> to dump all partitions to directory dumps for device with emmc
@@ -48,6 +48,7 @@ Windows:
 
 
 ### For UFS Flash
+
 - "./edl.py printgpt --memory=ufs --lun=0" -> to print gpt on lun 0 on device with ufs
 - "./edl.py rf lun0.bin --memory=ufs --lun=0" -> to dump whole lun 0 for device with ufs
 - "./edl.py rl dumps --memory=ufs --lun=0" -> to dump all partitions from lun0 to directory dumps for device with ufs
@@ -60,6 +61,7 @@ Windows:
 - "./edl.py e misc --memory=ufs --lun=0" -> to erase the partition misc on lun 0
 
 ### For devices with peek/poke command
+
 - "./edl.py peek 0x200000 0x10 mem.bin" -> To dump 0x10 bytes from offset 0x200000 to file mem.bin from memory
 - "./edl.py peekhex 0x200000 0x10" -> To dump 0x10 bytes from offset 0x200000 as hex string from memory
 - "./edl.py peekqword 0x200000" -> To display a qword (8-bytes) at offset 0x200000 from memory
@@ -71,17 +73,20 @@ Windows:
 
 
 ## Install EDL loaders
-=======================
+
 - "mkdir examples"
 - Copy all your loaders into the examples directory
 - "./fhloaderparse.py examples" -> will autodetect and rename loader structure and copy them to the "Loaders" directory
+- Or rename Loaders manually as msmid_pkhash[8 bytes].bin
 
 ## Run Diag port tools (examples)
-==================================
+
 For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and try :
+
 - "./diag.py -vid 0x05c6 -pid 0x676c -interface 0 -info"
 
-Allows to send commands to the qc diag port
+### Usage
+
 - "./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -info" -> Send cmd "00" and return info
 - "./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -spc 303030303030" -> Send spc "303030303030"
 - "./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -cmd 00" -> Send cmd "00" (hexstring)
@@ -92,12 +97,12 @@ Allows to send commands to the qc diag port
 
 
 ## Issues
-==========
+
 - Secure loader with SDM660 on Xiaomi not yet supported
 - EFS directory write and file read has to be added
 
 ## Tested with
-===============
+
 - Oneplus 3T, Oneplus 6T, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
 
 Published under MIT license
