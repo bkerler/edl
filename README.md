@@ -37,7 +37,7 @@ Windows:
 
 - "./edl.py printgpt" -> to print gpt on device with emmc
 - "./edl.py rf flash.bin" -> to dump whole flash for device with emmc
-- "./edl.py rl dumps" -> to dump all partitions to directory dumps for device with emmc
+- "./edl.py rl dumps --skip=userdata" -> to dump all partitions to directory dumps for device with emmc and skipping userdata partition
 - "./edl.py rs 0 15 data.bin" -> to dump 15 sectors from starting sector 0 to file data.bin for device with emmc
 - "./edl.py r boot_a boot.img" -> to dump the partition "boot_a" to the filename boot.img for device with emmc
 - "./edl.py footer footer.bin" -> to dump the crypto footer for Androids with emmc flash
@@ -51,7 +51,7 @@ Windows:
 
 - "./edl.py printgpt --memory=ufs --lun=0" -> to print gpt on lun 0 on device with ufs
 - "./edl.py rf lun0.bin --memory=ufs --lun=0" -> to dump whole lun 0 for device with ufs
-- "./edl.py rl dumps --memory=ufs --lun=0" -> to dump all partitions from lun0 to directory dumps for device with ufs
+- "./edl.py rl dumps --memory=ufs --lun=0 --skip=userdata" -> to dump all partitions from lun0 to directory dumps for device with ufs and skip userdata partition
 - "./edl.py rs 0 15 data.bin --memory=ufs --lun=0" -> to dump 15 sectors from starting sector 0 from lun 0 to file data.bin for device with emmc
 - "./edl.py r boot_a boot.img --memory=ufs --lun=4" -> to dump the partition "boot_a" from lun 4 to the filename boot.img for device with emmc
 - "./edl.py footer footer.bin --memory=ufs --lun=4" -> to dump the crypto footer for Androids from lun4

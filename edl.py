@@ -13,7 +13,7 @@ Usage:
     edl.py printgpt [--lun=lun]
     edl.py gpt <filename> [--memory=memtype] [--lun=lun]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]
     edl.py rf <filename> [--memory=memtype] [--lun=lun]
     edl.py rs <start_sector> <sectors> <filename> [--lun=lun]
     edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
@@ -48,7 +48,7 @@ Description:
     printgpt [--lun=lun]                                                         # Print GPT Table information
     gpt <filename> [--memory=memtype] [--lun=lun]                                # Save gpt table to file
     r <partitionname> <filename> [--memory=memtype] [--lun=lun]                  # Read flash to filename
-    rl <directory> [--memory=memtype] [--lun=lun]                                # Read all partitions from flash to a directory
+    rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]              # Read all partitions from flash to a directory
     rf <filename> [--memory=memtype] [--lun=lun]                                 # Read whole flash to file
     rs <start_sector> <sectors> <filename> [--lun=lun]                           # Read sectors starting at start_sector to filename
     w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to partition to flash
@@ -93,6 +93,7 @@ Options:
     --gpt-part-entry-size=number       Set GPT entry size [default: 0]
     --gpt-part-entry-start-lba=number  Set GPT entry start lba sector [default: 0]
     --tcpport=portnumber               Set port for tcp server [default:1340]
+    --skip=partname                    Skip reading partition with name "partname"
 """
 print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
 
@@ -521,12 +522,13 @@ def do_firehose_server(mainargs,cdc,sahara):
                                             response="<NAK>\n"+f"Error: Couldn't detect partition: {partitionname}"
                                             connection.sendall(bytes(response,'utf-8'))
                             elif cmd=="rl":
-                                if len(args) != 2:
-                                    response="<NAK>\n"+"Usage: rl:<lun>,<directory>"
+                                if len(args) != 3:
+                                    response="<NAK>\n"+"Usage: rl:<lun>,<directory><skip_partname>"
                                     connection.sendall(bytes(response,'utf-8'))
                                 else:
                                     lun = int(args[0])
                                     directory = args[1]
+                                    skip = args[2]
                                     if not os.path.exists(directory):
                                         os.mkdir(directory)
                                     guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]), int(mainargs["--gpt-part-entry-size"]),
@@ -538,6 +540,8 @@ def do_firehose_server(mainargs,cdc,sahara):
                                         response = "<ACK>\n"
                                         for partition in guid_gpt.partentries:
                                             partitionname=partition.name
+                                            if partition.name==skip:
+                                                continue
                                             filename=os.path.join(directory,partitionname+".bin")
                                             fh.cmd_read(lun, partition.sector, partition.sectors, filename)
                                             response += f"Dumped partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}."
@@ -1070,6 +1074,7 @@ def handle_firehose(args, cdc, sahara):
     elif args["rl"]:
         lun = int(args["--lun"])
         directory = args["<directory>"]
+        skip = args["--skip"]
         guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
                               int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
@@ -1079,6 +1084,8 @@ def handle_firehose(args, cdc, sahara):
                 os.mkdir(directory)
             for partition in guid_gpt.partentries:
                 partitionname=partition.name
+                if skip==partition.name:
+                    continue
                 filename=os.path.join(directory,partitionname+".bin")
                 logging.info(f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}.")
                 fh.cmd_read(lun, partition.sector, partition.sectors, filename)
