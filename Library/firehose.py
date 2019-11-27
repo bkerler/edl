@@ -49,7 +49,7 @@ class qualcomm_firehose:
                         counter+=1
                         time.sleep(0.3)
                         if counter>timeout:
-                                break
+                            break
                 except:
                     break
                 resp = self.xml.getresponse(data)
@@ -171,7 +171,6 @@ class qualcomm_firehose:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     bytesToWrite -= wlen
                     pos+=wlen
-                    #time.sleep(0.05)
                 if Display and prog!=100:
                     print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 self.cdc.write(b'',self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -221,7 +220,6 @@ class qualcomm_firehose:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     bytesToWrite -= wlen
                     pos+=wlen
-                    #time.sleep(0.05)
                 if Display and prog!=100:
                     print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 self.cdc.write(b'',self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -332,7 +330,6 @@ class qualcomm_firehose:
                         if Display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                         old = prog
-                    #time.sleep(0.05)
                 if Display and prog!=100:
                     print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 time.sleep(0.2)
