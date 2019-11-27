@@ -14,7 +14,9 @@ class gpt:
         ('first_usable_lba', 'Q'),
         ('last_usable_lba', 'Q'),
         ('disk_guid', '16s'),
-        ('part_entry_start_lba', 'Q')
+        ('part_entry_start_lba', 'Q'),
+        ('num_part_entries', 'I'),
+        ('part_entry_size', 'I')
     ]
 
     gpt_partition = [
@@ -116,11 +118,12 @@ class gpt:
         self.num_part_entries = num_part_entries
         self.part_entry_size = part_entry_size
         self.part_entry_start_lba = part_entry_start_lba
+        '''
         if num_part_entries is 0:
             self.gpt_header += [('num_part_entries', 'I'),]
             if part_entry_size is 0:
                 self.gpt_header += [('part_entry_size', 'I'),]
-
+        '''
 
     def parse(self, gptdata, sectorsize=512):
         self.header = read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)

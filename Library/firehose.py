@@ -254,7 +254,8 @@ class qualcomm_firehose:
         if (rsp[0])==True:
             if "value" in rsp[1]:
                 if rsp[1]["value"]=="NAK":
-                    logger.error(rsp[2].decode('utf-8'))
+                    if Display:
+                        logger.error(rsp[2].decode('utf-8'))
                     return ""
             bytesToRead=self.cfg.SECTOR_SIZE_IN_BYTES*num_partition_sectors
             total=bytesToRead

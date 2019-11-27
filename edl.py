@@ -10,14 +10,14 @@ Usage:
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber]
-    edl.py printgpt [--lun=lun]
+    edl.py printgpt [--memory=memtype] [--lun=lun]
     edl.py gpt <filename> [--memory=memtype] [--lun=lun]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--autolun]
     edl.py rf <filename> [--memory=memtype] [--lun=lun]
     edl.py rs <start_sector> <sectors> <filename> [--lun=lun]
     edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--autolun]
     edl.py wf <filename> [--memory=memtype] [--lun=lun]
     edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
     edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun]
@@ -45,7 +45,7 @@ Usage:
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
-    printgpt [--lun=lun]                                                         # Print GPT Table information
+    printgpt [--memory=memtype] [--lun=lun]                                      # Print GPT Table information
     gpt <filename> [--memory=memtype] [--lun=lun]                                # Save gpt table to file
     r <partitionname> <filename> [--memory=memtype] [--lun=lun]                  # Read flash to filename
     rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]              # Read all partitions from flash to a directory
@@ -93,7 +93,7 @@ Options:
     --gpt-part-entry-size=number       Set GPT entry size [default: 0]
     --gpt-part-entry-start-lba=number  Set GPT entry start lba sector [default: 0]
     --tcpport=portnumber               Set port for tcp server [default:1340]
-    --skip=partname                    Skip reading partition with name "partname"
+    --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
 """
 print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
 
@@ -1037,13 +1037,13 @@ def handle_firehose(args, cdc, sahara):
             TargetName = msmids[hwid]
 
     if args["gpt"]:
-        lun=int(args["<lun>"])
+        lun=int(args["--lun"])
         filename = args["<filename>"]
         fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES, filename)
         print(f"Dumped GPT to {filename}")
         exit(0)
     elif args["printgpt"]:
-        lun=int(args["<lun>"])
+        lun=int(args["--lun"])
         guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
                               int(args["--gpt-part-entry-start-lba"]))
         if guid_gpt == None:
@@ -1074,22 +1074,37 @@ def handle_firehose(args, cdc, sahara):
     elif args["rl"]:
         lun = int(args["--lun"])
         directory = args["<directory>"]
-        skip = args["--skip"]
-        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
-                              int(args["--gpt-part-entry-start-lba"]))
-        if guid_gpt == None:
-            logger.error("Error on reading GPT, maybe wrong memoryname given ?")
+        skip = args["--skip"].split(",")
+        autolun = args["--autolun"]
+        luns=[]
+        if autolun and not args["--memory"].lower()=="emmc":
+            for i in range(0,99):
+                luns.append(i)
         else:
-            if not os.path.exists(directory):
-                os.mkdir(directory)
-            for partition in guid_gpt.partentries:
-                partitionname=partition.name
-                if skip==partition.name:
-                    continue
-                filename=os.path.join(directory,partitionname+".bin")
-                logging.info(f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}.")
-                fh.cmd_read(lun, partition.sector, partition.sectors, filename)
-            exit(0)
+            luns=[lun]
+
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+
+        for slun in luns:
+            guid_gpt = fh.get_gpt(slun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                                  int(args["--gpt-part-entry-start-lba"]))
+            if guid_gpt == None:
+                break
+            else:
+                if len(luns)>1:
+                    storedir=os.path.join(directory,"lun"+str(slun))
+                else:
+                    storedir=directory
+                if not os.path.exists(storedir):
+                    os.mkdir(storedir)
+                for partition in guid_gpt.partentries:
+                    partitionname=partition.name
+                    if partition.name in skip:
+                        continue
+                    filename=os.path.join(storedir,partitionname+".bin")
+                    logging.info(f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}.")
+                    fh.cmd_read(slun, partition.sector, partition.sectors, filename)
         exit(0)
     elif args["rf"]:
         lun = int(args["--lun"])
@@ -1359,7 +1374,15 @@ def handle_firehose(args, cdc, sahara):
         exit(0)
     elif args["wl"]:
         directory=args["<directory>"]
-        lun = int(args["--lun"])
+        skip = args["--skip"].split(",")
+        luns = []
+        autolun=args["--autolun"]
+        if autolun:
+            for i in range(0,99):
+                luns.append(i)
+        else:
+            luns=[int(args["--lun"])]
+
         if not os.path.exists(directory):
             logger.error(f"Error: Couldn't find directory: {directory}")
             exit(0)
@@ -1367,29 +1390,31 @@ def handle_firehose(args, cdc, sahara):
         for dirName, subdirList, fileList in os.walk(directory):
             for fname in fileList:
                 filenames.append(os.path.join(dirName, fname))
-
-        guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
-                              int(args["--gpt-part-entry-start-lba"]))
-        if guid_gpt == None:
-            logger.error("Error on reading GPT, maybe wrong memoryname given ?")
-        else:
-            if "partentries" in dir(guid_gpt):
-                for filename in filenames:
-                    for partition in guid_gpt.partentries:
-                        partname=filename[filename.rfind("/")+1:]
-                        if ".bin" in partname[-4:]:
-                            partname=partname[:-4]
-                        if partition.name == partname:
-                            sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
-                            if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                                sectors += 1
-                            if sectors > partition.sectors:
-                                logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                                exit(0)
-                            print(f"Writing {filename} to partition {str(partition.name)}.")
-                            fh.cmd_write(lun, partition.sector, filename)
+        for lun in luns:
+            guid_gpt = fh.get_gpt(lun, int(args["--gpt-num-part-entries"]), int(args["--gpt-part-entry-size"]),
+                                  int(args["--gpt-part-entry-start-lba"]))
+            if guid_gpt == None:
+                break
             else:
-                print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
+                if "partentries" in dir(guid_gpt):
+                    for filename in filenames:
+                        for partition in guid_gpt.partentries:
+                            partname=filename[filename.rfind("/")+1:]
+                            if ".bin" in partname[-4:]:
+                                partname=partname[:-4]
+                            if partition.name == partname:
+                                if partition.name in skip:
+                                    continue
+                                sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
+                                if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                                    sectors += 1
+                                if sectors > partition.sectors:
+                                    logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                                    exit(0)
+                                print(f"Writing {filename} to partition {str(partition.name)}.")
+                                fh.cmd_write(lun, partition.sector, filename)
+                else:
+                    print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
         exit(0)
     elif args["ws"]:
         lun = int(args["--lun"])
