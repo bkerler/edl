@@ -3,6 +3,32 @@ import time
 from Library.utils import *
 from Library.gpt import gpt
 logger = logging.getLogger(__name__)
+from queue import Queue
+from threading import Thread
+
+def writefile(wf,q,stop):
+    while True:
+        data=q.get()
+        if len(data)>0:
+            wf.write(data)
+            q.task_done()
+        if stop() and q.empty():
+            break
+
+class asyncwriter():
+    def __init__(self,wf):
+        self.writequeue = Queue()
+        self.worker = Thread(target=writefile, args=(wf, self.writequeue,lambda:self.stopthreads,))
+        self.worker.setDaemon(True)
+        self.stopthreads=False
+        self.worker.start()
+
+    def write(self,data):
+        self.writequeue.put_nowait(data)
+
+    def stop(self):
+        self.stopthreads = True
+        self.writequeue.join()
 
 class qualcomm_firehose:
     class cfg:
@@ -274,7 +300,7 @@ class qualcomm_firehose:
                     old = prog
             if Display and prog!=100:
                 print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            time.sleep(0.2)
+            #time.sleep(0.2)
             info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
             rsp=self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
             if "value" in rsp:
@@ -306,6 +332,7 @@ class qualcomm_firehose:
         if Display:
             logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
         with open(filename,"wb") as wf:
+            wr=asyncwriter(wf)
             data=f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
                  f" num_partition_sectors=\"{num_partition_sectors}\""+\
                  f" physical_partition_number=\"{physical_partition_number}\""+\
@@ -319,22 +346,22 @@ class qualcomm_firehose:
                 prog=0
                 if Display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                while(bytesToRead>0):
+                while bytesToRead>0:
                     tmp=self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
                     bytesToRead-=len(tmp)
                     dataread+=len(tmp)
-                    #resData+=tmp
-                    wf.write(tmp)
-                    prog = int(float(dataread) / float(total) * float(100))
-                    if (prog > old):
-                        if Display:
+                    wr.write(tmp)
+                    if Display:
+                        prog = int(float(dataread) / float(total) * float(100))
+                        if (prog > old):
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                        old = prog
+                            old = prog
                 if Display and prog!=100:
                     print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                time.sleep(0.2)
+                #time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                wr.stop()
                 if "value" in rsp:
                     if rsp["value"]=="ACK":
                         return tmp
@@ -348,7 +375,7 @@ class qualcomm_firehose:
             else:
                 logger.error(f"Error:{rsp[1]}")
                 return ""
-            return ""
+
 
     def connect(self,lvl):
         v = b'-1'
