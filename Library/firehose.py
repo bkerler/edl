@@ -317,7 +317,7 @@ class qualcomm_firehose:
         return resData
 
     def get_gpt(self,lun,gpt_num_part_entries,gpt_part_entry_size,gpt_part_entry_start_lba):
-        data = self.cmd_read_buffer(lun, 0, 0x4000 // self.cfg.SECTOR_SIZE_IN_BYTES * 4, False)
+        data = self.cmd_read_buffer(lun, 0, 2, False)
         if data=="":
             return None
         guid_gpt = gpt(
@@ -325,8 +325,31 @@ class qualcomm_firehose:
             part_entry_size=gpt_part_entry_size,
             part_entry_start_lba=gpt_part_entry_start_lba,
         )
-        guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-        return guid_gpt
+        header=guid_gpt.parseheader(data,self.cfg.SECTOR_SIZE_IN_BYTES)
+        if "first_usable_lba" in header:
+            sectors=header["first_usable_lba"]
+            data = self.cmd_read_buffer(lun, 0, sectors, False)
+            guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+            return data,guid_gpt
+        else:
+            return None
+
+    def get_backup_gpt(self,lun,gpt_num_part_entries,gpt_part_entry_size,gpt_part_entry_start_lba):
+        data = self.cmd_read_buffer(lun, 0, 2, False)
+        if data=="":
+            return None
+        guid_gpt = gpt(
+            num_part_entries=gpt_num_part_entries,
+            part_entry_size=gpt_part_entry_size,
+            part_entry_start_lba=gpt_part_entry_start_lba,
+        )
+        header=guid_gpt.parseheader(data,self.cfg.SECTOR_SIZE_IN_BYTES)
+        if "backup_lba" in header:
+            sectors=header["first_usable_lba"]-1
+            data = self.cmd_read_buffer(lun, header["backup_lba"], sectors, False)
+            return data
+        else:
+            return None
 
     def cmd_read(self,physical_partition_number,start_sector,num_partition_sectors,filename,Display=True):
         if Display:

@@ -11,9 +11,9 @@ Usage:
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber]
     edl.py printgpt [--memory=memtype] [--lun=lun]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun]
+    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]
     edl.py rf <filename> [--memory=memtype] [--lun=lun]
     edl.py rs <start_sector> <sectors> <filename> [--lun=lun]
     edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
@@ -46,7 +46,7 @@ Usage:
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
     printgpt [--memory=memtype] [--lun=lun]                                      # Print GPT Table information
-    gpt <filename> [--memory=memtype] [--lun=lun]                                # Save gpt table to file
+    gpt <directory> [--memory=memtype] [--lun=lun]                               # Save gpt table to given directory
     r <partitionname> <filename> [--memory=memtype] [--lun=lun]                  # Read flash to filename
     rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]              # Read all partitions from flash to a directory
     rf <filename> [--memory=memtype] [--lun=lun]                                 # Read whole flash to file
@@ -94,14 +94,11 @@ Options:
     --gpt-part-entry-start-lba=number  Set GPT entry start lba sector [default: 0]
     --tcpport=portnumber               Set port for tcp server [default:1340]
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
+    --genxml                           Generate rawprogram[lun].xml
 """
-print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
-
 from docopt import docopt
-
 args = docopt(__doc__, version='EDL 2.0')
-
-import time
+import time,os
 from Library.utils import *
 from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara
@@ -109,8 +106,11 @@ from Library.firehose import qualcomm_firehose
 from Library.streaming import qualcomm_streaming
 from struct import unpack, pack
 from Library.xmlparser import xmlparser
-
+from Library.gpt import gpt
 logger = logging.getLogger(__name__)
+
+print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
+
 
 msmids = {
     0x009440E1: "2432",  # 7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
@@ -380,7 +380,7 @@ def main():
                 m = sahara.info()
                 if m:
                     mode, resp = sahara.connect()
-                    if mode=="sahara":
+                    if mode == "sahara":
                         mode = sahara.upload_loader()
                         if mode != "":
                             time.sleep(0.3)
@@ -447,7 +447,7 @@ def do_firehose_server(mainargs, cdc, sahara):
     cfg.bit64 = sahara.bit64
     fh = qualcomm_firehose(cdc, xmlparser(), cfg)
     supported_functions = fh.connect(0)
-    TargetName="Unknown"
+    TargetName = "Unknown"
     if "hwid" in dir(sahara):
         hwid = sahara.hwid
         if hwid >> 8 in msmids:
@@ -486,7 +486,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     connection.sendall(bytes(response, 'utf-8'))
                                 else:
                                     lun = int(arguments[0])
-                                    fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES * 4, arguments[1])
+                                    fh.cmd_read(lun, 0, 0x6000//cfg.SECTOR_SIZE_IN_BYTES, arguments[1])
                                     response = f"<ACK>\n" + f"Dumped GPT to {arguments[1]}"
                                     connection.sendall(bytes(response, 'utf-8'))
                             elif cmd == "printgpt":
@@ -495,7 +495,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     connection.sendall(bytes(response, 'utf-8'))
                                 else:
                                     lun = int(arguments[0])
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is not None:
@@ -513,7 +513,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     lun = int(arguments[0])
                                     partitionname = arguments[1]
                                     filename = arguments[2]
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
@@ -541,7 +541,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     skip = arguments[2]
                                     if not os.path.exists(directory):
                                         os.mkdir(directory)
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
@@ -564,7 +564,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                 else:
                                     lun = int(arguments[0])
                                     filename = arguments[1]
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
@@ -674,7 +674,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                 else:
                                     lun = int(arguments[0])
                                     filename = arguments[1]
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
@@ -922,7 +922,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                        data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                               int(mainargs["--gpt-part-entry-size"]),
                                                               int(mainargs["--gpt-part-entry-start-lba"]))
                                         if guid_gpt is None:
@@ -941,9 +941,10 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                     else:
                                                         fh.cmd_write(lun, partition.sector, filename)
                                                         response = "<ACK>\n" + f"Wrote {filename} to sector {str(partition.sector)}."
+                                                    connection.sendall(bytes(response, 'utf-8'))
                                             if not found:
                                                 response = "<NAK>\n" + f"Error: Couldn't detect partition: {partitionname}"
-                                            connection.sendall(bytes(response, 'utf-8'))
+                                                connection.sendall(bytes(response, 'utf-8'))
                             elif cmd == "ws":
                                 if len(arguments) != 2:
                                     response = "<NAK>\n" + "Usage: ws:<lun>,<start_sector>,<filename>"
@@ -987,7 +988,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                 else:
                                     lun = int(arguments[0])
                                     partitionname = arguments[1]
-                                    guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
+                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
@@ -1070,19 +1071,34 @@ def handle_firehose(arguments, cdc, sahara):
 
     if arguments["gpt"]:
         luns = getluns(arguments)
-        filename = arguments["<filename>"]
+        directory = arguments["<directory>"]
+        if directory is None:
+            directory=""
+        genxml = False
+        if "--genxml" in arguments:
+            if arguments["--genxml"]:
+                genxml = True
         for lun in luns:
-            if len(luns) > 1:
-                sfilename = f"lun{str(lun)}_" + filename
-            else:
-                sfilename = filename
-            fh.cmd_read(lun, 0, 0x4000 // cfg.SECTOR_SIZE_IN_BYTES, sfilename)
+            sfilename = os.path.join(directory, f"gpt_main{str(lun)}.bin")
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
+                                        int(arguments["--gpt-part-entry-size"]),
+                                        int(arguments["--gpt-part-entry-start-lba"]))
+            with open(sfilename,"wb") as wf:
+                wf.write(data)
+
             print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
+            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+            with open(sfilename,"wb") as wf:
+                wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+            print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
+            if genxml:
+                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+
         exit(0)
     elif arguments["printgpt"]:
         luns = getluns(arguments)
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1095,7 +1111,7 @@ def handle_firehose(arguments, cdc, sahara):
         filename = arguments["<filename>"]
         luns = getluns(arguments)
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1114,15 +1130,30 @@ def handle_firehose(arguments, cdc, sahara):
             skip = arguments["--skip"].split(",")
         else:
             skip = []
+        genxml = False
+        if "--genxml" in arguments:
+            if arguments["--genxml"]:
+                genxml = True
         if not os.path.exists(directory):
             os.mkdir(directory)
 
         luns = getluns(arguments)
 
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt == None:
+            sfilename = os.path.join(directory, f"gpt_main{str(lun)}.bin")
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
+                                        int(arguments["--gpt-part-entry-size"]),
+                                        int(arguments["--gpt-part-entry-start-lba"]))
+            with open(sfilename,"wb") as wf:
+                wf.write(data)
+
+            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+            with open(sfilename,"wb") as wf:
+                wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+
+            if genxml:
+                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+            if guid_gpt is None:
                 break
             else:
                 if len(luns) > 1:
@@ -1144,7 +1175,7 @@ def handle_firehose(arguments, cdc, sahara):
         filename = arguments["<filename>"]
         luns = getluns(arguments)
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1241,7 +1272,7 @@ def handle_firehose(arguments, cdc, sahara):
         luns = getluns(arguments)
         filename = arguments["<filename>"]
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1260,7 +1291,7 @@ def handle_firehose(arguments, cdc, sahara):
                                 wf.write(data)
                                 print(f"Dumped footer from {partition.name} as {filename}.")
                                 exit(0)
-        logger.error(f"Error: Couldn't detect partition: {partition.name}")
+        logger.error(f"Error: Couldn't detect footer partition.")
         exit(0)
     elif arguments["rs"]:
         lun = int(arguments["--lun"])
@@ -1398,7 +1429,7 @@ def handle_firehose(arguments, cdc, sahara):
             exit(0)
         luns = getluns(arguments)
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1436,7 +1467,7 @@ def handle_firehose(arguments, cdc, sahara):
             for fname in fileList:
                 filenames.append(os.path.join(dirName, fname))
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break
@@ -1469,7 +1500,7 @@ def handle_firehose(arguments, cdc, sahara):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        if fh.cmd_write(lun, start, filename) == True:
+        if fh.cmd_write(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
             logger.error(f"Error on writing {filename} to sector {str(start)}")
@@ -1490,7 +1521,7 @@ def handle_firehose(arguments, cdc, sahara):
         luns = getluns(arguments)
         partitionname = arguments["<partitionname>"]
         for lun in luns:
-            guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
+            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
                                   int(arguments["--gpt-part-entry-start-lba"]))
             if guid_gpt is None:
                 break

@@ -125,6 +125,9 @@ class gpt:
                 self.gpt_header += [('part_entry_size', 'I'),]
         '''
 
+    def parseheader(self, gptdata, sectorsize=512):
+        return read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)
+
     def parse(self, gptdata, sectorsize=512):
         self.header = read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)
         self.sectorsize=sectorsize
@@ -189,8 +192,32 @@ class gpt:
         print("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
 
     def tostring(self):
-        str=("\nGPT Table:\n-------------")
+        mstr=("\nGPT Table:\n-------------")
         for partition in self.partentries:
-            str+=("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
-        str+=("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
-        return str
+            mstr+=("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
+        mstr+=("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
+        return mstr
+
+    def generate_rawprogram(self, lun, sectorsize, directory):
+        fname="rawprogram" + str(lun) + ".xml"
+        with open(os.path.join(directory, fname), "wb") as wf:
+            mstr = "<?xml version=\"1.0\" ?>\n<data>\n"
+            partofsingleimage = "false"
+            readbackverify = "false"
+            sparse = "false"
+            for partition in self.partentries:
+                filename = partition.name + ".bin"
+                mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" " + \
+                       f"file_sector_offset=\"0\" filename=\"{filename}\" " + \
+                       f"label=\"{partition.name}\" num_partition_sectors=\"{partition.sectors}\" " + \
+                       f"partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" " + \
+                       f"readbackverify=\"{readbackverify}\" size_in_KB=\"{(partition.sector * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" " + \
+                       f"start_byte_hex=\"{hex(partition.sector * sectorsize)}\" start_sector=\"{partition.sector}\"/>\n"
+            partofsingleimage="true"
+            sectors=self.header["first_usable_lba"]
+            mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" file_sector_offset=\"0\" filename=\"gpt_main{str(lun)}.bin\" label=\"PrimaryGPT\" num_partition_sectors=\"{sectors}\" partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" readbackverify=\"{readbackverify}\" size_in_KB=\"{(sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" start_byte_hex=\"0x0\" start_sector=\"0\"/>\n"
+            sectors=self.header["first_usable_lba"]-1
+            mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" file_sector_offset=\"0\" filename=\"gpt_backup{str(lun)}.bin\" label=\"BackupGPT\" num_partition_sectors=\"{sectors}\" partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" readbackverify=\"{readbackverify}\" size_in_KB=\"{(sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" start_byte_hex=\"({sectorsize}*NUM_DISK_SECTORS)-{sectorsize*sectors}.\" start_sector=\"NUM_DISK_SECTORS-{sectors}.\"/>\n"
+            mstr += "</data>"
+            wf.write(bytes(mstr, 'utf-8'))
+            print(f"Wrote partition xml as {fname}")
