@@ -1083,16 +1083,19 @@ def handle_firehose(arguments, cdc, sahara):
             data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
                                         int(arguments["--gpt-part-entry-size"]),
                                         int(arguments["--gpt-part-entry-start-lba"]))
-            with open(sfilename,"wb") as wf:
-                wf.write(data)
+            if guid_gpt is None:
+                break
+            else:
+                with open(sfilename,"wb") as wf:
+                    wf.write(data)
 
-            print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
-            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-            with open(sfilename,"wb") as wf:
-                wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
-            print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
-            if genxml:
-                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+                print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
+                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+                with open(sfilename,"wb") as wf:
+                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+                print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
+                if genxml:
+                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
 
         exit(0)
     elif arguments["printgpt"]:
@@ -1144,15 +1147,6 @@ def handle_firehose(arguments, cdc, sahara):
             data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
                                         int(arguments["--gpt-part-entry-size"]),
                                         int(arguments["--gpt-part-entry-start-lba"]))
-            with open(sfilename,"wb") as wf:
-                wf.write(data)
-
-            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-            with open(sfilename,"wb") as wf:
-                wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
-
-            if genxml:
-                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
             if guid_gpt is None:
                 break
             else:
@@ -1162,6 +1156,16 @@ def handle_firehose(arguments, cdc, sahara):
                     storedir = directory
                 if not os.path.exists(storedir):
                     os.mkdir(storedir)
+                with open(sfilename, "wb") as wf:
+                    wf.write(data)
+
+                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+                with open(sfilename, "wb") as wf:
+                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+
+                if genxml:
+                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+
                 for partition in guid_gpt.partentries:
                     partitionname = partition.name
                     if partition.name in skip:

@@ -319,7 +319,7 @@ class qualcomm_firehose:
     def get_gpt(self,lun,gpt_num_part_entries,gpt_part_entry_size,gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
         if data=="":
-            return None
+            return None, None
         guid_gpt = gpt(
             num_part_entries=gpt_num_part_entries,
             part_entry_size=gpt_part_entry_size,
@@ -332,7 +332,7 @@ class qualcomm_firehose:
             guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
             return data,guid_gpt
         else:
-            return None
+            return None,None
 
     def get_backup_gpt(self,lun,gpt_num_part_entries,gpt_part_entry_size,gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
