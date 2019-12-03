@@ -1143,7 +1143,6 @@ def handle_firehose(arguments, cdc, sahara):
         luns = getluns(arguments)
 
         for lun in luns:
-            sfilename = os.path.join(directory, f"gpt_main{str(lun)}.bin")
             data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
                                         int(arguments["--gpt-part-entry-size"]),
                                         int(arguments["--gpt-part-entry-start-lba"]))
@@ -1156,15 +1155,16 @@ def handle_firehose(arguments, cdc, sahara):
                     storedir = directory
                 if not os.path.exists(storedir):
                     os.mkdir(storedir)
+                sfilename = os.path.join(storedir, f"gpt_main{str(lun)}.bin")
                 with open(sfilename, "wb") as wf:
                     wf.write(data)
 
-                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+                sfilename = os.path.join(storedir, f"gpt_backup{str(lun)}.bin")
                 with open(sfilename, "wb") as wf:
                     wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
 
                 if genxml:
-                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, storedir)
 
                 for partition in guid_gpt.partentries:
                     partitionname = partition.name
