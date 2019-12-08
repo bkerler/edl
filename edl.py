@@ -5,43 +5,43 @@
 Usage:
     edl.py -h | --help
     edl.py [--vid=vid] [--pid=pid]
-    edl.py [--loader=filename]
+    edl.py [--loader=filename] [--memory=memtype]
     edl.py [--debugmode]
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl.py server [--tcpport=portnumber]
-    edl.py printgpt [--memory=memtype] [--lun=lun]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml]
-    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]
-    edl.py rf <filename> [--memory=memtype] [--lun=lun]
-    edl.py rs <start_sector> <sectors> <filename> [--lun=lun]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite]
-    edl.py footer <filename> [--memory=memtype] [--lun=lun]
-    edl.py peek <offset> <length> <filename>
-    edl.py peekhex <offset> <length>
-    edl.py peekdword <offset>
-    edl.py peekqword <offset>
-    edl.py memtbl <filename>
-    edl.py poke <offset> <filename>
-    edl.py pokehex <offset> <data>
-    edl.py pokedword <offset> <data>
-    edl.py pokeqword <offset> <data>
-    edl.py memcpy <srcoffset> <dstoffset> <size>
-    edl.py secureboot
-    edl.py pbl <filename>
-    edl.py qfp <filename>
-    edl.py getstorageinfo
-    edl.py setbootablestoragedrive <lun>
-    edl.py send <command>
-    edl.py xml <xmlfile>
-    edl.py reset
-    edl.py nop
+    edl.py server [--tcpport=portnumber] [--loader=filename]
+    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename]
+    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--loader=filename]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
+    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
+    edl.py peek <offset> <length> <filename> [--loader=filename]
+    edl.py peekhex <offset> <length> [--loader=filename]
+    edl.py peekdword <offset> [--loader=filename]
+    edl.py peekqword <offset> [--loader=filename]
+    edl.py memtbl <filename> [--loader=filename]
+    edl.py poke <offset> <filename> [--loader=filename]
+    edl.py pokehex <offset> <data> [--loader=filename]
+    edl.py pokedword <offset> <data> [--loader=filename]
+    edl.py pokeqword <offset> <data> [--loader=filename]
+    edl.py memcpy <srcoffset> <dstoffset> <size> [--loader=filename]
+    edl.py secureboot [--loader=filename]
+    edl.py pbl <filename> [--loader=filename]
+    edl.py qfp <filename> [--loader=filename]
+    edl.py getstorageinfo [--loader=filename]
+    edl.py setbootablestoragedrive <lun> [--loader=filename]
+    edl.py send <command> [--loader=filename]
+    edl.py xml <xmlfile> [--loader=filename]
+    edl.py reset [--loader=filename]
+    edl.py nop [--loader=filename]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
