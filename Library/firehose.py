@@ -87,6 +87,17 @@ class qualcomm_firehose:
     def cmd_reset(self):
         data = "<?xml version=\"1.0\" ?><data><power value=\"reset\"/></data>"
         val=self.xmlsend(data)
+        try:
+            v=None
+            while(v!=b''):
+                v=self.cdc.read()
+                if v!=b'':
+                    resp = self.xml.getlog(v)[0]
+                else:
+                    break
+                print(resp)
+        except:
+            pass
         if val[0]==True:
             logger.info("Reset succeeded.")
             return True
@@ -404,9 +415,10 @@ class qualcomm_firehose:
         v = b'-1'
         #try:
         if lvl!=1:
-            #self.cdc.timeout = 50
+            self.cdc.timeout = 50
             info=[]
             while v != b'':
+                try:
                     v = self.cdc.read()
                     if v==b'':
                         break
@@ -415,6 +427,8 @@ class qualcomm_firehose:
                         info.append(data[0])
                     if info=='':
                         break
+                except:
+                    pass
             #if info==[]:
             #    info=self.cmd_nop()
 
@@ -452,7 +466,7 @@ class qualcomm_firehose:
             if "MaxPayloadSizeFromTargetInBytes" in rsp[1]:
                 self.cfg.MaxPayloadSizeFromTargetInBytes=int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
             else:
-                self.cfg.MaxPayloadSizeFromTargetInBytes=8192
+                self.cfg.MaxPayloadSizeFromTargetInBytes=self.cfg.MaxXMLSizeInBytes
                 logging.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
             if "TargetName" in rsp[1]:
                 self.cfg.TargetName=rsp[1]["TargetName"]

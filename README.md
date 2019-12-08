@@ -15,13 +15,20 @@
 - Copy Drivers/50-android.rules to /etc/udev/rules.d
 - sudo apt install adb
 - sudo apt install fastboot
+- sudo sudo apt install liblzma-dev
 
 Linux/Windows: 
 - "python -m pip install -r requirements.txt"
 
 Windows:
-- Use Filter Installer to install libusb filter driver 
-  on Qualcomm 9008 port otherwise we won't detect the device
+- Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows,
+  then install libusb-win32-devel-filter-1.2.6.0.exe.
+  Run Filter Wizard, "Install a device filter",  select "Qualcomm HS-USB QDLoader 9008"
+  and press "Install" to install libusb filter driver otherwise we won't detect the device.
+  Then use the edl tool.
+or
+- Use Zadig 2.4 or higher, list all devices, select QUSB_BULK device and replace
+  driver with libusb 1.2.6 one (will replace original driver)
 
 ## Run EDL (examples)
 

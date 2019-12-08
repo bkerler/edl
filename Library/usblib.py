@@ -127,11 +127,11 @@ class usb_class():
     def close(self):
         if (self.connected==True):
             usb.util.dispose_resources(self.device)
-            if self.device.is_kernel_driver_active(self.interface):
-                try:
-                    self.device.attach_kernel_driver(self.interface)
-                except:
-                    pass
+            try:
+                if self.device.is_kernel_driver_active(self.interface):
+                        self.device.attach_kernel_driver(self.interface)
+            except:
+                pass
 
     def write(self,command,pktsize=64):
         pos=0
@@ -160,9 +160,9 @@ class usb_class():
                 try:
                     tmp=self.device.read(self.EP_IN, length,timeout)
                 except usb.core.USBError as e:
-                    if "timed out" in e.strerror:
-                        #time.sleep(0.05)
-                        #print("Waiting...")
+                    if b"timed out" in e.strerror:
+                        time.sleep(0.05)
+                        print("Waiting...")
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)
