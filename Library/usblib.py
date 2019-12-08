@@ -6,6 +6,7 @@ from binascii import hexlify,unhexlify
 import usb.core                 # pyusb
 import usb.util
 import time
+import platform
 
 USB_DIR_OUT=0		# to device
 USB_DIR_IN=0x80		# to host
@@ -160,9 +161,10 @@ class usb_class():
                 try:
                     tmp=self.device.read(self.EP_IN, length,timeout)
                 except usb.core.USBError as e:
-                    if b"timed out" in e.strerror:
-                        time.sleep(0.05)
-                        print("Waiting...")
+                    if "timed out" in e.strerror:
+                        if platform.system()=='Windows':
+                            time.sleep(0.05)
+                            print("Waiting...")
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)

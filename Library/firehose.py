@@ -1,4 +1,5 @@
 import binascii
+import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
@@ -415,7 +416,8 @@ class qualcomm_firehose:
         v = b'-1'
         #try:
         if lvl!=1:
-            self.cdc.timeout = 50
+            if platform.system()=='Windows':
+                self.cdc.timeout = 50
             info=[]
             while v != b'':
                 try:
@@ -428,7 +430,7 @@ class qualcomm_firehose:
                     if info=='':
                         break
                 except:
-                    pass
+                    break
             #if info==[]:
             #    info=self.cmd_nop()
 
