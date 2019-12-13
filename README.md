@@ -38,7 +38,11 @@ or
 - "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
 - "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
 - "./edl.py reset" -> To reboot the phone
-
+- "./edl.py rawxml <xmlstring>' -> To send own xml string, example : 
+   '''bash
+   ./edl.py rawxml "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><response value=\"ACK\" /></data>"
+   '''
+- "./edl.py [anycommand] --debugmode" -> enables Verbose. Only do that is REALLY needed as it will print out everything happening !
 
 ### For EMMC Flash
 

@@ -9,39 +9,40 @@ Usage:
     edl.py [--debugmode]
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl.py server [--tcpport=portnumber] [--loader=filename]
-    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]
-    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename]
-    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
-    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--loader=filename]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename]
-    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename]
-    edl.py peek <offset> <length> <filename> [--loader=filename]
-    edl.py peekhex <offset> <length> [--loader=filename]
-    edl.py peekdword <offset> [--loader=filename]
-    edl.py peekqword <offset> [--loader=filename]
-    edl.py memtbl <filename> [--loader=filename]
-    edl.py poke <offset> <filename> [--loader=filename]
-    edl.py pokehex <offset> <data> [--loader=filename]
-    edl.py pokedword <offset> <data> [--loader=filename]
-    edl.py pokeqword <offset> <data> [--loader=filename]
-    edl.py memcpy <srcoffset> <dstoffset> <size> [--loader=filename]
-    edl.py secureboot [--loader=filename]
-    edl.py pbl <filename> [--loader=filename]
-    edl.py qfp <filename> [--loader=filename]
-    edl.py getstorageinfo [--loader=filename]
-    edl.py setbootablestoragedrive <lun> [--loader=filename]
-    edl.py send <command> [--loader=filename]
-    edl.py xml <xmlfile> [--loader=filename]
-    edl.py reset [--loader=filename]
-    edl.py nop [--loader=filename]
+    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py peekdword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py peekqword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py memtbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py poke <offset> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py pokehex <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py pokedword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py pokeqword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py memcpy <srcoffset> <dstoffset> <size> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py getstorageinfo [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py send <command> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
@@ -75,6 +76,7 @@ Description:
     setbootablestoragedrive <lun>                                                # Change bootable storage drive to lun number
     send <command>                                                               # Send firehose command
     xml <xmlfile>                                                                # Send firehose xml file
+    rawxml <xmlstring>                                                           # Send firehose xml raw string
     reset                                                                        # Send firehose reset command
     nop                                                                          # Send firehose nop command
 
@@ -106,7 +108,6 @@ from Library.firehose import qualcomm_firehose
 from Library.streaming import qualcomm_streaming
 from struct import unpack, pack
 from Library.xmlparser import xmlparser
-from Library.gpt import gpt
 logger = logging.getLogger(__name__)
 
 print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
@@ -344,7 +345,12 @@ def main():
     loop = 0
     vid = int(args["--vid"], 16)
     pid = int(args["--pid"], 16)
-    cdc = usb_class(vid=vid, pid=pid)
+    verbose=logger.level
+    if args["--debugmode"]:
+        verbose=logging.DEBUG
+        logger.setLevel(verbose)
+
+    cdc = usb_class(vid=vid, pid=pid, verbose=verbose)
     sahara = qualcomm_sahara(cdc)
 
     if args["--loader"] == 'None':
@@ -357,9 +363,9 @@ def main():
             sahara.programmer = rf.read()
 
     logger.info("Waiting for the device")
-
     resp = None
     cdc.timeout = 50
+    logger.debug("Ohuh")
     mode, resp = doconnect(cdc, loop, mode, resp, sahara)
     if resp == -1:
         mode, resp = doconnect(cdc, loop, mode, resp, sahara)
@@ -396,9 +402,9 @@ def main():
 
     if mode == "firehose":
         cdc.timeout = None
-        handle_firehose(args, cdc, sahara)
+        handle_firehose(args, cdc, sahara, verbose)
     elif mode == "nandprg" or mode == "enandprg":
-        handle_streaming(args, cdc, sahara)
+        handle_streaming(args, cdc, sahara, verbose)
     else:
         logger.error("Sorry, couldn't talk to Sahara, please reboot the device !")
         exit(0)
@@ -432,8 +438,8 @@ def doconnect(cdc, loop, mode, resp, sahara):
     return mode, resp
 
 
-def handle_streaming(args, cdc, sahara):
-    fh = qualcomm_streaming(cdc, sahara)
+def handle_streaming(args, cdc, sahara, verbose):
+    fh = qualcomm_streaming(cdc, sahara, verbose)
 
 
 def do_firehose_server(mainargs, cdc, sahara):
@@ -939,7 +945,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                     if sectors > partition.sectors:
                                                         response = "<NAK>\n" + f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}."
                                                     else:
-                                                        fh.cmd_write(lun, partition.sector, filename)
+                                                        fh.cmd_program(lun, partition.sector, filename)
                                                         response = "<ACK>\n" + f"Wrote {filename} to sector {str(partition.sector)}."
                                                     connection.sendall(bytes(response, 'utf-8'))
                                             if not found:
@@ -957,7 +963,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        if fh.cmd_write(lun, start, filename):
+                                        if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
@@ -975,7 +981,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        if fh.cmd_write(lun, start, filename):
+                                        if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
@@ -1052,7 +1058,7 @@ def getluns(argument):
     return luns
 
 
-def handle_firehose(arguments, cdc, sahara):
+def handle_firehose(arguments, cdc, sahara, verbose):
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = arguments["--memory"]
     cfg.ZLPAwareHost = 1
@@ -1061,7 +1067,7 @@ def handle_firehose(arguments, cdc, sahara):
     cfg.MaxPayloadSizeToTargetInBytes = int(arguments["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose)
     supported_functions = fh.connect(0)
     TargetName = fh.cfg.TargetName
     if "hwid" in dir(sahara):
@@ -1350,12 +1356,6 @@ def handle_firehose(arguments, cdc, sahara):
             print("\n")
             print(hex(unpack("<I", resp[:4])[0]))
         exit(0)
-    elif arguments["send"]:
-        command = arguments["<command>"]
-        resp = fh.cmd_send(command, True)
-        print("\n")
-        print(resp)
-        exit(0)
     elif arguments["poke"]:
         if not check_cmd(supported_functions, "poke"):
             logger.error("Poke command isn't supported by edl loader")
@@ -1448,7 +1448,7 @@ def handle_firehose(arguments, cdc, sahara):
                                 logger.error(
                                     f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                                 exit(0)
-                            fh.cmd_write(lun, partition.sector, filename)
+                            fh.cmd_program(lun, partition.sector, filename)
                             print(f"Wrote {filename} to sector {str(partition.sector)}.")
                             exit(0)
                     logger.error(f"Error: Couldn't detect partition: {partitionname}")
@@ -1493,7 +1493,7 @@ def handle_firehose(arguments, cdc, sahara):
                                         f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                                     exit(0)
                                 print(f"Writing {filename} to partition {str(partition.name)}.")
-                                fh.cmd_write(lun, partition.sector, filename)
+                                fh.cmd_program(lun, partition.sector, filename)
                 else:
                     print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
         exit(0)
@@ -1504,7 +1504,7 @@ def handle_firehose(arguments, cdc, sahara):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        if fh.cmd_write(lun, start, filename):
+        if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
             logger.error(f"Error on writing {filename} to sector {str(start)}")
@@ -1516,7 +1516,7 @@ def handle_firehose(arguments, cdc, sahara):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        if fh.cmd_write(lun, start, filename):
+        if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
             logger.error(f"Error on writing {filename} to sector {str(start)}")
@@ -1552,6 +1552,15 @@ def handle_firehose(arguments, cdc, sahara):
         exit(0)
     elif arguments["xml"]:
         fh.cmd_xml(arguments["<xmlfile>"])
+        exit(0)
+    elif arguments["rawxml"]:
+        fh.cmd_rawxml(arguments["<xmlstring>"])
+        exit(0)
+    elif arguments["send"]:
+        command = arguments["<command>"]
+        resp = fh.cmd_send(command, True)
+        print("\n")
+        print(resp)
         exit(0)
     elif arguments["server"]:
         do_firehose_server(arguments, cdc, sahara)

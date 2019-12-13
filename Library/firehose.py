@@ -45,10 +45,17 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes=4096
         bit64=True
 
-    def __init__(self,cdc,xml,cfg):
+    def __init__(self,cdc,xml,cfg,verbose):
         self.cdc=cdc
         self.xml=xml
         self.cfg=cfg
+        self.pk=None
+        try:
+            from Library.oppo import oppo
+            self.ops = oppo()
+        except:
+            self.ops=None
+        logger.setLevel(verbose)
         if self.cfg.MemoryName=="UFS":
             self.cfg.SECTOR_SIZE_IN_BYTES=4096
 
@@ -79,10 +86,12 @@ class qualcomm_firehose:
                             break
                 except:
                     break
-                resp = self.xml.getresponse(data)
-                status=self.getstatus(resp)
-            else:
-                status=True
+            logger.debug("Received:")
+            logger.debug(data)
+            resp = self.xml.getresponse(data)
+            status=self.getstatus(resp)
+        else:
+            status=True
         return [status,resp,data]
 
     def cmd_reset(self):
@@ -171,7 +180,7 @@ class qualcomm_firehose:
             self.xmlsend(data,False)
             return True
 
-    def cmd_write(self,physical_partition_number,start_sector,filename,Display=True):
+    def cmd_program(self,physical_partition_number,start_sector,filename,Display=True):
         size = os.stat(filename).st_size
         with open(filename,"rb") as rf:
             #Make sure we fill data up to the sector size
@@ -185,7 +194,12 @@ class qualcomm_firehose:
                  f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
                  f" num_partition_sectors=\"{num_partition_sectors}\""+\
                  f" physical_partition_number=\"{physical_partition_number}\""+\
-                 f" start_sector=\"{start_sector}\"/>\n</data>"
+                 f" start_sector=\"{start_sector}\" "
+            if self.ops is not None:
+                pk, token=self.ops.generatetoken(True)
+                data+=f"pk={pk} token={token} "
+
+            data += f"/>\n</data>"
             rsp = self.xmlsend(data)
             pos=0
             prog=0
@@ -278,6 +292,54 @@ class qualcomm_firehose:
                 return False
             return False
 
+    def cmd_read(self,physical_partition_number,start_sector,num_partition_sectors,filename,Display=True):
+        if Display:
+            logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+        with open(filename,"wb") as wf:
+            wr=asyncwriter(wf)
+            data=f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
+                 f" num_partition_sectors=\"{num_partition_sectors}\""+\
+                 f" physical_partition_number=\"{physical_partition_number}\""+\
+                 f" start_sector=\"{start_sector}\"/>\n</data>"
+            rsp=self.xmlsend(data)
+            if (rsp[0])==True:
+                bytesToRead=self.cfg.SECTOR_SIZE_IN_BYTES*num_partition_sectors
+                total=bytesToRead
+                dataread=0
+                old=0
+                prog=0
+                if Display:
+                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                while bytesToRead>0:
+                    tmp=self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                    bytesToRead-=len(tmp)
+                    dataread+=len(tmp)
+                    wr.write(tmp)
+                    if Display:
+                        prog = int(float(dataread) / float(total) * float(100))
+                        if (prog > old):
+                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                            old = prog
+                if Display and prog!=100:
+                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                #time.sleep(0.2)
+                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                wr.stop()
+                if "value" in rsp:
+                    if rsp["value"]=="ACK":
+                        return tmp
+                    else:
+                        logger.error(f"Error:")
+                        for line in info:
+                            logger.error(line)
+                        return ""
+                else:
+                    return tmp
+            else:
+                logger.error(f"Error:{rsp[1]}")
+                return ""
+
     def cmd_read_buffer(self,physical_partition_number,start_sector,num_partition_sectors,Display=True):
         if Display:
             logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
@@ -285,6 +347,7 @@ class qualcomm_firehose:
              f" num_partition_sectors=\"{num_partition_sectors}\""+\
              f" physical_partition_number=\"{physical_partition_number}\""+\
              f" start_sector=\"{start_sector}\"/>\n</data>"
+
         rsp=self.xmlsend(data)
         resData=bytearray()
         if (rsp[0])==True:
@@ -363,61 +426,13 @@ class qualcomm_firehose:
         else:
             return None
 
-    def cmd_read(self,physical_partition_number,start_sector,num_partition_sectors,filename,Display=True):
-        if Display:
-            logger.info(f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-        with open(filename,"wb") as wf:
-            wr=asyncwriter(wf)
-            data=f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\""+\
-                 f" num_partition_sectors=\"{num_partition_sectors}\""+\
-                 f" physical_partition_number=\"{physical_partition_number}\""+\
-                 f" start_sector=\"{start_sector}\"/>\n</data>"
-            rsp=self.xmlsend(data)
-            if (rsp[0])==True:
-                bytesToRead=self.cfg.SECTOR_SIZE_IN_BYTES*num_partition_sectors
-                total=bytesToRead
-                dataread=0
-                old=0
-                prog=0
-                if Display:
-                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                while bytesToRead>0:
-                    tmp=self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
-                    bytesToRead-=len(tmp)
-                    dataread+=len(tmp)
-                    wr.write(tmp)
-                    if Display:
-                        prog = int(float(dataread) / float(total) * float(100))
-                        if (prog > old):
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                            old = prog
-                if Display and prog!=100:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                #time.sleep(0.2)
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                wr.stop()
-                if "value" in rsp:
-                    if rsp["value"]=="ACK":
-                        return tmp
-                    else:
-                        logger.error(f"Error:")
-                        for line in info:
-                            logger.error(line)
-                        return ""
-                else:
-                    return tmp
-            else:
-                logger.error(f"Error:{rsp[1]}")
-                return ""
-
-
     def connect(self,lvl):
         v = b'-1'
-        #try:
         if lvl!=1:
             if platform.system()=='Windows':
-                self.cdc.timeout = 50
+                self.cdc.timeout = 10
+            else:
+                self.cdc.timeout = 10
             info=[]
             while v != b'':
                 try:
@@ -427,12 +442,10 @@ class qualcomm_firehose:
                     data=self.xml.getlog(v)
                     if len(data)>0:
                         info.append(data[0])
-                    if info=='':
+                    if info==[]:
                         break
                 except:
                     break
-            #if info==[]:
-            #    info=self.cmd_nop()
 
             supfunc=False
             supported_functions = []
@@ -442,9 +455,6 @@ class qualcomm_firehose:
                 if "supported functions" in line.lower():
                     supfunc = True
 
-            #self.cdc.timeout = None
-        #except:
-        #    pass
 
         connectcmd=f"<?xml version =\"1.0\" ?><data>"+\
              f"<configure MemoryName=\"{self.cfg.MemoryName}\" ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" "+\
@@ -704,3 +714,28 @@ class qualcomm_firehose:
             if self.cmd_poke(destaddress,data):
                 return True
         return False
+
+    def cmd_setprojmodel(self):
+        try:
+            pk, token = self.ops.generatetoken(False)
+            self.pk=pk
+            data="<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+            return self.cmd_rawxml(data)
+        except:
+            print("Setprojmodel command isn't yet implemented")
+            return False
+
+
+    def cmd_rawxml(self,data,response=True):
+        if response:
+            val=self.xmlsend(data)
+            if val[0]==True:
+                logger.info(f"{data} succeeded.")
+                return val[2]
+            else:
+                logger.error(f"{data} failed.")
+                logger.error(f"{val[2]}")
+                return False
+        else:
+            self.xmlsend(data,False)
+            return True
