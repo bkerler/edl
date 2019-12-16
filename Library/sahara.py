@@ -251,6 +251,7 @@ class qualcomm_sahara():
         self.init_loader_db()
         self.programmer=None
         self.mode=""
+        self.serial=None
 
     def get_rsp(self):
         v = self.cdc.read()
@@ -376,7 +377,8 @@ class qualcomm_sahara():
 
     def info(self):
         if self.enter_command_mode()==True:
-            self.serial = "{:08x}".format(self.cmdexec_get_serial_num())
+            self.serial = self.cmdexec_get_serial_num()
+            self.serials= "{:08x}".format(self.serial)
             self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             self.hwid = self.cmdexec_get_msm_hwid()
             self.pkhash = self.cmdexec_get_pkhash()
@@ -391,7 +393,7 @@ class qualcomm_sahara():
             logger.info(f"\n------------------------\n" +
                   f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str},OEM_ID:0x{self.oem_str},MODEL_ID:0x{self.model_id})\n" +
                   f"PK_HASH:           0x{self.pkhash}\n" +
-                  f"Serial:            0x{self.serial}\n" +
+                  f"Serial:            0x{self.serials}\n" +
                   f"SBL Version:       0x{self.sblversion}\n")
             if self.programmer==None:
                 if self.hwidstr in self.loaderdb:

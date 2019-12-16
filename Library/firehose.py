@@ -53,14 +53,17 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, verbose, oppoprjid):
+    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial):
         self.cdc = cdc
         self.xml = xml
         self.cfg = cfg
         self.pk = None
         self.ops = None
-        self.serial = None
+        self.serial = serial
         self.oppoprjid = oppoprjid
+        print("Nanatastic:")
+        print(self.oppoprjid)
+        print(self.serial)
         try:
             self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
         except:
@@ -206,11 +209,14 @@ class qualcomm_firehose:
             if self.oppoprjid != "":
                     if "demacia" in self.supported_functions:
                         pk, token = self.ops.demacia()
-                        if self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
-                            if "setprojmodel" in self.supported_functions:
-                                pk, token = self.ops.generatetoken(False)
-                                if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
-                                    return False
+                        if not self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
+                            print("Demacia failed.")
+                            exit(0)
+                    if "setprojmodel" in self.supported_functions:
+                            pk, token = self.ops.generatetoken(False)
+                            if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
+                                print("Setprojmodel failed.")
+                                exit(0)
 
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
@@ -228,7 +234,7 @@ class qualcomm_firehose:
 
             if self.ops is not None and "setprojmodel" in self.supported_functions:
                 pk, token = self.ops.generatetoken(True)
-                data += f"pk={pk} token={token} "
+                data += f"pk=\"{pk}\" token=\"{token}\" "
 
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
@@ -485,15 +491,17 @@ class qualcomm_firehose:
             supfunc = False
             self.supported_functions = []
             for line in info:
+                print(line)
                 if supfunc and "end of supported functions" not in line.lower():
                     rs=line.replace("\n", "")
-                    print(rs)
                     if rs!="":
                         self.supported_functions.append(rs)
                 if "supported functions" in line.lower():
                     supfunc = True
                 if "chip serial num" in line.lower():
-                    self.serial = int(line.split(" ")[3])
+                    if self.serial==None:
+                        serial=line.split(": ")[1]
+                        self.serial=int(serial.split(" ")[0])
 
         connectcmd = f"<?xml version =\"1.0\" ?><data>" + \
                      f"<configure MemoryName=\"{self.cfg.MemoryName}\" ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
