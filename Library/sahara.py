@@ -1,5 +1,4 @@
 import binascii
-import os
 import time
 from Library.utils import *
 logger = logging.getLogger(__name__)
@@ -620,6 +619,7 @@ class qualcomm_sahara():
                 data_to_send=self.programmer[data_offset:data_offset+data_len]
                 self.cdc.write(data_to_send,self.pktsize)
                 datalen-=data_len
+            print("Ended")
             cmd, pkt = self.get_rsp()
             if (cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER):
                 if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:

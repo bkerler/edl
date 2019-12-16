@@ -4,6 +4,7 @@ import time
 import os
 from Library.utils import *
 from Library.hdlc import *
+logger = logging.getLogger(__name__)
 
 nand_ids=[
             ("NAND 16MiB 1,8V 8-bit", 0x33, 16),
@@ -120,8 +121,9 @@ nand_manuf_ids=[
 ]
 
 class settingsopt:
-    def __init__(self,parent,chipset):
+    def __init__(self,parent,chipset, verbose):
         self.parent=parent
+        logger.setLevel(verbose)
         self.bad_loader=0
         self.spp=0
         self.pagesize=0

@@ -6,6 +6,10 @@ from binascii import hexlify,unhexlify
 import usb.core                 # pyusb
 import usb.util
 import time
+import inspect
+import platform
+import logging
+logger = logging.getLogger(__name__)
 
 USB_DIR_OUT=0		# to device
 USB_DIR_IN=0x80		# to host
@@ -31,18 +35,11 @@ tag=0
 
 class usb_class():
 
-    def log(self,level,msg):
-        if level>1:
-            if self.debug==True:
-                print(msg)
-        else:
-            print(msg)
-
-    def __init__(self,vid=0x05c6, pid=0x9008, interface=-1, devclass=-1, Debug=False):
+    def __init__(self,vid=0x05c6, pid=0x9008, interface=-1, devclass=-1, verbose=10):
         self.vid=vid
         self.pid=pid
         self.interface=interface
-        self.debug=Debug
+        logger.setLevel(verbose)
         self.connected=False
         self.devclass=devclass
         self.timeout=None
@@ -50,14 +47,14 @@ class usb_class():
     def getInterfaceCount(self):
         self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if self.device is None:
-            self.log(2, "Couldn't detect the device. Is it connected ?")
+            logger.debug("Couldn't detect the device. Is it connected ?")
             return False
         try:
             self.device.set_configuration()
         except:
             pass
         self.configuration = self.device.get_active_configuration()
-        self.log(2, self.configuration)
+        logger.debug(2, self.configuration)
         return self.configuration.bNumInterfaces
 
     def connect(self, EP_IN=-1, EP_OUT=-1):
@@ -66,7 +63,7 @@ class usb_class():
             self.connected=False
         self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if self.device is None:
-            self.log(2, "Couldn't detect the device. Is it connected ?")
+            logger.debug("Couldn't detect the device. Is it connected ?")
             return False
         try:
             self.device.set_configuration()
@@ -84,7 +81,7 @@ class usb_class():
                     self.interface=interfacenum
                     break
 
-        self.log(2, self.configuration)
+        logger.debug(self.configuration)
         if self.interface>self.configuration.bNumInterfaces:
             print("Invalid interface, max number is %d" % self.configuration.bNumInterfaces)
             return False
@@ -92,10 +89,10 @@ class usb_class():
             itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
             try:
                 if self.device.is_kernel_driver_active(self.interface):
-                    self.log(2, "Detaching kernel driver")
+                    logger.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
             except:
-                self.log(2, "No kernel driver supported.")
+                logger.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
             if EP_OUT==-1:
@@ -150,25 +147,33 @@ class usb_class():
                     if i==5:
                         return False
                     pass
+        logger.debug("Sent:")
+        logger.debug(command)
         return True
 
     def read(self,length=0x80000, timeout=None):
         tmp=b''
+        logger.debug(inspect.currentframe().f_back.f_code.co_name+":"+hex(length))
         if timeout==None:
             timeout=self.timeout
         while (bytearray(tmp) == b''):
                 try:
                     tmp=self.device.read(self.EP_IN, length,timeout)
                 except usb.core.USBError as e:
-                    if b"timed out" in e.strerror:
-                        time.sleep(0.05)
-                        print("Waiting...")
+                    if "timed out" in e.strerror:
+                        #if platform.system()=='Windows':
+                            #time.sleep(0.05)
+                        #print("Waiting...")
+                        logger.debug("Timed out")
+                        logger.debug(tmp)
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)
                         raise(e)
                     else:
                         break
+        logger.debug("Received:")
+        logger.debug(tmp)
         return bytearray(tmp)
 
     def ctrl_transfer(self,bmRequestType,bRequest,wValue,wIndex,data_or_wLength):
