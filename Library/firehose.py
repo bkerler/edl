@@ -3,6 +3,10 @@ import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
+try:
+    from Library.oppo import oppo
+except:
+    pass
 
 logger = logging.getLogger(__name__)
 from queue import Queue
@@ -57,7 +61,17 @@ class qualcomm_firehose:
         self.ops = None
         self.serial = None
         self.oppoprjid = oppoprjid
+        try:
+            self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
+        except:
+            self.ops = None
         logger.setLevel(verbose)
+        if verbose==logging.DEBUG:
+            fh = logging.FileHandler('log.txt')
+            fh.setLevel(logging.DEBUG)
+            logger.addHandler(fh)
+            # ch = logging.StreamHandler()
+            # ch.setLevel(logging.ERROR)
         if self.cfg.MemoryName == "UFS":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
 
@@ -74,18 +88,19 @@ class qualcomm_firehose:
         self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
         data = bytearray()
         counter = 0
-        timeout = 20
+        timeout = 3
         resp = {"value": "NAK"}
         status = False
         if response:
             while b"<response" not in data:
                 try:
-                    data += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                    if data == b"":
+                    tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                    if tmp == b"":
                         counter += 1
                         time.sleep(0.3)
                         if counter > timeout:
                             break
+                    data+=tmp
                 except:
                     break
             logger.debug("Received:")
@@ -174,7 +189,7 @@ class qualcomm_firehose:
         data = f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
         if response:
             val = self.xmlsend(data)
-            if val[0]:
+            if val[0] and not b"ERROR:" in val[2]:
                 logger.info(f"{content} succeeded.")
                 return val[2]
             else:
@@ -187,26 +202,16 @@ class qualcomm_firehose:
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
-        if self.oppoprjid is not None:
-            try:
-                if self.oppoprjid != "":
-                    from Library.oppo import oppo
-                    self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
+        if self.oppoprjid is not None and self.ops is not None:
+            if self.oppoprjid != "":
                     if "demacia" in self.supported_functions:
-                        print("Sending demacia...")
                         pk, token = self.ops.demacia()
-                        if not self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
-                            return False
-                    if "setprojmodel" in self.supported_functions:
-                        print("Sending setprojmodel...")
-                        pk, token = self.ops.generatetoken(False)
-                        if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
-                            return False
-                else:
-                    self.ops = None
-            except:
-                self.ops = None
-                print("No oppo library found.")
+                        if self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
+                            if "setprojmodel" in self.supported_functions:
+                                pk, token = self.ops.generatetoken(False)
+                                if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
+                                    return False
+
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -222,7 +227,6 @@ class qualcomm_firehose:
                    f" start_sector=\"{start_sector}\" "
 
             if self.ops is not None and "setprojmodel" in self.supported_functions:
-                print("Send special program")
                 pk, token = self.ops.generatetoken(True)
                 data += f"pk={pk} token={token} "
 
@@ -483,6 +487,7 @@ class qualcomm_firehose:
             for line in info:
                 if supfunc and "end of supported functions" not in line.lower():
                     rs=line.replace("\n", "")
+                    print(rs)
                     if rs!="":
                         self.supported_functions.append(rs)
                 if "supported functions" in line.lower():

@@ -350,6 +350,11 @@ def main():
     if args["--debugmode"]:
         verbose=logging.DEBUG
         logger.setLevel(verbose)
+        fh = logging.FileHandler('log.txt')
+        fh.setLevel(logging.DEBUG)
+        logger.addHandler(fh)
+        # ch = logging.StreamHandler()
+        # ch.setLevel(logging.ERROR)
 
     cdc = usb_class(vid=vid, pid=pid, verbose=verbose)
     sahara = qualcomm_sahara(cdc)

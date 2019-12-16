@@ -40,6 +40,12 @@ class usb_class():
         self.pid=pid
         self.interface=interface
         logger.setLevel(verbose)
+        if verbose==logging.DEBUG:
+            fh = logging.FileHandler('log.txt')
+            fh.setLevel(logging.DEBUG)
+            logger.addHandler(fh)
+            # ch = logging.StreamHandler()
+            # ch.setLevel(logging.ERROR)
         self.connected=False
         self.devclass=devclass
         self.timeout=None
