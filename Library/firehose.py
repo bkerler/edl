@@ -187,6 +187,26 @@ class qualcomm_firehose:
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
+        if self.oppoprjid is not None:
+            try:
+                if self.oppoprjid != "":
+                    from Library.oppo import oppo
+                    self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
+                    if "demacia" in self.supported_functions:
+                        print("Sending demacia...")
+                        pk, token = self.ops.demacia()
+                        if not self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
+                            return False
+                    if "setprojmodel" in self.supported_functions:
+                        print("Sending setprojmodel...")
+                        pk, token = self.ops.generatetoken(False)
+                        if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
+                            return False
+                else:
+                    self.ops = None
+            except:
+                self.ops = None
+                print("No oppo library found.")
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -201,10 +221,10 @@ class qualcomm_firehose:
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
 
-            if self.ops is not None:
-                if "setprojmodel" in self.supported_functions:
-                    pk, token = self.ops.generatetoken(True)
-                    data += f"pk={pk} token={token} "
+            if self.ops is not None and "setprojmodel" in self.supported_functions:
+                print("Send special program")
+                pk, token = self.ops.generatetoken(True)
+                data += f"pk={pk} token={token} "
 
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
@@ -529,22 +549,6 @@ class qualcomm_firehose:
             self.cfg.SECTOR_SIZE_IN_BYTES = 512
         elif self.cfg.MemoryName.lower() == "ufs":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
-        if self.oppoprjid is not None:
-            try:
-                if self.oppoprjid != "":
-                    from Library.oppo import oppo
-                    self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
-                    if self.oppoprjid == "18831":
-                        if "demacia" in self.supported_functions:
-                            pk, token = self.ops.demacia()
-                            if not self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
-                                return False
-                    if "setprojmodel" in self.supported_functions:
-                        pk, token = self.ops.generatetoken(False)
-                        if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
-                            return False
-            except:
-                self.ops = None
         return self.supported_functions
 
     # OEM Stuff here below --------------------------------------------------
