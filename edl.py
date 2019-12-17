@@ -100,8 +100,8 @@ Options:
     --oppo=projid                      Enable oppo mode
 """
 from docopt import docopt
-args = docopt(__doc__, version='EDL 2.0')
-import time,os
+args = docopt(__doc__, version='EDL 2.1')
+import time
 from Library.utils import *
 from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara

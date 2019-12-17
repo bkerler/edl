@@ -314,14 +314,14 @@ class qualcomm_sahara():
                     return ["sahara", v]
         except:
             try:
-                    data = "<?xml version=\"1.0\" ?><data><nop /></data>"
+                    data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
                     val = self.cdc.write(data, 4096)
                     res = self.cdc.read()
                     if (b"<?xml" in res):
                         return ["firehose", None]
             except:
                 self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
-                data = "<?xml version=\"1.0\" ?><data><nop /></data>"
+                data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
                 val = self.cdc.write(data, 4096)
                 res = self.cdc.read()
                 if (b"<?xml" in res):

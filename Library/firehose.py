@@ -61,13 +61,6 @@ class qualcomm_firehose:
         self.ops = None
         self.serial = serial
         self.oppoprjid = oppoprjid
-        print("Nanatastic:")
-        print(self.oppoprjid)
-        print(self.serial)
-        try:
-            self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
-        except:
-            self.ops = None
         logger.setLevel(verbose)
         if verbose==logging.DEBUG:
             fh = logging.FileHandler('log.txt')
@@ -88,7 +81,7 @@ class qualcomm_firehose:
         return True
 
     def xmlsend(self, data, response=True):
-        self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
+        self.cdc.write(bytes(data,'utf-8'), self.cfg.MaxXMLSizeInBytes)
         data = bytearray()
         counter = 0
         timeout = 3
@@ -106,8 +99,10 @@ class qualcomm_firehose:
                     data+=tmp
                 except:
                     break
-            logger.debug("Received:")
-            logger.debug(data)
+            try:
+                logger.debug("RX:"+data.decode('utf-8'))
+            except:
+                logger.debug("RX:" + hexlify(data).decode('utf-8'))
             try:
                 resp = self.xml.getresponse(data)
                 status = self.getstatus(resp)
@@ -192,7 +187,7 @@ class qualcomm_firehose:
         data = f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
         if response:
             val = self.xmlsend(data)
-            if val[0] and not b"ERROR:" in val[2]:
+            if val[0]:
                 logger.info(f"{content} succeeded.")
                 return val[2]
             else:
@@ -209,13 +204,17 @@ class qualcomm_firehose:
             if self.oppoprjid != "":
                     if "demacia" in self.supported_functions:
                         pk, token = self.ops.demacia()
-                        if not self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\""):
-                            print("Demacia failed.")
+                        res=self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\"")
+                        if not b"verify_res=\"0\"":
+                            print("Demacia failed:")
+                            print(res.decode('utf-8'))
                             exit(0)
                     if "setprojmodel" in self.supported_functions:
                             pk, token = self.ops.generatetoken(False)
-                            if not self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\""):
+                            res=self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\"")
+                            if not b"model_check=\"0\"" in res or not b"auth_token_verify=\"0\"" in res:
                                 print("Setprojmodel failed.")
+                                print(res.decode('utf-8'))
                                 exit(0)
 
         with open(filename, "rb") as rf:
@@ -487,21 +486,26 @@ class qualcomm_firehose:
                         break
                 except:
                     break
-
+            if info==[]:
+                info=self.cmd_nop()
             supfunc = False
             self.supported_functions = []
             for line in info:
-                print(line)
+                if "chip serial num" in line.lower():
+                    logger.info(line)
+                    serial=line.split(": ")[1]
+                    self.serial=int(serial.split(" ")[0])
                 if supfunc and "end of supported functions" not in line.lower():
                     rs=line.replace("\n", "")
                     if rs!="":
                         self.supported_functions.append(rs)
                 if "supported functions" in line.lower():
                     supfunc = True
-                if "chip serial num" in line.lower():
-                    if self.serial==None:
-                        serial=line.split(": ")[1]
-                        self.serial=int(serial.split(" ")[0])
+
+        try:
+            self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
+        except:
+            self.ops = None
 
         connectcmd = f"<?xml version =\"1.0\" ?><data>" + \
                      f"<configure MemoryName=\"{self.cfg.MemoryName}\" ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
