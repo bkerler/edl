@@ -493,8 +493,12 @@ class qualcomm_firehose:
             for line in info:
                 if "chip serial num" in line.lower():
                     logger.info(line)
-                    serial=line.split(": ")[1]
-                    self.serial=int(serial.split(" ")[0])
+                    try:
+                        serial=line.split(": ")[1]
+                        self.serial=int(serial.split(" ")[0])
+                    except:
+                        serial=line.split(": ")[2]
+                        self.serial=int(serial.split(" ")[0])
                 if supfunc and "end of supported functions" not in line.lower():
                     rs=line.replace("\n", "")
                     if rs!="":
