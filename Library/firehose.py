@@ -526,6 +526,16 @@ class qualcomm_firehose:
 
         if rsp[0] == True:
             self.cdc.read()
+            if not "MemoryName" in rsp[1]:
+                #print(rsp[1])
+                rsp[1]["MemoryName"]="eMMC"
+            if not "MaxXMLSizeInBytes" in rsp[1]:
+                rsp[1]["MaxXMLSizeInBytes"]="4096"
+                logging.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+            if not "MaxPayloadSizeToTargetInBytes" in rsp[1]:
+                rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
+            if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
+                rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
             self.cfg.MemoryName = rsp[1]["MemoryName"]
             self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
             self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
