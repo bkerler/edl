@@ -80,8 +80,8 @@ class qualcomm_firehose:
                 return False
         return True
 
-    def xmlsend(self, wdata, response=True):
-        self.cdc.write(bytes(wdata,'utf-8'), self.cfg.MaxXMLSizeInBytes)
+    def xmlsend(self, data, response=True):
+        self.cdc.write(bytes(data,'utf-8'), self.cfg.MaxXMLSizeInBytes)
         data = bytearray()
         counter = 0
         timeout = 3
@@ -97,8 +97,9 @@ class qualcomm_firehose:
                         if counter > timeout:
                             break
                     data+=tmp
-                except:
-                    break
+                except Exception as e:
+                    logger.error(e)
+                    return [False, resp, data]
             try:
                 logger.debug("RX:"+data.decode('utf-8'))
             except:
@@ -522,11 +523,10 @@ class qualcomm_firehose:
                 "MaxPayloadSizeToTargetInBytesSupported=\"1048576\" MaxXMLSizeInBytes=\"4096\" Version=\"1\" TargetName=\"8953\" />" \
                 "</data>"
         '''
-        self.cdc.read()
         rsp = self.xmlsend(connectcmd)
 
         if rsp[0] == True:
-            #self.cdc.read()
+            self.cdc.read()
             if not "MemoryName" in rsp[1]:
                 #print(rsp[1])
                 rsp[1]["MemoryName"]="eMMC"

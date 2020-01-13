@@ -180,6 +180,7 @@ class usb_class():
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)
+                        self.connect()
                         raise(e)
                     else:
                         break

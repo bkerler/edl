@@ -431,13 +431,17 @@ def doconnect(cdc, loop, mode, resp, sahara):
             sys.stdout.flush()
         else:
             logger.info("Device detected :)")
-            mode, resp = sahara.connect()
-            if mode == "" or resp == -1:
+            try:
                 mode, resp = sahara.connect()
-                if mode == "":
-                    logger.info("Unknown mode. Aborting.")
-                    cdc.close()
-                    exit(0)
+                if mode == "" or resp == -1:
+                    mode, resp = sahara.connect()
+            except:
+                if mode == "" or resp == -1:
+                    mode, resp = sahara.connect()
+            if mode == "":
+               logger.info("Unknown mode. Aborting.")
+               cdc.close()
+               exit(0)
             logger.info(f"Mode detected: {mode}")
             break
 
@@ -638,10 +642,10 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     response = "<ACK>\n"
                                     if TargetName in secureboottbl:
                                         v = secureboottbl[TargetName]
-                                        value = int(hexlify(fh.cmd_peek(v, 4)), 16)
+                                        value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
                                         is_secure = False
                                         for area in range(0, 4):
-                                            sec_boot = (value >> (area * 8)) & 0xF
+                                            sec_boot = (value >> (area * 8)) & 0xFF
                                             pk_hashindex = sec_boot & 3
                                             oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
                                             auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
@@ -1259,10 +1263,10 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         else:
             if TargetName in secureboottbl:
                 v = secureboottbl[TargetName]
-                value = int(hexlify(fh.cmd_peek(v, 4)), 16)
+                value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
                 is_secure = False
                 for area in range(0, 4):
-                    sec_boot = (value >> (area * 8)) & 0xF
+                    sec_boot = (value >> (area * 8))&0xFF
                     pk_hashindex = sec_boot & 3
                     oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
                     auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
