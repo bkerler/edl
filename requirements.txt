@@ -2,3 +2,4 @@ pyusb
 pyserial
 docopt
 pylzma
+pycryptodome
