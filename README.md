@@ -51,6 +51,7 @@ or
 - "./edl.py rl dumps --skip=userdata --genxml" -> to dump all partitions to directory dumps for device with emmc and skipping userdata partition, write rawprogram0.xml
 - "./edl.py rs 0 15 data.bin" -> to dump 15 sectors from starting sector 0 to file data.bin for device with emmc
 - "./edl.py r boot_a boot.img" -> to dump the partition "boot_a" to the filename boot.img for device with emmc
+- "./edl.py r boot_a,boot_b boot_a.img,boot_b.img" -> to dump multiple partitions to multiple filenames
 - "./edl.py footer footer.bin" -> to dump the crypto footer for Androids with emmc flash
 - "./edl.py w boot_a boot.img" -> to write boot.img to the "boot" partition on lun 0 on the device with emmc flash
 - "./edl.py wl dumps" -> to write all files from "dumps" folder to according partitions to flash
@@ -70,6 +71,7 @@ or
 - "./edl.py rs 0 15 data.bin --memory=ufs --lun=0" -> to dump 15 sectors from starting sector 0 from lun 0 to file data.bin
 - "./edl.py r boot_a boot.img --memory=ufs --lun=4" -> to dump the partition "boot_a" from lun 4 to the filename boot.img
 - "./edl.py r boot_a boot.img --memory=ufs" -> to dump the partition "boot_a" to the filename boot.img using lun autodetection
+- "./edl.py r boot_a,boot_b boot_a.img,boot_b.img --memory=ufs" -> to dump multiple partitions to multiple filenames
 - "./edl.py footer footer.bin --memory=ufs" -> to dump the crypto footer
 - "./edl.py w boot boot.img --memory=ufs --lun=4" -> to write boot.img to the "boot" partition on lun 4 on the device with ufs flash
 - "./edl.py wl dumps --memory=ufs --lun=0" -> to write all files from "dumps" folder to according partitions to flash lun 0

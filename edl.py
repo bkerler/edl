@@ -370,7 +370,7 @@ def main():
 
     logger.info("Waiting for the device")
     resp = None
-    cdc.timeout = 50
+    cdc.timeout = 100
     logger.debug("Ohuh")
     mode, resp = doconnect(cdc, loop, mode, resp, sahara)
     if resp == -1:
@@ -431,13 +431,17 @@ def doconnect(cdc, loop, mode, resp, sahara):
             sys.stdout.flush()
         else:
             logger.info("Device detected :)")
-            mode, resp = sahara.connect()
-            if mode == "" or resp == -1:
+            try:
                 mode, resp = sahara.connect()
-                if mode == "":
-                    logger.info("Unknown mode. Aborting.")
-                    cdc.close()
-                    exit(0)
+                if mode == "" or resp == -1:
+                    mode, resp = sahara.connect()
+            except:
+                if mode == "" or resp == -1:
+                    mode, resp = sahara.connect()
+            if mode == "":
+               logger.info("Unknown mode. Aborting.")
+               cdc.close()
+               exit(0)
             logger.info(f"Mode detected: {mode}")
             break
 
@@ -638,10 +642,10 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     response = "<ACK>\n"
                                     if TargetName in secureboottbl:
                                         v = secureboottbl[TargetName]
-                                        value = int(hexlify(fh.cmd_peek(v, 4)), 16)
+                                        value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
                                         is_secure = False
                                         for area in range(0, 4):
-                                            sec_boot = (value >> (area * 8)) & 0xF
+                                            sec_boot = (value >> (area * 8)) & 0xFF
                                             pk_hashindex = sec_boot & 3
                                             oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
                                             auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
@@ -1063,6 +1067,23 @@ def getluns(argument):
         luns = [0]
     return luns
 
+def detect_partition(fh, arguments, partitionname):
+    luns = getluns(arguments)
+    fpartitions = {}
+    for lun in luns:
+        lunname = "Lun" + str(lun)
+        fpartitions[lunname] = []
+        data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
+                                    int(arguments["--gpt-part-entry-size"]),
+                                    int(arguments["--gpt-part-entry-start-lba"]))
+        if guid_gpt is None:
+            break
+        else:
+            for partition in guid_gpt.partentries:
+                fpartitions[lunname].append(partition.name)
+                if partition.name == partitionname:
+                    return [True,lun,partition]
+    return [False,fpartitions]
 
 def handle_firehose(arguments, cdc, sahara, verbose):
     cfg = qualcomm_firehose.cfg()
@@ -1136,20 +1157,30 @@ def handle_firehose(arguments, cdc, sahara, verbose):
     elif arguments["r"]:
         partitionname = arguments["<partitionname>"]
         filename = arguments["<filename>"]
-        luns = getluns(arguments)
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
+        filenames = filename.split(",")
+        partitions=partitionname.split(",")
+        if len(partitions)!=len(filenames):
+            logger.error("You need to gives as many filenames as given partitions.")
+            exit(0)
+        i=0
+        for partition in partitions:
+            partfilename=filenames[i]
+            i+=1
+            res=detect_partition(fh, arguments, partition)
+            if res[0]==True:
+                lun=res[1]
+                rpartition=res[2]
+                fh.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename)
+                print(f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} as {partfilename}.")
             else:
-                for partition in guid_gpt.partentries:
-                    if partition.name == partitionname:
-                        fh.cmd_read(lun, partition.sector, partition.sectors, filename)
-                        print(
-                            f"Dumped sector {str(partition.sector)} with sector count {str(partition.sectors)} as {filename}.")
-                        exit(0)
-        logger.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+                fpartitions=res[1]
+                logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+                for lun in fpartitions:
+                    for rpartition in fpartitions[lun]:
+                        if arguments["--memory"].lower() == "emmc":
+                            logger.error("\t"+rpartition)
+                        else:
+                            logger.error(lun + ":\t" + rpartition)
         exit(0)
     elif arguments["rl"]:
         directory = arguments["<directory>"]
@@ -1259,10 +1290,10 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         else:
             if TargetName in secureboottbl:
                 v = secureboottbl[TargetName]
-                value = int(hexlify(fh.cmd_peek(v, 4)), 16)
+                value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
                 is_secure = False
                 for area in range(0, 4):
-                    sec_boot = (value >> (area * 8)) & 0xF
+                    sec_boot = (value >> (area * 8))&0xFF
                     pk_hashindex = sec_boot & 3
                     oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
                     auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
@@ -1449,29 +1480,30 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        luns = getluns(arguments)
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
+        res=detect_partition(fh, arguments, partitionname)
+        if res[0]==True:
+            lun=res[1]
+            partition=res[2]
+            sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
+            if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                sectors += 1
+            if sectors > partition.sectors:
+                logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                exit(0)
+            if fh.cmd_program(lun, partition.sector, filename):
+                print(f"Wrote {filename} to sector {str(partition.sector)}.")
             else:
-                if "partentries" in dir(guid_gpt):
-                    for partition in guid_gpt.partentries:
-                        if partition.name == partitionname:
-                            sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
-                            if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                                sectors += 1
-                            if sectors > partition.sectors:
-                                logger.error(
-                                    f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                                exit(0)
-                            fh.cmd_program(lun, partition.sector, filename)
-                            print(f"Wrote {filename} to sector {str(partition.sector)}.")
-                            exit(0)
-                    logger.error(f"Error: Couldn't detect partition: {partitionname}")
-                else:
-                    print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
+                print(f"Error writing {filename} to sector {str(partition.sector)}.")
+            exit(0)
+        else:
+            fpartitions=res[1]
+            logger.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+            for lun in fpartitions:
+                for partition in fpartitions[lun]:
+                    if arguments["--memory"].lower() == "emmc":
+                        logger.error("\t"+partition)
+                    else:
+                        logger.error(lun + ":\t" + partition)
         exit(0)
     elif arguments["wl"]:
         directory = arguments["<directory>"]

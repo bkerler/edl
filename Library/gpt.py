@@ -162,6 +162,8 @@ class gpt:
             
         for idx in range(0,num_part_entries):
             data=gptdata[start+(idx*entrysize):start+(idx*entrysize)+entrysize]
+            if int(hexlify(data[0:16]),16)==0:
+                break
             partentry=read_object(data,self.gpt_partition)
             pa=partf()
             guid1=struct.unpack("<I",partentry["unique"][0:0x4])[0]

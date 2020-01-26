@@ -97,8 +97,9 @@ class qualcomm_firehose:
                         if counter > timeout:
                             break
                     data+=tmp
-                except:
-                    break
+                except Exception as e:
+                    logger.error(e)
+                    return [False, resp, data]
             try:
                 logger.debug("RX:"+data.decode('utf-8'))
             except:
@@ -217,6 +218,8 @@ class qualcomm_firehose:
                                 print(res.decode('utf-8'))
                                 exit(0)
 
+        fsize=os.stat(filename).st_size
+
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -245,21 +248,26 @@ class qualcomm_firehose:
                 bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 old = 0
-                while bytesToWrite > 0:
-                    wdata = rf.read(self.cfg.MaxPayloadSizeToTargetInBytes)
-                    wlen = len(wdata)
+                while fsize > 0:
+                    wlen=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES*self.cfg.SECTOR_SIZE_IN_BYTES
+                    if fsize<wlen:
+                        wlen=fsize
+                    wdata = rf.read(wlen)
+                    bytesToWrite -= wlen
+                    fsize-=wlen
+                    pos += wlen
                     if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
-                        filllen = (
-                                              wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + self.cfg.SECTOR_SIZE_IN_BYTES
+                        filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + self.cfg.SECTOR_SIZE_IN_BYTES
                         wdata += b"\x00" * (filllen - wlen)
                         wlen = len(wdata)
-                    self.cdc.write(wdata, self.cfg.MaxPayloadSizeToTargetInBytes)
+
+                    self.cdc.write(wdata, wlen)
+
                     prog = int(float(pos) / float(total) * float(100))
                     if (prog > old):
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    bytesToWrite -= wlen
-                    pos += wlen
+
                 if display and prog != 100:
                     print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -273,6 +281,7 @@ class qualcomm_firehose:
                         logger.error(f"Error:")
                         for line in info:
                             logger.error(line)
+                        return False
                 else:
                     return True
             else:
@@ -429,7 +438,7 @@ class qualcomm_firehose:
         else:
             logger.error(f"Error:{rsp[2]}")
             return ""
-        return resData
+        return ""
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
@@ -443,6 +452,8 @@ class qualcomm_firehose:
         header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
         if "first_usable_lba" in header:
             sectors = header["first_usable_lba"]
+            if sectors==0:
+                return None, None
             data = self.cmd_read_buffer(lun, 0, sectors, False)
             guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
             return data, guid_gpt
@@ -510,7 +521,11 @@ class qualcomm_firehose:
             self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
         except:
             self.ops = None
-
+        data=self.cdc.read() #logbuf
+        try:
+            logger.info(data.decode('utf-8'))
+        except:
+            pass
         connectcmd = f"<?xml version =\"1.0\" ?><data>" + \
                      f"<configure MemoryName=\"{self.cfg.MemoryName}\" ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
                      f"SkipStorageInit=\"{str(int(self.cfg.SkipStorageInit))}\" SkipWrite=\"{str(int(self.cfg.SkipWrite))}\" " + \
@@ -525,7 +540,17 @@ class qualcomm_firehose:
         rsp = self.xmlsend(connectcmd)
 
         if rsp[0] == True:
-            self.cdc.read()
+            data=self.cdc.read()
+            if not "MemoryName" in rsp[1]:
+                #print(rsp[1])
+                rsp[1]["MemoryName"]="eMMC"
+            if not "MaxXMLSizeInBytes" in rsp[1]:
+                rsp[1]["MaxXMLSizeInBytes"]="4096"
+                logging.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+            if not "MaxPayloadSizeToTargetInBytes" in rsp[1]:
+                rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
+            if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
+                rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
             self.cfg.MemoryName = rsp[1]["MemoryName"]
             self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
             self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])

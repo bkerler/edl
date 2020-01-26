@@ -156,7 +156,10 @@ class usb_class():
         try:
             logger.debug("TX: "+command.decode('utf-8'))
         except:
-            logger.debug("TX: "+hexlify(command).decode('utf-8'))
+            try:
+                logger.debug("TX: "+hexlify(command).decode('utf-8'))
+            except:
+                logger.debug("TX: "+command)
         return True
 
     def read(self,length=0x80000, timeout=None):
@@ -177,6 +180,7 @@ class usb_class():
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)
+                        self.connect()
                         raise(e)
                     else:
                         break
