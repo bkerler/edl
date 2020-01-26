@@ -438,7 +438,7 @@ class qualcomm_firehose:
         else:
             logger.error(f"Error:{rsp[2]}")
             return ""
-        return ""
+        return resData  #Do not remove, needed for oppo
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
