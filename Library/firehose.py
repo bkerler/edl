@@ -219,7 +219,7 @@ class qualcomm_firehose:
                                 exit(0)
 
         fsize=os.stat(filename).st_size
-
+        fname=os.path.basename(filename)
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -227,7 +227,7 @@ class qualcomm_firehose:
                 num_partition_sectors += 1
             if display:
                 logger.info(
-                    f"\nWriting to physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+                    f"\nWriting {fname} to physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             data = f"<?xml version=\"1.0\" ?><data>\n" + \
                    f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
