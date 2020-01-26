@@ -201,23 +201,6 @@ class qualcomm_firehose:
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
-        if self.oppoprjid is not None and self.ops is not None:
-            if self.oppoprjid != "":
-                    if "demacia" in self.supported_functions:
-                        pk, token = self.ops.demacia()
-                        res=self.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\"")
-                        if not b"verify_res=\"0\"":
-                            print("Demacia failed:")
-                            print(res.decode('utf-8'))
-                            exit(0)
-                    if "setprojmodel" in self.supported_functions:
-                            pk, token = self.ops.generatetoken(False)
-                            res=self.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\"")
-                            if not b"model_check=\"0\"" in res or not b"auth_token_verify=\"0\"" in res:
-                                print("Setprojmodel failed.")
-                                print(res.decode('utf-8'))
-                                exit(0)
-
         fsize=os.stat(filename).st_size
         fname=os.path.basename(filename)
         with open(filename, "rb") as rf:
@@ -297,7 +280,13 @@ class qualcomm_firehose:
                    f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{start_sector}\"/>\n</data>"
+                   f" start_sector=\"{start_sector}\" "
+
+            if self.ops is not None and "setprojmodel" in self.supported_functions:
+                pk, token = self.ops.generatetoken(True)
+                data += f"pk=\"{pk}\" token=\"{token}\" "
+            data += f"/>\n</data>"
+
             rsp = self.xmlsend(data)
             empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
             pos = 0
@@ -518,7 +507,7 @@ class qualcomm_firehose:
                     supfunc = True
 
         try:
-            self.ops = oppo(projid=self.oppoprjid, serials=[self.serial, self.serial])
+            self.ops = oppo(self,projid=self.oppoprjid, serials=[self.serial, self.serial])
         except:
             self.ops = None
         data=self.cdc.read() #logbuf

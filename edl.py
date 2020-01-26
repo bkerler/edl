@@ -946,6 +946,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
                                             found = False
+                                            if fh.oppoprjid is not None and fh.ops is not None:
+                                                if fh.oppoprjid != "":
+                                                    if "demacia" in fh.supported_functions:
+                                                        if not fh.ops.run(True):
+                                                            exit(0)
+                                                    elif "setprojmodel" in fh.supported_functions:
+                                                        if not fh.ops.run(False):
+                                                            exit(0)
                                             for partition in guid_gpt.partentries:
                                                 if partition.name == partitionname:
                                                     found = True
@@ -973,6 +981,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -991,6 +1007,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -1012,6 +1036,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         found = False
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         for partition in guid_gpt.partentries:
                                             if partition.name == partitionname:
                                                 fh.cmd_erase(lun, partition.sector, partition.sectors)
@@ -1029,6 +1061,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     lun = int(arguments[0])
                                     start = int(arguments[1])
                                     sectors = int(arguments[2])
+                                    if fh.oppoprjid is not None and fh.ops is not None:
+                                        if fh.oppoprjid != "":
+                                            if "demacia" in fh.supported_functions:
+                                                if not fh.ops.run(True):
+                                                    exit(0)
+                                            elif "setprojmodel" in fh.supported_functions:
+                                                if not fh.ops.run(False):
+                                                    exit(0)
                                     fh.cmd_erase(lun, start, sectors)
                                     print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
                                     connection.sendall(bytes(response, 'utf-8'))
@@ -1490,6 +1530,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if sectors > partition.sectors:
                 logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                 exit(0)
+            if fh.oppoprjid is not None and fh.ops is not None:
+                if fh.oppoprjid != "":
+                    if "demacia" in fh.supported_functions:
+                        if not fh.ops.run(True):
+                            exit(0)
+                    elif "setprojmodel" in fh.supported_functions:
+                        if not fh.ops.run(False):
+                            exit(0)
             if fh.cmd_program(lun, partition.sector, filename):
                 print(f"Wrote {filename} to sector {str(partition.sector)}.")
             else:
@@ -1517,6 +1565,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             logger.error(f"Error: Couldn't find directory: {directory}")
             exit(0)
         filenames = []
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         for dirName, subdirList, fileList in os.walk(directory):
             for fname in fileList:
                 filenames.append(os.path.join(dirName, fname))
@@ -1554,6 +1610,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
@@ -1566,6 +1630,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
@@ -1580,6 +1652,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if guid_gpt is None:
                 break
             else:
+                if fh.oppoprjid is not None and fh.ops is not None:
+                    if fh.oppoprjid != "":
+                        if "demacia" in fh.supported_functions:
+                            if not fh.ops.run(True):
+                                exit(0)
+                        elif "setprojmodel" in fh.supported_functions:
+                            if not fh.ops.run(False):
+                                exit(0)
                 if "partentries" in dir(guid_gpt):
                     for partition in guid_gpt.partentries:
                         if partition.name == partitionname:
@@ -1597,6 +1677,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         lun = int(arguments["--lun"])
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors"])
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         fh.cmd_erase(lun, start, sectors)
         print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
         exit(0)
