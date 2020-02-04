@@ -171,7 +171,7 @@ class usb_class():
                 try:
                     tmp=self.device.read(self.EP_IN, length,timeout)
                 except usb.core.USBError as e:
-                    if "timed out" in e.strerror:
+                    if b"timed out" in e.strerror:
                         #if platform.system()=='Windows':
                             #time.sleep(0.05)
                         #print("Waiting...")
