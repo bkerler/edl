@@ -123,11 +123,12 @@ def extract_hdr(memsection,si,mm,code_size,signature_size):
     anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
 
     signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
-
-    if mm[signatureoffset] != 0x30:
-        print("Error on " + si.filename + ", unknown signaturelength")
+    try:
+        if mm[signatureoffset] != 0x30:
+            print("Error on " + si.filename + ", unknown signaturelength")
+            return None
+    except:
         return None
-
     if len(mm) < signatureoffset + 4:
             print("Signature error on " + si.filename)
             return None
@@ -201,17 +202,20 @@ def extract_old_hdr(memsection,si,mm,code_size,signature_size):
 def main(argv):
     f = []
     path = ""
-    if (len(argv)<2):
-        print("Usage: ./fhloaderparse.py [FHLoaderDir]")
+    if (len(argv)<3):
+        print("Usage: ./fhloaderparse.py [FHLoaderDir] [OutputDir]")
         exit(0)
     else:
         path = argv[1]
+        outputdir = argv[2]
+        if not os.path.exists(outputdir):
+            os.mkdir(outputdir)
     for (dirpath, dirnames, filenames) in walk(path):
         for filename in filenames:
             f.append(os.path.join(dirpath, filename))
 
     hashes={}
-    for (dirpath, dirnames, filenames) in walk('Loaders'):
+    for (dirpath, dirnames, filenames) in walk(outputdir):
         for filename in filenames:
             fname=os.path.join(dirpath, filename)
             with open(fname,'rb') as rf:
@@ -221,8 +225,12 @@ def main(argv):
                 hashes[sha256.digest()]=fname
 
     filelist = []
-    rt=open("Loaders/"+argv[1]+".log","w")
+    rt=open(os.path.join(outputdir,argv[1]+".log"),"w")
     extensions=["elf","mbn","bin"]
+    
+    if not os.path.exists(os.path.join(outputdir,"unknown")):
+        os.makedirs(os.path.join(outputdir,"unknown"))
+    
     for filename in f:
         found=False
         for ext in extensions:
@@ -283,9 +291,6 @@ def main(argv):
 
 
 
-    if not os.path.exists("Loaders/unknown"):
-        os.makedirs("Loaders/unknown")
-
     sorted_x = sorted(filelist, key=lambda x: (x.hw_id, -x.filesize))
     class loaderinfo:
         hw_id=''
@@ -304,9 +309,9 @@ def main(argv):
                 if (lf not in loaderlists):
                     loaderlists[lf]=item.filename
                     print(info)
-                    copyfile(item.filename,"Loaders/"+lf.hw_id+"_"+lf.pk_hash[0:16]+"_FHPRG.bin")
+                    copyfile(item.filename,os.path.join(outputdir,lf.hw_id+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
                 else:
-                    copyfile(item.filename,"Loaders/unknown/"+item.filename[item.filename.rfind("\\")+1:]+"_"+lf.pk_hash[0:16]+"_FHPRG.bin")
+                    copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
             else:
                 print(item.filename+" does already exist. Skipping")
             try:
@@ -321,7 +326,7 @@ def main(argv):
                 info += "\tOEMVER:" + item.oem_version + "\tQCVER:" + item.qc_version + "\tVAR:" + item.image_variant
             print(info)
             rt.write(info+"\n")
-            copyfile(item.filename,"Loaders/unknown/"+item.filename[item.filename.rfind("\\")+1:])
+            copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]))
 
     rt.close()
 main(sys.argv)

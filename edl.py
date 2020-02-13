@@ -43,6 +43,8 @@ Usage:
     edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--oppo=projid]
     edl.py reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py ops <mode> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--oppo=projid]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
@@ -707,6 +709,8 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                             partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
                                                                           (0x4000 // cfg.SECTOR_SIZE_IN_BYTES),
                                                                           filename)
+                                                if data==b"":
+                                                    continue
                                                 val = struct.unpack("<I", data[:4])[0]
                                                 if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
                                                     with open(filename, "wb") as wf:
@@ -1384,6 +1388,8 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                                                   partition.sector + (
                                                               partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
                                                   (0x4000 // cfg.SECTOR_SIZE_IN_BYTES), filename)
+                        if data==b"":
+                            continue
                         val = struct.unpack("<I", data[:4])[0]
                         if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
                             with open(filename, "wb") as wf:
@@ -1702,6 +1708,66 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["server"]:
         do_firehose_server(arguments, cdc, sahara)
+        exit(0)
+    elif arguments["oemunlock"]:
+        partition = "config"
+        res=detect_partition(fh, arguments, partition)
+        if res[0]==True:
+            lun=res[1]
+            rpartition=res[2]
+            offsettopatch=0x7FFFF
+            sector=rpartition.sector + (offsettopatch//cfg.SECTOR_SIZE_IN_BYTES)
+            offset=offsettopatch%cfg.SECTOR_SIZE_IN_BYTES
+            value=0x1
+            size_in_bytes=1
+            if fh.cmd_patch(lun, sector, offset, value, size_in_bytes, True):
+                print(f"Patched sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
+        else:
+            fpartitions=res[1]
+            logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+            for lun in fpartitions:
+                for rpartition in fpartitions[lun]:
+                    if arguments["--memory"].lower() == "emmc":
+                        logger.error("\t" + rpartition)
+                    else:
+                        logger.error(lun + ":\t" + rpartition)
+        exit(0)
+    elif arguments["ops"]:
+        if fh.ops==None:
+            logger.error("Feature is not supported")
+            exit(0)
+        partition = "param"
+        mode=arguments["<mode>"]
+        enable=False
+        if mode=="enable":
+            enable=True
+        elif mode=="disable":
+            enable=False
+        else:
+            logger.error("Unknown mode given. Available are: enable, disable.")
+            exit(0)
+        res=detect_partition(fh, arguments, partition)
+        if res[0]==True:
+            lun=res[1]
+            rpartition=res[2]
+            paramdata=fh.cmd_read_buffer(lun,rpartition.sector,rpartition.sectors,False)
+            if paramdata==b"":
+                logger.error("Error on reading param partition.")
+                exit(1)
+            paramdata=fh.ops.enable_ops(paramdata,enable)
+            if fh.cmd_program_buffer(lun,rpartition.sector,paramdata,False):
+                print("Successfully set mode")
+            else:
+                logger.error("Error on writing param partition")
+        else:
+            fpartitions=res[1]
+            logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+            for lun in fpartitions:
+                for rpartition in fpartitions[lun]:
+                    if arguments["--memory"].lower() == "emmc":
+                        logger.error("\t"+rpartition)
+                    else:
+                        logger.error(lun + ":\t" + rpartition)
         exit(0)
     else:
         logger.error("Unknown/Missing command, a command is required.")
