@@ -3,10 +3,6 @@ import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
-try:
-    from Library.oppo import oppo
-except Exception as e:
-    pass
 
 logger = logging.getLogger(__name__)
 from queue import Queue
@@ -53,14 +49,12 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial):
+    def __init__(self, cdc, xml, cfg, verbose, serial):
         self.cdc = cdc
         self.xml = xml
         self.cfg = cfg
         self.pk = None
-        self.ops = None
         self.serial = serial
-        self.oppoprjid = oppoprjid
         logger.setLevel(verbose)
         if verbose==logging.DEBUG:
             fh = logging.FileHandler('log.txt')
@@ -214,10 +208,6 @@ class qualcomm_firehose:
                f" value=\"{value}\" "
         data += f"/>\n</data>"
 
-        if self.ops is not None and "setprojmodel" in self.supported_functions:
-            pk, token = self.ops.generatetoken(True)
-            data += f"pk=\"{pk}\" token=\"{token}\" "
-
         rsp = self.xmlsend(data)
         if rsp[0] == True:
             if display:
@@ -246,10 +236,6 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
-
-            if self.ops is not None and "setprojmodel" in self.supported_functions:
-                pk, token = self.ops.generatetoken(True)
-                data += f"pk=\"{pk}\" token=\"{token}\" "
 
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
@@ -318,10 +304,6 @@ class qualcomm_firehose:
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\" "
 
-        if self.ops is not None and "setprojmodel" in self.supported_functions:
-            pk, token = self.ops.generatetoken(True)
-            data += f"pk=\"{pk}\" token=\"{token}\" "
-
         data += f"/>\n</data>"
         rsp = self.xmlsend(data)
         pos = 0
@@ -383,11 +365,6 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
-
-            if self.ops is not None and "setprojmodel" in self.supported_functions:
-                pk, token = self.ops.generatetoken(True)
-                data += f"pk=\"{pk}\" token=\"{token}\" "
-            data += f"/>\n</data>"
 
             rsp = self.xmlsend(data)
             empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
@@ -614,10 +591,6 @@ class qualcomm_firehose:
                 if "supported functions" in line.lower():
                     supfunc = True
             '''
-        try:
-            self.ops = oppo(self,projid=self.oppoprjid, serials=[self.serial, self.serial])
-        except Exception as e:
-            self.ops = None
         data=self.cdc.read() #logbuf
         try:
             logger.info(data.decode('utf-8'))
@@ -891,26 +864,6 @@ class qualcomm_firehose:
             if self.cmd_poke(destaddress, data):
                 return True
         return False
-
-    def cmd_setprojmodel(self):
-        if self.ops is not None:
-            pk, token = self.ops.generatetoken(False)
-            self.pk = pk
-            data = "<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-            return self.cmd_rawxml(data)
-        else:
-            print("Setprojmodel command isn't yet implemented")
-            return False
-
-    def cmd_demacia(self):
-        if self.ops is not None:
-            pk, token = self.ops.demacia()
-            self.pk = pk
-            data = "<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-            return self.cmd_rawxml(data)
-        else:
-            print("Demacia command isn't yet implemented")
-            return False
 
     def cmd_rawxml(self, data, response=True):
         if response:
