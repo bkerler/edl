@@ -3,10 +3,6 @@ import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
-try:
-    from Library.oppo import oppo
-except:
-    pass
 
 logger = logging.getLogger(__name__)
 from queue import Queue
@@ -53,14 +49,12 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial):
+    def __init__(self, cdc, xml, cfg, verbose, serial):
         self.cdc = cdc
         self.xml = xml
         self.cfg = cfg
         self.pk = None
-        self.ops = None
         self.serial = serial
-        self.oppoprjid = oppoprjid
         logger.setLevel(verbose)
         if verbose==logging.DEBUG:
             fh = logging.FileHandler('log.txt')
@@ -199,6 +193,32 @@ class qualcomm_firehose:
             self.xmlsend(data, False)
             return True
 
+    def cmd_patch(self, physical_partition_number, start_sector, byte_offset, value, size_in_bytes, display=True):
+        '''
+        <patch SECTOR_SIZE_IN_BYTES="512" byte_offset="16" filename="DISK" physical_partition_number="0" size_in_bytes="4" start_sector="NUM_DISK_SECTORS-1." value="0" what="Zero Out Header CRC in Backup Header."/>
+        '''
+
+        data = f"<?xml version=\"1.0\" ?><data>\n" + \
+               f"<patch SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" byte_offset=\"{byte_offset}\"" + \
+               f" filename=\"DISK\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" size_in_bytes=\"{size_in_bytes}\" " + \
+               f" start_sector=\"{start_sector}\" " + \
+               f" value=\"{value}\" "
+        data += f"/>\n</data>"
+
+        rsp = self.xmlsend(data)
+        if rsp[0] == True:
+            if display:
+                logger.info(f"Patch:\n--------------------\n")
+                logger.info(rsp[1])
+            return True
+        else:
+            logger.warning("Patch command isn't supported.")
+            return False
+
+
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
         fsize=os.stat(filename).st_size
@@ -216,10 +236,6 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
-
-            if self.ops is not None and "setprojmodel" in self.supported_functions:
-                pk, token = self.ops.generatetoken(True)
-                data += f"pk=\"{pk}\" token=\"{token}\" "
 
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
@@ -272,6 +288,74 @@ class qualcomm_firehose:
                 return False
             return False
 
+    def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
+        size=len(wfdata)
+
+        # Make sure we fill data up to the sector size
+        num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
+        if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+            num_partition_sectors += 1
+        if display:
+            logger.info(
+                f"\nWriting to physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+        data = f"<?xml version=\"1.0\" ?><data>\n" + \
+               f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" start_sector=\"{start_sector}\" "
+
+        data += f"/>\n</data>"
+        rsp = self.xmlsend(data)
+        pos = 0
+        prog = 0
+        if display:
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        if rsp[0]:
+            bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            old = 0
+            fpos=0
+            fsize=len(wfdata)
+            while fsize > 0:
+                wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES
+                if fsize < wlen:
+                    wlen = fsize
+                wdata = wfdata[fpos:fpos+wlen]
+                bytesToWrite -= wlen
+                fsize -= wlen
+                pos += wlen
+                fpos += wlen
+                if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+                    filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + self.cfg.SECTOR_SIZE_IN_BYTES
+                    wdata += b"\x00" * (filllen - wlen)
+                    wlen = len(wdata)
+                self.cdc.write(wdata, wlen)
+                prog = int(float(pos) / float(total) * float(100))
+                if (prog > old):
+                    if display:
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+            time.sleep(0.2)
+            info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+            rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+            if "value" in rsp:
+                if rsp["value"] == "ACK":
+                    return True
+                else:
+                    logger.error(f"Error:")
+                    for line in info:
+                        logger.error(line)
+                    return False
+            else:
+                return True
+        else:
+            logger.error(f"Error:{rsp}")
+            return False
+        return False
+
     def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         if display:
             logger.info(
@@ -281,11 +365,6 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
-
-            if self.ops is not None and "setprojmodel" in self.supported_functions:
-                pk, token = self.ops.generatetoken(True)
-                data += f"pk=\"{pk}\" token=\"{token}\" "
-            data += f"/>\n</data>"
 
             rsp = self.xmlsend(data)
             empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
@@ -393,7 +472,7 @@ class qualcomm_firehose:
                 if rsp[1]["value"] == "NAK":
                     if display:
                         logger.error(rsp[2].decode('utf-8'))
-                    return ""
+                    return b""
             bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
             total = bytesToRead
             dataread = 0
@@ -423,15 +502,15 @@ class qualcomm_firehose:
                     logger.error(f"Error:")
                     for line in info:
                         logger.error(line)
-                    return ""
+                    return b""
         else:
             logger.error(f"Error:{rsp[2]}")
-            return ""
+            return b""
         return resData  #Do not remove, needed for oppo
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
-        if data == "":
+        if data == b"":
             return None, None
         guid_gpt = gpt(
             num_part_entries=gpt_num_part_entries,
@@ -444,6 +523,8 @@ class qualcomm_firehose:
             if sectors==0:
                 return None, None
             data = self.cmd_read_buffer(lun, 0, sectors, False)
+            if data==b"":
+                return None, None
             guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
             return data, guid_gpt
         else:
@@ -451,7 +532,7 @@ class qualcomm_firehose:
 
     def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
-        if data == "":
+        if data == b"":
             return None
         guid_gpt = gpt(
             num_part_entries=gpt_num_part_entries,
@@ -462,6 +543,8 @@ class qualcomm_firehose:
         if "backup_lba" in header:
             sectors = header["first_usable_lba"] - 1
             data = self.cmd_read_buffer(lun, header["backup_lba"], sectors, False)
+            if data==b"":
+                return None
             return data
         else:
             return None
@@ -489,6 +572,8 @@ class qualcomm_firehose:
             if info==[]:
                 info=self.cmd_nop()
             supfunc = False
+            self.supported_functions = ['program','write','read','patch']
+            '''
             self.supported_functions = []
             for line in info:
                 if "chip serial num" in line.lower():
@@ -505,11 +590,7 @@ class qualcomm_firehose:
                         self.supported_functions.append(rs)
                 if "supported functions" in line.lower():
                     supfunc = True
-
-        try:
-            self.ops = oppo(self,projid=self.oppoprjid, serials=[self.serial, self.serial])
-        except:
-            self.ops = None
+            '''
         data=self.cdc.read() #logbuf
         try:
             logger.info(data.decode('utf-8'))
@@ -783,26 +864,6 @@ class qualcomm_firehose:
             if self.cmd_poke(destaddress, data):
                 return True
         return False
-
-    def cmd_setprojmodel(self):
-        if self.ops is not None:
-            pk, token = self.ops.generatetoken(False)
-            self.pk = pk
-            data = "<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-            return self.cmd_rawxml(data)
-        else:
-            print("Setprojmodel command isn't yet implemented")
-            return False
-
-    def cmd_demacia(self):
-        if self.ops is not None:
-            pk, token = self.ops.demacia()
-            self.pk = pk
-            data = "<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-            return self.cmd_rawxml(data)
-        else:
-            print("Demacia command isn't yet implemented")
-            return False
 
     def cmd_rawxml(self, data, response=True):
         if response:
