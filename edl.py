@@ -1354,7 +1354,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors>"])
         filename = arguments["<filename"]
-        data = fh.cmd_read(lun, start, sectors, filename)
+        data = fh.cmd_read_buffer(lun, start, sectors, filename)
         with open(filename, "wb") as wf:
             wf.write(data)
             print(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
