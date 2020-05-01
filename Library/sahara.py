@@ -422,7 +422,7 @@ class qualcomm_sahara():
                         #print("Couldn't find a loader for given hwid and pkhash :(")
                         #exit(0)
                 else:
-                    logger.error("Couldn't find a loader for given hwid and pkhash :(")
+                    logger.error(f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}_FHPRG.bin) :(")
                     exit(0)
                 with open(fname,"rb") as rf:
                     self.programmer=rf.read()
