@@ -1175,19 +1175,23 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
                                         int(arguments["--gpt-part-entry-size"]),
                                         int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
+            if guid_gpt is not None:
                 with open(sfilename,"wb") as wf:
                     wf.write(data)
 
                 print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
-                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+
+            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+            data = fh.get_backup_gpt(lun, int(arguments["--gpt-num-part-entries"]),
+                                     int(arguments["--gpt-part-entry-size"]),
+                                     int(arguments["--gpt-part-entry-start-lba"]))
+            if data is not None:
                 with open(sfilename,"wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+                    wf.write(data)
                 print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
-                if genxml:
-                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+
+            if genxml:
+                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
 
         exit(0)
     elif arguments["printgpt"]:
