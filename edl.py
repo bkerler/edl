@@ -11,7 +11,7 @@ Usage:
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
     edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -1175,19 +1175,23 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
                                         int(arguments["--gpt-part-entry-size"]),
                                         int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
+            if guid_gpt is not None:
                 with open(sfilename,"wb") as wf:
                     wf.write(data)
 
                 print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
-                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+
+            sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
+            data = fh.get_backup_gpt(lun, int(arguments["--gpt-num-part-entries"]),
+                                     int(arguments["--gpt-part-entry-size"]),
+                                     int(arguments["--gpt-part-entry-start-lba"]))
+            if data is not None:
                 with open(sfilename,"wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+                    wf.write(data)
                 print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
-                if genxml:
-                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
+
+            if genxml:
+                guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
 
         exit(0)
     elif arguments["printgpt"]:
