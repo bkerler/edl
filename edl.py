@@ -11,7 +11,7 @@ Usage:
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
     edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
