@@ -3,3 +3,5 @@ pyserial
 docopt
 pylzma
 pycryptodome
+qrcode
+

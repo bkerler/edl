@@ -34,38 +34,6 @@ vendor["143A"] = "Asus         "
 vendor["1978"] = "Blackphone   "
 vendor["2A70"] = "Oxygen       "
 
-hwid = {}
-hwid["000460E1"] = "MSM8953     "  # SnapDragon 625
-hwid["0004F0E1"] = "MSM8937     "  # SnapDragon 430
-hwid["0006B0E1"] = "MSM8940     "
-hwid["000560E1"] = "MSM8917     "  # SnapDragon 425
-hwid["0005F0E1"] = "MSM8996 Pro "  # SnapDragon 821
-hwid["007050E1"] = "MSM8916     "  # SnapDragon 410
-hwid["0072C0E1"] = "MSM8960     "
-# 007B20E100010004 MSM8274 OEM1 Sony, Hash 49109A8016C239CD8F76540FE4D5138C87B2297E49C6B30EC31852330BDDB177
-hwid["007B00E1"] = "MSM8974     "  # Snapdragon 800 Nexus 5
-hwid["007B30E1"] = "MSM8974     "
-hwid[
-    "007B40E1"] = "MSM8974AC   "  # SnapDragon 801, 007B40E100010004, Hash CF19D6FAD8029B66B15246BF3C9D216FC1D2235D87706E0458C7125BB1E436EC
-# hwid["007B80E1"] = "MSM8974AB   "   #HTC M8
-hwid["008050E1"] = "MSM8x26     "  # SnapDragon 400
-hwid["009180E1"] = "MSM8x26/28  "  # SnapDragon 400
-hwid["008110E1"] = "MSM8x10/2   "  # SnapDragon 2x/4x|00
-hwid["008140E1"] = "MSM8x10/2   "  # SnapDragon 2x/4x|00   Lenovo S580
-hwid["0090B0E1"] = "MSM8936/9   "  # SnapDragon 610
-hwid["0091B0E1"] = "MSM8929     "  # SnapDragon 415
-hwid["009400E1"] = "MSM8994     "  # SnapDragon 808 E6833 009400E100040001 setool S1_Boot_MSM8994_LA1.2_114, MSM8994_50
-hwid["009470E1"] = "MSM8996     "  # SnapDragon 820
-hwid["009600E1"] = "MSM8909     "  # SnapDragon 210
-hwid["009690E1"] = "MSM8992     "  # SnapDragon 82x
-hwid["009720E1"] = "MSM8952     "  # SnapDragon 652
-hwid["009900E1"] = "MSM8976     "  # SnapDragon 652
-hwid["009B00E1"] = "MSM8956     "  # SnapDragon 652
-hwid["30020000"] = "MSM8998     "
-hwid["30060000"] = "SDM660      "
-# hwid["006220E1"] = "MSM7227A    "
-
-
 class Signed:
   filename = ''
   filesize = 0
@@ -95,49 +63,52 @@ def grabtext(data):
 
 
 def extract_hdr(memsection,si,mm,code_size,signature_size):
-    md_size = struct.unpack("<I", mm[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
-    md_offset=memsection.file_start_addr + 0x2C + 0x4
-    major,minor,sw_id,hw_id,oem_id,model_id,app_id=struct.unpack("<IIIIIII",mm[md_offset:md_offset+(7*4)])
-    si.hw_id="%08X" % hw_id
-    si.sw_id = "%08X" % sw_id
-    si.oem_id="%04X" % oem_id
-    si.model_id="%04X" % model_id
-    si.hw_id += si.oem_id + si.model_id
-    si.app_id="%08X" % app_id
-    md_offset+=(7 * 4)
-    v=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-    rot_en=(v >> 0) & 1
-    in_use_soc_hw_version=(v >> 1) & 1
-    use_serial_number_in_signing=(v >> 2) & 1
-    oem_id_independent=(v >> 3) & 1
-    root_revoke_activate_enable=(v >> 4) & 0b11
-    uie_key_switch_enable=(v >> 6) & 0b11
-    debug=(v >> 8) & 0b11
-    md_offset+=4
-    soc_vers=hexlify(mm[md_offset:md_offset + (12*4)])
-    md_offset+=12*4
-    multi_serial_numbers=hexlify(mm[md_offset:md_offset + (8*4)])
-    md_offset += 8 * 4
-    mrc_index=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-    md_offset+=4
-    anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-
-    signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
     try:
-        if mm[signatureoffset] != 0x30:
-            print("Error on " + si.filename + ", unknown signaturelength")
+        md_size = struct.unpack("<I", mm[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
+        md_offset=memsection.file_start_addr + 0x2C + 0x4
+        major,minor,sw_id,hw_id,oem_id,model_id,app_id=struct.unpack("<IIIIIII",mm[md_offset:md_offset+(7*4)])
+        si.hw_id="%08X" % hw_id
+        si.sw_id = "%08X" % sw_id
+        si.oem_id="%04X" % oem_id
+        si.model_id="%04X" % model_id
+        si.hw_id += si.oem_id + si.model_id
+        si.app_id="%08X" % app_id
+        md_offset+=(7 * 4)
+        v=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        rot_en=(v >> 0) & 1
+        in_use_soc_hw_version=(v >> 1) & 1
+        use_serial_number_in_signing=(v >> 2) & 1
+        oem_id_independent=(v >> 3) & 1
+        root_revoke_activate_enable=(v >> 4) & 0b11
+        uie_key_switch_enable=(v >> 6) & 0b11
+        debug=(v >> 8) & 0b11
+        md_offset+=4
+        soc_vers=hexlify(mm[md_offset:md_offset + (12*4)])
+        md_offset+=12*4
+        multi_serial_numbers=hexlify(mm[md_offset:md_offset + (8*4)])
+        md_offset += 8 * 4
+        mrc_index=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        md_offset+=4
+        anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+
+        signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
+        try:
+            if mm[signatureoffset] != 0x30:
+                print("Error on " + si.filename + ", unknown signaturelength")
+                return None
+        except:
             return None
+        if len(mm) < signatureoffset + 4:
+                print("Signature error on " + si.filename)
+                return None
+        len1 = struct.unpack(">H", mm[signatureoffset + 2:signatureoffset + 4])[0] + 4
+        casignature2offset = signatureoffset + len1
+        len2 = struct.unpack(">H", mm[casignature2offset + 2:casignature2offset + 4])[0] + 4
+        rootsignature3offset = casignature2offset + len2
+        len3 = struct.unpack(">H", mm[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
+        si.pk_hash = hashlib.sha384(mm[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     except:
         return None
-    if len(mm) < signatureoffset + 4:
-            print("Signature error on " + si.filename)
-            return None
-    len1 = struct.unpack(">H", mm[signatureoffset + 2:signatureoffset + 4])[0] + 4
-    casignature2offset = signatureoffset + len1
-    len2 = struct.unpack(">H", mm[casignature2offset + 2:casignature2offset + 4])[0] + 4
-    rootsignature3offset = casignature2offset + len2
-    len3 = struct.unpack(">H", mm[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
-    si.pk_hash = hashlib.sha384(mm[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     return si
 
 
@@ -260,15 +231,18 @@ def main(argv):
                 elfheader = elf(mm,si.filename)
                 if 'memorylayout' in dir(elfheader):
                     memsection=elfheader.memorylayout[1]
-                    version=struct.unpack("<I",mm[memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04+0x4])[0]
-                    code_size = \
-                    struct.unpack("<I", mm[memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
-                        0]
-                    signature_size = \
-                    struct.unpack("<I", mm[memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
-                        0]
-                    cert_chain_size=struct.unpack("<I", mm[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[
-                        0]
+                    try:
+                        version=struct.unpack("<I",mm[memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04+0x4])[0]
+                        code_size = \
+                        struct.unpack("<I", mm[memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
+                            0]
+                        signature_size = \
+                        struct.unpack("<I", mm[memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
+                            0]
+                        cert_chain_size=struct.unpack("<I", mm[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[
+                            0]
+                    except:
+                        continue
                     if signature_size==0:
                         print("%s has no signature." % filename)
                         continue

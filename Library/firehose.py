@@ -572,7 +572,7 @@ class qualcomm_firehose:
         header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
         if "backup_lba" in header:
             sectors = header["first_usable_lba"] - 1
-            data = self.cmd_read_buffer(lun, header["last_usable_lba"] + 1, sectors, False)
+            data = self.cmd_read_buffer(lun, header["backup_lba"], sectors, False)
             if data==b"":
                 return None
             return data

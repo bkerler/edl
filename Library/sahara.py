@@ -1,6 +1,7 @@
 import binascii
 import time
 from Library.utils import *
+from Library.qualcomm_config import *
 logger = logging.getLogger(__name__)
 
 class qualcomm_sahara():
@@ -142,11 +143,26 @@ class qualcomm_sahara():
                     continue  
                 try:
                     hwid = filename.split("_")[0].lower()
+                    msmid=hwid[:8]
+                    devid=hwid[8:]
                     pkhash = filename.split("_")[1].lower()
-                    if hwid not in self.loaderdb:
-                        self.loaderdb[hwid] = {}
-                    if pkhash not in self.loaderdb[hwid]:
-                        self.loaderdb[hwid][pkhash] = fn
+                    if int(msmid,16) in sochw:
+                        names=sochw[int(msmid,16)].split(",")
+                        for name in names:
+                            for ids in msmids:
+                                if msmids[ids]==name:
+                                    msmid=hex(ids)[2:].lower()
+                                    while (len(msmid)<8):
+                                        msmid='0'+msmid
+                                    if msmid not in self.loaderdb:
+                                        self.loaderdb[msmid + devid] = {}
+                                    if pkhash not in self.loaderdb[msmid + devid]:
+                                        self.loaderdb[msmid + devid][pkhash] = fn
+                    else:
+                        if msmid not in self.loaderdb:
+                            self.loaderdb[msmid+devid] = {}
+                        if pkhash not in self.loaderdb[msmid+devid]:
+                            self.loaderdb[msmid+devid][pkhash] = fn
                 except:
                     continue
         return self.loaderdb
@@ -422,7 +438,7 @@ class qualcomm_sahara():
                         #print("Couldn't find a loader for given hwid and pkhash :(")
                         #exit(0)
                 else:
-                    logger.error(f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}_FHPRG.bin) :(")
+                    logger.error("Couldn't find a loader for given hwid and pkhash :(")
                     exit(0)
                 with open(fname,"rb") as rf:
                     self.programmer=rf.read()
