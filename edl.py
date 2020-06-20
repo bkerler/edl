@@ -929,6 +929,16 @@ def handle_firehose(arguments, cdc, sahara, verbose):
     if "--prjid" in arguments:
         if arguments["--prjid"] is not None:
             oppoprojid=arguments["--prjid"]
+            idlist=["18821", "18825", "18827","18857", "18865", "19801", "19861", "19863","18831","40217c07","0cffee8a","6d9215b4","4107b2d4"]
+            if oppoprojid not in idlist:
+                logger.error("Oppo project id is not supported, ask for support :)")
+                tm="Supported ids are:\n"
+                for id in idlist:
+                    tm+=id+","
+                tmo=tm[:-1]
+                print(tm)
+                exit(0)
+            
     fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,oppoprojid,sahara.serial)
     supported_functions = fh.connect(0)
     funcs="Supported functions:\n-----------------\n"
