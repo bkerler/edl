@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2019
+(c) B. Kerler 2018-2020
 
 ## Why
 
