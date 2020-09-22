@@ -109,7 +109,8 @@ class qualcomm_firehose:
                 status = self.getstatus(resp)
             except:
                 status = True
-                return [status, data, data]
+                logger.debug("Error on getting xml response:" + data.decode('utf-8'))
+                return [status, {}, data]
         else:
             status = True
         return [status, resp, data]
