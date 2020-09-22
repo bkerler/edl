@@ -110,7 +110,7 @@ class qualcomm_firehose:
             except:
                 status = True
                 logger.debug("Error on getting xml response:" + data.decode('utf-8'))
-                return [status, {}, data]
+                return [status, {"value": "NAK"}, data]
         else:
             status = True
         return [status, resp, data]
