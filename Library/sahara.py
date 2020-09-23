@@ -129,43 +129,46 @@ class qualcomm_sahara():
         0x26:"Invalid IMG Hash Table Size"
     }
 
+    def convertmsmid(self, msmid):
+        if int(msmid, 16) in sochw:
+            names = sochw[int(msmid, 16)].split(",")
+            for name in names:
+                for ids in msmids:
+                    if msmids[ids] == name:
+                        msmid = hex(ids)[2:].lower()
+                        while (len(msmid) < 8):
+                            msmid = '0' + msmid
+        return msmid
+
     def init_loader_db(self):
-        self.loaderdb = {}
+        loaderdb = {}
         for (dirpath, dirnames, filenames) in os.walk("Loaders"):
             for filename in filenames:
                 fn = os.path.join(dirpath, filename)
-                found=False
-                for ext in [".bin",".mbn",".elf"]:
+                found = False
+                for ext in [".bin", ".mbn", ".elf"]:
                     if ext in filename[-4:]:
-                        found=True
+                        found = True
                         break
-                if found==False:
-                    continue  
+                if found == False:
+                    continue
                 try:
                     hwid = filename.split("_")[0].lower()
-                    msmid=hwid[:8]
-                    devid=hwid[8:]
+                    msmid = hwid[:8]
+                    devid = hwid[8:]
                     pkhash = filename.split("_")[1].lower()
-                    if int(msmid,16) in sochw:
-                        names=sochw[int(msmid,16)].split(",")
-                        for name in names:
-                            for ids in msmids:
-                                if msmids[ids]==name:
-                                    msmid=hex(ids)[2:].lower()
-                                    while (len(msmid)<8):
-                                        msmid='0'+msmid
-                                    if msmid not in self.loaderdb:
-                                        self.loaderdb[msmid + devid] = {}
-                                    if pkhash not in self.loaderdb[msmid + devid]:
-                                        self.loaderdb[msmid + devid][pkhash] = fn
+                    msmid = self.convertmsmid(msmid)
+                    mhwid = self.convertmsmid(msmid) + devid
+                    if mhwid not in loaderdb:
+                        loaderdb[mhwid] = {}
+                    if pkhash not in loaderdb[mhwid]:
+                        loaderdb[mhwid][pkhash] = fn
                     else:
-                        if msmid not in self.loaderdb:
-                            self.loaderdb[msmid+devid] = {}
-                        if pkhash not in self.loaderdb[msmid+devid]:
-                            self.loaderdb[msmid+devid][pkhash] = fn
+                        loaderdb[mhwid][pkhash].append(fn)
                 except:
                     continue
-        return self.loaderdb
+        self.loaderdb=loaderdb
+        return loaderdb
 
     def get_error_desc(self,status):
         if status in self.ErrorDesc:

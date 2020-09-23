@@ -200,29 +200,31 @@ def init_loader_db():
                 devid=hwid[8:]
                 pkhash = filename.split("_")[1].lower()
                 msmid=convertmsmid(msmid)
-                if msmid not in loaderdb:
-                    loaderdb[msmid + devid] = {}
-                if pkhash not in loaderdb[msmid + devid]:
-                    loaderdb[msmid + devid][pkhash] = fn
+                mhwid=convertmsmid(msmid)+devid
+                if mhwid not in loaderdb:
+                    loaderdb[mhwid] = {}
+                if pkhash not in loaderdb[mhwid]:
+                    loaderdb[mhwid][pkhash] = fn
                 else:
-                    if msmid not in loaderdb:
-                        loaderdb[msmid+devid] = {}
-                    if pkhash not in loaderdb[msmid+devid]:
-                        loaderdb[msmid+devid][pkhash] = fn
+                    loaderdb[mhwid][pkhash].append(fn)
             except:
                 continue
     return loaderdb
 
 def is_duplicate(loaderdb, si):
-    for loader in loaderdb:
-        for hash in loaderdb[loader]:
-            lhash = si.pk_hash[:16]
-            if lhash == hash:
-                msmid = si.hw_id[:8]
-                devid = si.hw_id[8:]
-                rid = convertmsmid(msmid) + devid
-                if si.hw_id == loader or rid == loader:
-                    return True
+    lhash = si.pk_hash[:16].lower()
+    msmid = si.hw_id[:8].lower()
+    devid = si.hw_id[8:].lower()
+    hwid=si.hw_id.lower()
+    rid = (convertmsmid(msmid) + devid).lower()
+    if hwid in loaderdb:
+        loader=loaderdb[hwid]
+        if lhash in loader:
+            return True
+    if rid in loaderdb:
+        loader = loaderdb[rid]
+        if lhash in loader:
+            return True
     return False
 
 def main(argv):
