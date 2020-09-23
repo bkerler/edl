@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2019
+(c) B. Kerler 2018-2020
 
 ## Why
 
@@ -130,7 +130,7 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Tested with
 
-- Oneplus 3T, Oneplus 6T, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
+- Oneplus 3T/5/6T/7T/8, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
 
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.
