@@ -53,7 +53,7 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial):
+    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial, skipresponse):
         self.cdc = cdc
         self.xml = xml
         self.cfg = cfg
@@ -61,6 +61,7 @@ class qualcomm_firehose:
         self.ops = None
         self.serial = serial
         self.oppoprjid = oppoprjid
+        self.skipresponse = skipresponse
         logger.setLevel(verbose)
         if verbose==logging.DEBUG:
             fh = logging.FileHandler('log.txt')
@@ -80,14 +81,14 @@ class qualcomm_firehose:
                 return False
         return True
 
-    def xmlsend(self, data, response=True):
+    def xmlsend(self, data, skipresponse=False):
         self.cdc.write(bytes(data,'utf-8'), self.cfg.MaxXMLSizeInBytes)
         data = bytearray()
         counter = 0
         timeout = 3
         resp = {"value": "NAK"}
         status = False
-        if response:
+        if not skipresponse:
             while b"<response" not in data:
                 try:
                     tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -197,7 +198,7 @@ class qualcomm_firehose:
                 logger.error(f"{val[2]}")
                 return False
         else:
-            self.xmlsend(data, False)
+            self.xmlsend(data, True)
             return True
 
     def cmd_patch(self, physical_partition_number, start_sector, byte_offset, value, size_in_bytes, display=True):
@@ -287,15 +288,18 @@ class qualcomm_firehose:
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if "value" in rsp:
-                    if rsp["value"] == "ACK":
-                        return True
+                if not self.skipresponse:
+                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    if "value" in rsp:
+                        if rsp["value"] == "ACK":
+                            return True
+                        else:
+                            logger.error(f"Error:")
+                            for line in info:
+                                logger.error(line)
+                            return False
                     else:
-                        logger.error(f"Error:")
-                        for line in info:
-                            logger.error(line)
-                        return False
+                        return True
                 else:
                     return True
             else:
@@ -441,7 +445,7 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\"/>\n</data>"
-            rsp = self.xmlsend(data)
+            rsp = self.xmlsend(data,self.skipresponse)
             if rsp[0]:
                 if "value" in rsp[1]:
                     if rsp[1]["value"] == "NAK":
@@ -494,7 +498,7 @@ class qualcomm_firehose:
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\"/>\n</data>"
 
-        rsp = self.xmlsend(data)
+        rsp = self.xmlsend(data,self.skipresponse)
         resData = bytearray()
         if rsp[0]:
             if "value" in rsp[1]:
@@ -699,20 +703,23 @@ class qualcomm_firehose:
                 logger.warning("Couldn't detect Version")
         else:
             if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
-                self.cfg.MemoryName = rsp[1]["MemoryName"]
-                self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
-                self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
-                self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
-                self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
-                self.cfg.TargetName = rsp[1]["TargetName"]
-                if "MSM" not in self.cfg.TargetName:
-                    self.cfg.TargetName = "MSM" + self.cfg.TargetName
-                self.cfg.Version = rsp[1]["Version"]
-                if lvl == 0:
-                    return self.connect(lvl + 1)
-                else:
-                    logger.error(f"Error:{rsp}")
-                    exit(0)
+                try:
+                    self.cfg.MemoryName = rsp[1]["MemoryName"]
+                    self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
+                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
+                    self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
+                    self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+                    self.cfg.TargetName = rsp[1]["TargetName"]
+                    if "MSM" not in self.cfg.TargetName:
+                        self.cfg.TargetName = "MSM" + self.cfg.TargetName
+                    self.cfg.Version = rsp[1]["Version"]
+                    if lvl == 0:
+                        return self.connect(lvl + 1)
+                    else:
+                        logger.error(f"Error:{rsp}")
+                        exit(0)
+                except:
+                    pass
         logger.info(f"TargetName={self.cfg.TargetName}")
         logger.info(f"MemoryName={self.cfg.MemoryName}")
         logger.info(f"Version={self.cfg.Version}")

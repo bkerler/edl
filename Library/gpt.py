@@ -137,7 +137,7 @@ class gpt:
         if self.header["revision"]!=0x100:
             print("Unknown GPT revision.")
             return False
-        if self.part_entry_start_lba is not 0:
+        if self.part_entry_start_lba!=0:
             start = self.part_entry_start_lba
         else:
             start=self.header["part_entry_start_lba"]*sectorsize

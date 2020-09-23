@@ -7,6 +7,7 @@ import hashlib
 import struct
 from shutil import copyfile
 from binascii import hexlify, unhexlify
+from Library.qualcomm_config import *
 
 vendor = {}
 vendor["0000"] = "Qualcomm     "
@@ -170,6 +171,60 @@ def extract_old_hdr(memsection,si,mm,code_size,signature_size):
             si.sw_size = signature["SW_SIZE"]
     return si
 
+def convertmsmid(msmid):
+    if int(msmid, 16) in sochw:
+        names = sochw[int(msmid, 16)].split(",")
+        for name in names:
+            for ids in msmids:
+                if msmids[ids] == name:
+                    msmid = hex(ids)[2:].lower()
+                    while (len(msmid) < 8):
+                        msmid = '0' + msmid
+    return msmid
+
+def init_loader_db():
+    loaderdb = {}
+    for (dirpath, dirnames, filenames) in os.walk("Loaders"):
+        for filename in filenames:
+            fn = os.path.join(dirpath, filename)
+            found=False
+            for ext in [".bin",".mbn",".elf"]:
+                if ext in filename[-4:]:
+                    found=True
+                    break
+            if found==False:
+                continue
+            try:
+                hwid = filename.split("_")[0].lower()
+                msmid=hwid[:8]
+                devid=hwid[8:]
+                pkhash = filename.split("_")[1].lower()
+                msmid=convertmsmid(msmid)
+                if msmid not in loaderdb:
+                    loaderdb[msmid + devid] = {}
+                if pkhash not in loaderdb[msmid + devid]:
+                    loaderdb[msmid + devid][pkhash] = fn
+                else:
+                    if msmid not in loaderdb:
+                        loaderdb[msmid+devid] = {}
+                    if pkhash not in loaderdb[msmid+devid]:
+                        loaderdb[msmid+devid][pkhash] = fn
+            except:
+                continue
+    return loaderdb
+
+def is_duplicate(loaderdb, si):
+    for loader in loaderdb:
+        for hash in loaderdb[loader]:
+            lhash = si.pk_hash[:16]
+            if lhash == hash:
+                msmid = si.hw_id[:8]
+                devid = si.hw_id[8:]
+                rid = convertmsmid(msmid) + devid
+                if si.hw_id == loader or rid == loader:
+                    return True
+    return False
+
 def main(argv):
     f = []
     path = ""
@@ -181,6 +236,8 @@ def main(argv):
         outputdir = argv[2]
         if not os.path.exists(outputdir):
             os.mkdir(outputdir)
+
+    loaderdb=init_loader_db()
     for (dirpath, dirnames, filenames) in walk(path):
         for filename in filenames:
             f.append(os.path.join(dirpath, filename))
@@ -269,7 +326,8 @@ def main(argv):
     class loaderinfo:
         hw_id=''
         item=''
-
+    if not os.path.exists(os.path.join(outputdir,"Duplicate")):
+        os.mkdir(os.path.join(outputdir,"Duplicate"))
     loaderlists = {}
     for item in sorted_x:
         if item.oem_id!='':
@@ -281,9 +339,16 @@ def main(argv):
             lf.pk_hash=item.pk_hash
             if item.hash not in hashes:
                 if (lf not in loaderlists):
-                    loaderlists[lf]=item.filename
-                    print(info)
-                    copyfile(item.filename,os.path.join(outputdir,lf.hw_id+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
+                    if not is_duplicate(loaderdb, item):
+                        loaderlists[lf]=item.filename
+                        print(info)
+                        msmid = lf.hw_id[:8]
+                        devid = lf.hw_id[8:]
+                        hwid = convertmsmid(msmid) + devid
+                        copyfile(item.filename,os.path.join(outputdir,hwid+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
+                    else:
+                        print("Duplicate: "+info)
+                        copyfile(item.filename,os.path.join(outputdir, "Duplicate", lf.hw_id + "_" + lf.pk_hash[0:16] + "_FHPRG.bin"))
                 else:
                     copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
             else:
@@ -303,4 +368,6 @@ def main(argv):
             copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]))
 
     rt.close()
+
+
 main(sys.argv)

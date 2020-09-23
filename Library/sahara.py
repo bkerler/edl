@@ -369,11 +369,17 @@ class qualcomm_sahara():
 
     def cmdexec_get_msm_hwid(self):
         res=self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
-        return struct.unpack("<Q", res[0:0x8])[0]
+        try:
+            return struct.unpack("<Q", res[0:0x8])[0]
+        except:
+            return None
 
     def cmdexec_get_pkhash(self):
-        res=self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
-        return binascii.hexlify(res).decode('utf-8')
+        try:
+            res=self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
+            return binascii.hexlify(res).decode('utf-8')
+        except:
+            return None
 
     def cmdexec_get_sbl_version(self):
         res=self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
@@ -398,19 +404,20 @@ class qualcomm_sahara():
             self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             self.hwid = self.cmdexec_get_msm_hwid()
             self.pkhash = self.cmdexec_get_pkhash()
-            self.hwidstr="{:016x}".format(self.hwid)
-            self.msm_id = int(self.hwidstr[0:8],16)
-            self.oem_id = int(self.hwidstr[-8:-4],16)
-            self.model_id = int(self.hwidstr[-4:],16)
-            self.oem_str="{:04x}".format(self.oem_id)
-            self.model_id = "{:04x}".format(self.model_id)
-            self.msm_str="{:08x}".format(self.msm_id)
+            if self.hwid!=None:
+                self.hwidstr="{:016x}".format(self.hwid)
+                self.msm_id = int(self.hwidstr[0:8],16)
+                self.oem_id = int(self.hwidstr[-8:-4],16)
+                self.model_id = int(self.hwidstr[-4:],16)
+                self.oem_str="{:04x}".format(self.oem_id)
+                self.model_id = "{:04x}".format(self.model_id)
+                self.msm_str="{:08x}".format(self.msm_id)
 
-            logger.info(f"\n------------------------\n" +
-                  f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str},OEM_ID:0x{self.oem_str},MODEL_ID:0x{self.model_id})\n" +
-                  f"PK_HASH:           0x{self.pkhash}\n" +
-                  f"Serial:            0x{self.serials}\n" +
-                  f"SBL Version:       0x{self.sblversion}\n")
+                logger.info(f"\n------------------------\n" +
+                      f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str},OEM_ID:0x{self.oem_str},MODEL_ID:0x{self.model_id})\n" +
+                      f"PK_HASH:           0x{self.pkhash}\n" +
+                      f"Serial:            0x{self.serials}\n" +
+                      f"SBL Version:       0x{self.sblversion}\n")
             if self.programmer==None:
                 if self.hwidstr in self.loaderdb:
                     mt=self.loaderdb[self.hwidstr]
@@ -438,7 +445,7 @@ class qualcomm_sahara():
                         #print("Couldn't find a loader for given hwid and pkhash :(")
                         #exit(0)
                 else:
-                    logger.error("Couldn't find a loader for given hwid and pkhash :(")
+                    logger.error(f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}_FHPRG.bin) :(")
                     exit(0)
                 with open(fname,"rb") as rf:
                     self.programmer=rf.read()

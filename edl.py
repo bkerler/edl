@@ -9,21 +9,21 @@ Usage:
     edl.py [--debugmode]
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py peekdword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py peekqword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -36,15 +36,15 @@ Usage:
     edl.py secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py getstorageinfo [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py send <command> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py getstorageinfo [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
     edl.py reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py ops <mode> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py ops <mode> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
@@ -91,6 +91,7 @@ Options:
     --sectorsize=bytes                 Set default sector size [default: 0x200]
     --memory=memtype                   Set memory type (EMMC or UFS) [default: eMMC]
     --skipwrite                        Do not allow any writes to flash (simulate only)
+    --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
     --debugmode                        Enable verbose mode
     --gpt-num-part-entries=number      Set GPT entry count [default: 0]
@@ -164,7 +165,7 @@ def main():
         if resp == -1:
             logger.error("USB desync, please rerun command !")
             exit(0)
-
+    #print((mode, resp))
     if mode == "sahara":
         if "mode" in resp:
             mode = resp["mode"]
@@ -185,6 +186,7 @@ def main():
                             print("Successfully uploaded programmer :)")
                 else:
                     print("Device is in an unknown sahara state")
+                    print("resp={0}".format(resp))
                     exit(0)
         else:
             print("Device is in an unknown state")
@@ -238,7 +240,7 @@ def handle_streaming(args, cdc, sahara, verbose):
     fh = qualcomm_streaming(cdc, sahara, verbose)
 
 
-def do_firehose_server(mainargs, cdc, sahara):
+def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = mainargs["--memory"]
     cfg.ZLPAwareHost = 1
@@ -247,7 +249,7 @@ def do_firehose_server(mainargs, cdc, sahara):
     cfg.MaxPayloadSizeToTargetInBytes = int(mainargs["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(mainargs["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose, oppoprojid, sahara.serial, skipresponse)
     supported_functions = fh.connect(0)
     TargetName = "Unknown"
     if "hwid" in dir(sahara):
@@ -370,7 +372,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't readi GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         fh.cmd_read(lun, 0, guid_gpt.totalsectors, filename)
@@ -480,7 +482,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2",
@@ -733,7 +735,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                               int(mainargs["--gpt-part-entry-size"]),
                                                               int(mainargs["--gpt-part-entry-start-lba"]))
                                         if guid_gpt is None:
-                                            response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                            response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
                                             found = False
@@ -823,7 +825,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         found = False
@@ -926,20 +928,23 @@ def handle_firehose(arguments, cdc, sahara, verbose):
     cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
     oppoprojid = ""
+    skipresponse=False
+    if "--skipresponse" in arguments:
+        if arguments["--skipresponse"]:
+            skipresponse=True
     if "--prjid" in arguments:
         if arguments["--prjid"] is not None:
             oppoprojid=arguments["--prjid"]
-            idlist=["18821", "18825", "18827","18857", "18865", "19801", "19861", "19863","18831","40217c07","0cffee8a","6d9215b4","4107b2d4"]
-            if oppoprojid not in idlist:
-                logger.error("Oppo project id is not supported, ask for support :)")
-                tm="Supported ids are:\n"
-                for id in idlist:
-                    tm+=id+","
-                tmo=tm[:-1]
-                print(tm)
+            try:
+                from Library.oppo import convert_projid
+                oppoprojid = convert_projid(oppoprojid)
+                if oppoprojid == -1:
+                    logger.error("Oppo project id is not supported, ask for support :)")
+                    exit(0)
+            except:
+                print("Sorry, no oppo supported, please remove prjid argument.")
                 exit(0)
-            
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,oppoprojid,sahara.serial)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,oppoprojid,sahara.serial,skipresponse)
     supported_functions = fh.connect(0)
     funcs="Supported functions:\n-----------------\n"
     for function in supported_functions:
@@ -970,13 +975,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if guid_gpt is None:
                 break
             else:
-                with open(sfilename,"wb") as wf:
+                with open(sfilename, "wb") as wf:
                     wf.write(data)
 
                 print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
                 sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename,"wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+                with open(sfilename, "wb") as wf:
+                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
                 print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
@@ -1194,11 +1199,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         logger.error(f"Error: Couldn't detect footer partition.")
         exit(0)
     elif arguments["rs"]:
-        lun = int(arguments["--lun"])
+        if arguments["--lun"]!='None':
+            lun = int(arguments["--lun"])
+        else:
+            lun=0
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors>"])
-        filename = arguments["<filename"]
-        data = fh.cmd_read(lun, start, sectors, filename)
+        filename = arguments["<filename>"]
+        data = fh.cmd_read_buffer(lun, start, sectors, filename)
         with open(filename, "wb") as wf:
             wf.write(data)
             print(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
@@ -1502,7 +1510,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         print(resp)
         exit(0)
     elif arguments["server"]:
-        do_firehose_server(arguments, cdc, sahara)
+        do_firehose_server(arguments, cdc, sahara,oppoprojid,verbose,skipresponse)
         exit(0)
     elif arguments["oemunlock"]:
         partition = "config"
