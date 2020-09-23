@@ -30,6 +30,11 @@ or
 - Use Zadig 2.4 or higher, list all devices, select QUSB_BULK device and replace
   driver with libusb 1.2.6 one (will replace original driver)
 
+## Convert EDL loaders for automatic usage
+
+- Make a subdirectory "newstuff", copy your edl loaders to this subdirectory
+- "./fhloaderparse.py newstuff Loaders"
+
 ## Run EDL (examples)
 
 ### Generic
