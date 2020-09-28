@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2019
+(c) B. Kerler 2018-2020
 
 ## Why
 
@@ -30,6 +30,11 @@ or
 - Use Zadig 2.4 or higher, list all devices, select QUSB_BULK device and replace
   driver with libusb 1.2.6 one (will replace original driver)
 
+## Convert EDL loaders for automatic usage
+
+- Make a subdirectory "newstuff", copy your edl loaders to this subdirectory
+- "./fhloaderparse.py newstuff Loaders"
+
 ## Run EDL (examples)
 
 ### Generic
@@ -50,6 +55,7 @@ or
 - "./edl.py rf flash.bin" -> to dump whole flash for device with emmc
 - "./edl.py rl dumps --skip=userdata --genxml" -> to dump all partitions to directory dumps for device with emmc and skipping userdata partition, write rawprogram0.xml
 - "./edl.py rs 0 15 data.bin" -> to dump 15 sectors from starting sector 0 to file data.bin for device with emmc
+- "./edl.py rs 0 15 data.bin --skipresponse" -> to dump 15 sectors from starting sector 0 to file data.bin for device with emmc, ignores missing ACK from phones
 - "./edl.py r boot_a boot.img" -> to dump the partition "boot_a" to the filename boot.img for device with emmc
 - "./edl.py r boot_a,boot_b boot_a.img,boot_b.img" -> to dump multiple partitions to multiple filenames
 - "./edl.py footer footer.bin" -> to dump the crypto footer for Androids with emmc flash
@@ -91,6 +97,12 @@ or
 - "./edl.py pbl pbl.bin" -> To dump pbl (only on EL3 loaders)
 - "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
 
+### QFIL in linux console (credits to LyuOnLine):
+
+- For flashing full image:
+   ```
+   ./qfil.py --log_level info --firehose prog_firehose_lite.elf --rawprogram rawprogram0.xml --patch patch0.xml --imagedir image_dir
+   ```
 
 ## Install EDL loaders
 
@@ -123,7 +135,7 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Tested with
 
-- Oneplus 3T, Oneplus 6T, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
+- Oneplus 3T/5/6T/7T/8, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
 
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.

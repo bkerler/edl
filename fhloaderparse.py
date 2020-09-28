@@ -7,6 +7,7 @@ import hashlib
 import struct
 from shutil import copyfile
 from binascii import hexlify, unhexlify
+from Library.qualcomm_config import *
 
 vendor = {}
 vendor["0000"] = "Qualcomm     "
@@ -33,38 +34,6 @@ vendor["1111"] = "Asus         "
 vendor["143A"] = "Asus         "
 vendor["1978"] = "Blackphone   "
 vendor["2A70"] = "Oxygen       "
-
-hwid = {}
-hwid["000460E1"] = "MSM8953     "  # SnapDragon 625
-hwid["0004F0E1"] = "MSM8937     "  # SnapDragon 430
-hwid["0006B0E1"] = "MSM8940     "
-hwid["000560E1"] = "MSM8917     "  # SnapDragon 425
-hwid["0005F0E1"] = "MSM8996 Pro "  # SnapDragon 821
-hwid["007050E1"] = "MSM8916     "  # SnapDragon 410
-hwid["0072C0E1"] = "MSM8960     "
-# 007B20E100010004 MSM8274 OEM1 Sony, Hash 49109A8016C239CD8F76540FE4D5138C87B2297E49C6B30EC31852330BDDB177
-hwid["007B00E1"] = "MSM8974     "  # Snapdragon 800 Nexus 5
-hwid["007B30E1"] = "MSM8974     "
-hwid[
-    "007B40E1"] = "MSM8974AC   "  # SnapDragon 801, 007B40E100010004, Hash CF19D6FAD8029B66B15246BF3C9D216FC1D2235D87706E0458C7125BB1E436EC
-# hwid["007B80E1"] = "MSM8974AB   "   #HTC M8
-hwid["008050E1"] = "MSM8x26     "  # SnapDragon 400
-hwid["009180E1"] = "MSM8x26/28  "  # SnapDragon 400
-hwid["008110E1"] = "MSM8x10/2   "  # SnapDragon 2x/4x|00
-hwid["008140E1"] = "MSM8x10/2   "  # SnapDragon 2x/4x|00   Lenovo S580
-hwid["0090B0E1"] = "MSM8936/9   "  # SnapDragon 610
-hwid["0091B0E1"] = "MSM8929     "  # SnapDragon 415
-hwid["009400E1"] = "MSM8994     "  # SnapDragon 808 E6833 009400E100040001 setool S1_Boot_MSM8994_LA1.2_114, MSM8994_50
-hwid["009470E1"] = "MSM8996     "  # SnapDragon 820
-hwid["009600E1"] = "MSM8909     "  # SnapDragon 210
-hwid["009690E1"] = "MSM8992     "  # SnapDragon 82x
-hwid["009720E1"] = "MSM8952     "  # SnapDragon 652
-hwid["009900E1"] = "MSM8976     "  # SnapDragon 652
-hwid["009B00E1"] = "MSM8956     "  # SnapDragon 652
-hwid["30020000"] = "MSM8998     "
-hwid["30060000"] = "SDM660      "
-# hwid["006220E1"] = "MSM7227A    "
-
 
 class Signed:
   filename = ''
@@ -95,49 +64,52 @@ def grabtext(data):
 
 
 def extract_hdr(memsection,si,mm,code_size,signature_size):
-    md_size = struct.unpack("<I", mm[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
-    md_offset=memsection.file_start_addr + 0x2C + 0x4
-    major,minor,sw_id,hw_id,oem_id,model_id,app_id=struct.unpack("<IIIIIII",mm[md_offset:md_offset+(7*4)])
-    si.hw_id="%08X" % hw_id
-    si.sw_id = "%08X" % sw_id
-    si.oem_id="%04X" % oem_id
-    si.model_id="%04X" % model_id
-    si.hw_id += si.oem_id + si.model_id
-    si.app_id="%08X" % app_id
-    md_offset+=(7 * 4)
-    v=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-    rot_en=(v >> 0) & 1
-    in_use_soc_hw_version=(v >> 1) & 1
-    use_serial_number_in_signing=(v >> 2) & 1
-    oem_id_independent=(v >> 3) & 1
-    root_revoke_activate_enable=(v >> 4) & 0b11
-    uie_key_switch_enable=(v >> 6) & 0b11
-    debug=(v >> 8) & 0b11
-    md_offset+=4
-    soc_vers=hexlify(mm[md_offset:md_offset + (12*4)])
-    md_offset+=12*4
-    multi_serial_numbers=hexlify(mm[md_offset:md_offset + (8*4)])
-    md_offset += 8 * 4
-    mrc_index=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-    md_offset+=4
-    anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
-
-    signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
     try:
-        if mm[signatureoffset] != 0x30:
-            print("Error on " + si.filename + ", unknown signaturelength")
+        md_size = struct.unpack("<I", mm[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
+        md_offset=memsection.file_start_addr + 0x2C + 0x4
+        major,minor,sw_id,hw_id,oem_id,model_id,app_id=struct.unpack("<IIIIIII",mm[md_offset:md_offset+(7*4)])
+        si.hw_id="%08X" % hw_id
+        si.sw_id = "%08X" % sw_id
+        si.oem_id="%04X" % oem_id
+        si.model_id="%04X" % model_id
+        si.hw_id += si.oem_id + si.model_id
+        si.app_id="%08X" % app_id
+        md_offset+=(7 * 4)
+        v=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        rot_en=(v >> 0) & 1
+        in_use_soc_hw_version=(v >> 1) & 1
+        use_serial_number_in_signing=(v >> 2) & 1
+        oem_id_independent=(v >> 3) & 1
+        root_revoke_activate_enable=(v >> 4) & 0b11
+        uie_key_switch_enable=(v >> 6) & 0b11
+        debug=(v >> 8) & 0b11
+        md_offset+=4
+        soc_vers=hexlify(mm[md_offset:md_offset + (12*4)])
+        md_offset+=12*4
+        multi_serial_numbers=hexlify(mm[md_offset:md_offset + (8*4)])
+        md_offset += 8 * 4
+        mrc_index=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        md_offset+=4
+        anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+
+        signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
+        try:
+            if mm[signatureoffset] != 0x30:
+                print("Error on " + si.filename + ", unknown signaturelength")
+                return None
+        except:
             return None
+        if len(mm) < signatureoffset + 4:
+                print("Signature error on " + si.filename)
+                return None
+        len1 = struct.unpack(">H", mm[signatureoffset + 2:signatureoffset + 4])[0] + 4
+        casignature2offset = signatureoffset + len1
+        len2 = struct.unpack(">H", mm[casignature2offset + 2:casignature2offset + 4])[0] + 4
+        rootsignature3offset = casignature2offset + len2
+        len3 = struct.unpack(">H", mm[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
+        si.pk_hash = hashlib.sha384(mm[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     except:
         return None
-    if len(mm) < signatureoffset + 4:
-            print("Signature error on " + si.filename)
-            return None
-    len1 = struct.unpack(">H", mm[signatureoffset + 2:signatureoffset + 4])[0] + 4
-    casignature2offset = signatureoffset + len1
-    len2 = struct.unpack(">H", mm[casignature2offset + 2:casignature2offset + 4])[0] + 4
-    rootsignature3offset = casignature2offset + len2
-    len3 = struct.unpack(">H", mm[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
-    si.pk_hash = hashlib.sha384(mm[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     return si
 
 
@@ -199,6 +171,62 @@ def extract_old_hdr(memsection,si,mm,code_size,signature_size):
             si.sw_size = signature["SW_SIZE"]
     return si
 
+def convertmsmid(msmid):
+    if int(msmid, 16) in sochw:
+        names = sochw[int(msmid, 16)].split(",")
+        for name in names:
+            for ids in msmids:
+                if msmids[ids] == name:
+                    msmid = hex(ids)[2:].lower()
+                    while (len(msmid) < 8):
+                        msmid = '0' + msmid
+    return msmid
+
+def init_loader_db():
+    loaderdb = {}
+    for (dirpath, dirnames, filenames) in os.walk("Loaders"):
+        for filename in filenames:
+            fn = os.path.join(dirpath, filename)
+            found=False
+            for ext in [".bin",".mbn",".elf"]:
+                if ext in filename[-4:]:
+                    found=True
+                    break
+            if found==False:
+                continue
+            try:
+                hwid = filename.split("_")[0].lower()
+                msmid=hwid[:8]
+                devid=hwid[8:]
+                pkhash = filename.split("_")[1].lower()
+                msmid=convertmsmid(msmid)
+                mhwid=convertmsmid(msmid)+devid
+                if mhwid not in loaderdb:
+                    loaderdb[mhwid] = {}
+                if pkhash not in loaderdb[mhwid]:
+                    loaderdb[mhwid][pkhash] = fn
+                else:
+                    loaderdb[mhwid][pkhash].append(fn)
+            except:
+                continue
+    return loaderdb
+
+def is_duplicate(loaderdb, si):
+    lhash = si.pk_hash[:16].lower()
+    msmid = si.hw_id[:8].lower()
+    devid = si.hw_id[8:].lower()
+    hwid=si.hw_id.lower()
+    rid = (convertmsmid(msmid) + devid).lower()
+    if hwid in loaderdb:
+        loader=loaderdb[hwid]
+        if lhash in loader:
+            return True
+    if rid in loaderdb:
+        loader = loaderdb[rid]
+        if lhash in loader:
+            return True
+    return False
+
 def main(argv):
     f = []
     path = ""
@@ -210,6 +238,8 @@ def main(argv):
         outputdir = argv[2]
         if not os.path.exists(outputdir):
             os.mkdir(outputdir)
+
+    loaderdb=init_loader_db()
     for (dirpath, dirnames, filenames) in walk(path):
         for filename in filenames:
             f.append(os.path.join(dirpath, filename))
@@ -260,15 +290,18 @@ def main(argv):
                 elfheader = elf(mm,si.filename)
                 if 'memorylayout' in dir(elfheader):
                     memsection=elfheader.memorylayout[1]
-                    version=struct.unpack("<I",mm[memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04+0x4])[0]
-                    code_size = \
-                    struct.unpack("<I", mm[memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
-                        0]
-                    signature_size = \
-                    struct.unpack("<I", mm[memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
-                        0]
-                    cert_chain_size=struct.unpack("<I", mm[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[
-                        0]
+                    try:
+                        version=struct.unpack("<I",mm[memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04+0x4])[0]
+                        code_size = \
+                        struct.unpack("<I", mm[memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
+                            0]
+                        signature_size = \
+                        struct.unpack("<I", mm[memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
+                            0]
+                        cert_chain_size=struct.unpack("<I", mm[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[
+                            0]
+                    except:
+                        continue
                     if signature_size==0:
                         print("%s has no signature." % filename)
                         continue
@@ -295,7 +328,8 @@ def main(argv):
     class loaderinfo:
         hw_id=''
         item=''
-
+    if not os.path.exists(os.path.join(outputdir,"Duplicate")):
+        os.mkdir(os.path.join(outputdir,"Duplicate"))
     loaderlists = {}
     for item in sorted_x:
         if item.oem_id!='':
@@ -307,9 +341,16 @@ def main(argv):
             lf.pk_hash=item.pk_hash
             if item.hash not in hashes:
                 if (lf not in loaderlists):
-                    loaderlists[lf]=item.filename
-                    print(info)
-                    copyfile(item.filename,os.path.join(outputdir,lf.hw_id+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
+                    if not is_duplicate(loaderdb, item):
+                        loaderlists[lf]=item.filename
+                        print(info)
+                        msmid = lf.hw_id[:8]
+                        devid = lf.hw_id[8:]
+                        hwid = convertmsmid(msmid) + devid
+                        copyfile(item.filename,os.path.join(outputdir,hwid+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
+                    else:
+                        print("Duplicate: "+info)
+                        copyfile(item.filename,os.path.join(outputdir, "Duplicate", lf.hw_id + "_" + lf.pk_hash[0:16] + "_FHPRG.bin"))
                 else:
                     copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]+"_"+lf.pk_hash[0:16]+"_FHPRG.bin"))
             else:
@@ -329,4 +370,6 @@ def main(argv):
             copyfile(item.filename,os.path.join(outputdir,"unknown",item.filename[item.filename.rfind("\\")+1:]))
 
     rt.close()
+
+
 main(sys.argv)

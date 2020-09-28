@@ -3,6 +3,10 @@ import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
+try:
+    from Library.oppo import oppo
+except Exception as e:
+    pass
 
 logger = logging.getLogger(__name__)
 from queue import Queue
@@ -49,12 +53,15 @@ class qualcomm_firehose:
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, verbose, serial):
+    def __init__(self, cdc, xml, cfg, verbose, oppoprjid, serial, skipresponse):
         self.cdc = cdc
         self.xml = xml
         self.cfg = cfg
         self.pk = None
+        self.ops = None
         self.serial = serial
+        self.oppoprjid = oppoprjid
+        self.skipresponse = skipresponse
         logger.setLevel(verbose)
         if verbose==logging.DEBUG:
             fh = logging.FileHandler('log.txt')
@@ -74,14 +81,14 @@ class qualcomm_firehose:
                 return False
         return True
 
-    def xmlsend(self, data, response=True):
+    def xmlsend(self, data, skipresponse=False):
         self.cdc.write(bytes(data,'utf-8'), self.cfg.MaxXMLSizeInBytes)
         data = bytearray()
         counter = 0
         timeout = 3
         resp = {"value": "NAK"}
         status = False
-        if response:
+        if not skipresponse:
             while b"<response" not in data:
                 try:
                     tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -103,7 +110,8 @@ class qualcomm_firehose:
                 status = self.getstatus(resp)
             except:
                 status = True
-                return [status, data, data]
+                logger.debug("Error on getting xml response:" + data.decode('utf-8'))
+                return [status, {"value": "NAK"}, data]
         else:
             status = True
         return [status, resp, data]
@@ -182,7 +190,7 @@ class qualcomm_firehose:
         data = f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
         if response:
             val = self.xmlsend(data)
-            if val[0]:
+            if val[0] and not b"log value=\"ERROR\"" in val[1]:
                 logger.info(f"{content} succeeded.")
                 return val[2]
             else:
@@ -190,7 +198,7 @@ class qualcomm_firehose:
                 logger.error(f"{val[2]}")
                 return False
         else:
-            self.xmlsend(data, False)
+            self.xmlsend(data, True)
             return True
 
     def cmd_patch(self, physical_partition_number, start_sector, byte_offset, value, size_in_bytes, display=True):
@@ -207,6 +215,10 @@ class qualcomm_firehose:
                f" start_sector=\"{start_sector}\" " + \
                f" value=\"{value}\" "
         data += f"/>\n</data>"
+
+        if self.ops is not None and "setprojmodel" in self.supported_functions:
+            pk, token = self.ops.generatetoken(True)
+            data += f"pk=\"{pk}\" token=\"{token}\" "
 
         rsp = self.xmlsend(data)
         if rsp[0] == True:
@@ -236,6 +248,10 @@ class qualcomm_firehose:
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
+
+            if self.ops is not None and "setprojmodel" in self.supported_functions:
+                pk, token = self.ops.generatetoken(True)
+                data += f"pk=\"{pk}\" token=\"{token}\" "
 
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
@@ -272,15 +288,18 @@ class qualcomm_firehose:
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if "value" in rsp:
-                    if rsp["value"] == "ACK":
-                        return True
+                if not self.skipresponse:
+                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    if "value" in rsp:
+                        if rsp["value"] == "ACK":
+                            return True
+                        else:
+                            logger.error(f"Error:")
+                            for line in info:
+                                logger.error(line)
+                            return False
                     else:
-                        logger.error(f"Error:")
-                        for line in info:
-                            logger.error(line)
-                        return False
+                        return True
                 else:
                     return True
             else:
@@ -303,6 +322,10 @@ class qualcomm_firehose:
                f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\" "
+
+        if self.ops is not None and "setprojmodel" in self.supported_functions:
+            pk, token = self.ops.generatetoken(True)
+            data += f"pk=\"{pk}\" token=\"{token}\" "
 
         data += f"/>\n</data>"
         rsp = self.xmlsend(data)
@@ -366,6 +389,11 @@ class qualcomm_firehose:
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
 
+            if self.ops is not None and "setprojmodel" in self.supported_functions:
+                pk, token = self.ops.generatetoken(True)
+                data += f"pk=\"{pk}\" token=\"{token}\" "
+            data += f"/>\n</data>"
+
             rsp = self.xmlsend(data)
             empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
             pos = 0
@@ -411,14 +439,19 @@ class qualcomm_firehose:
         if display:
             logger.info(
                 f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-        with open(filename, "wb") as wf:
-            wr = asyncwriter(wf)
+        with open(filename, "wb") as wr:
+            #wr = asyncwriter(wf)
             data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\"/>\n</data>"
-            rsp = self.xmlsend(data)
+            rsp = self.xmlsend(data,self.skipresponse)
             if rsp[0]:
+                if "value" in rsp[1]:
+                    if rsp[1]["value"] == "NAK":
+                        if display:
+                            logger.error(rsp[2].decode('utf-8'))
+                        return b""
                 bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = bytesToRead
                 dataread = 0
@@ -441,7 +474,7 @@ class qualcomm_firehose:
                 # time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                wr.stop()
+                #wr.stop()
                 if "value" in rsp:
                     if rsp["value"] == "ACK":
                         return tmp
@@ -449,12 +482,12 @@ class qualcomm_firehose:
                         logger.error(f"Error:")
                         for line in info:
                             logger.error(line)
-                        return ""
+                        return b""
                 else:
                     return tmp
             else:
                 logger.error(f"Error:{rsp[1]}")
-                return ""
+                return b""
 
     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         if display:
@@ -465,7 +498,7 @@ class qualcomm_firehose:
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\"/>\n</data>"
 
-        rsp = self.xmlsend(data)
+        rsp = self.xmlsend(data,self.skipresponse)
         resData = bytearray()
         if rsp[0]:
             if "value" in rsp[1]:
@@ -503,6 +536,8 @@ class qualcomm_firehose:
                     for line in info:
                         logger.error(line)
                     return b""
+            else:
+                return resData
         else:
             logger.error(f"Error:{rsp[2]}")
             return b""
@@ -569,10 +604,30 @@ class qualcomm_firehose:
                         break
                 except:
                     break
+            supfunc=False
             if info==[]:
                 info=self.cmd_nop()
-            supfunc = False
-            self.supported_functions = ['program','write','read','patch']
+            if info==[]:
+                logger.info("No supported functions detected, configuring qc generic commands")
+                self.supported_functions = ['configure','program','firmwarewrite','patch','setbootablestoragedrive','ufs','emmc','power','benchmark','read','getstorageinfo','getcrc16digest','getsha256digest','erase','peek','poke','nop','xml']
+            else:
+                self.supported_functions = []
+                for line in info:
+                    if "chip serial num" in line.lower():
+                        logger.info(line)
+                        try:
+                            serial = line.split("0x")[1][:-1]
+                            self.serial = int(serial,16)
+                        except:
+                            serial = line.split(": ")[2]
+                            self.serial = int(serial.split(" ")[0])
+                    if supfunc and "end of supported functions" not in line.lower():
+                        rs = line.replace("\n", "")
+                        if rs != "":
+                            self.supported_functions.append(rs)
+                    if "supported functions" in line.lower():
+                        supfunc = True
+
             '''
             self.supported_functions = []
             for line in info:
@@ -591,6 +646,10 @@ class qualcomm_firehose:
                 if "supported functions" in line.lower():
                     supfunc = True
             '''
+        try:
+            self.ops = oppo(self,projid=self.oppoprjid, serials=[self.serial, self.serial])
+        except Exception as e:
+            self.ops = None
         data=self.cdc.read() #logbuf
         try:
             logger.info(data.decode('utf-8'))
@@ -644,20 +703,23 @@ class qualcomm_firehose:
                 logger.warning("Couldn't detect Version")
         else:
             if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
-                self.cfg.MemoryName = rsp[1]["MemoryName"]
-                self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
-                self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
-                self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
-                self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
-                self.cfg.TargetName = rsp[1]["TargetName"]
-                if "MSM" not in self.cfg.TargetName:
-                    self.cfg.TargetName = "MSM" + self.cfg.TargetName
-                self.cfg.Version = rsp[1]["Version"]
-                if lvl == 0:
-                    return self.connect(lvl + 1)
-                else:
-                    logger.error(f"Error:{rsp}")
-                    exit(0)
+                try:
+                    self.cfg.MemoryName = rsp[1]["MemoryName"]
+                    self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
+                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
+                    self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
+                    self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+                    self.cfg.TargetName = rsp[1]["TargetName"]
+                    if "MSM" not in self.cfg.TargetName:
+                        self.cfg.TargetName = "MSM" + self.cfg.TargetName
+                    self.cfg.Version = rsp[1]["Version"]
+                    if lvl == 0:
+                        return self.connect(lvl + 1)
+                    else:
+                        logger.error(f"Error:{rsp}")
+                        exit(0)
+                except:
+                    pass
         logger.info(f"TargetName={self.cfg.TargetName}")
         logger.info(f"MemoryName={self.cfg.MemoryName}")
         logger.info(f"Version={self.cfg.Version}")
@@ -864,6 +926,26 @@ class qualcomm_firehose:
             if self.cmd_poke(destaddress, data):
                 return True
         return False
+
+    def cmd_setprojmodel(self):
+        if self.ops is not None:
+            pk, token = self.ops.generatetoken(False)
+            self.pk = pk
+            data = "<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+            return self.cmd_rawxml(data,False)
+        else:
+            print("Setprojmodel command isn't yet implemented")
+            return False
+
+    def cmd_demacia(self):
+        if self.ops is not None:
+            pk, token = self.ops.demacia()
+            self.pk = pk
+            data = "<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+            return self.cmd_rawxml(data,False)
+        else:
+            print("Demacia command isn't yet implemented")
+            return False
 
     def cmd_rawxml(self, data, response=True):
         if response:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.
+# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2020.
 # Licensed under MIT License
 """
 Usage:
@@ -9,21 +9,21 @@ Usage:
     edl.py [--debugmode]
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py gpt <filename> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py peekdword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py peekqword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -36,14 +36,15 @@ Usage:
     edl.py secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py getstorageinfo [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py send <command> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py getstorageinfo [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
     edl.py reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py ops <mode> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
@@ -90,6 +91,7 @@ Options:
     --sectorsize=bytes                 Set default sector size [default: 0x200]
     --memory=memtype                   Set memory type (EMMC or UFS) [default: eMMC]
     --skipwrite                        Do not allow any writes to flash (simulate only)
+    --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
     --debugmode                        Enable verbose mode
     --gpt-num-part-entries=number      Set GPT entry count [default: 0]
@@ -98,6 +100,7 @@ Options:
     --tcpport=portnumber               Set port for tcp server [default:1340]
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
+    --prjid=projid                     Enable prjid mode
 """
 from docopt import docopt
 args = docopt(__doc__, version='EDL 2.1')
@@ -107,229 +110,13 @@ from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara
 from Library.firehose import qualcomm_firehose
 from Library.streaming import qualcomm_streaming
+from Library.qualcomm_config import *
 from struct import unpack, pack
 from Library.xmlparser import xmlparser
 logger = logging.getLogger(__name__)
 
-print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2019.")
+print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2020.")
 
-
-msmids = {
-    0x009440E1: "2432",  # 7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x006220E1: "MSM7227A",
-    0x009680E1: "APQ8009",
-    0x007060E1: "APQ8016",
-    0x008040E1: "APQ8026",
-    0x000550E1: "APQ8017",
-    0x0090C0E1: "APQ8036",
-    0x0090F0E1: "APQ8037",
-    0x0090D0E1: "APQ8039",
-    0x009770E1: "APQ8052",
-    0x000660E1: "APQ8053",
-    0x009F00E1: "APQ8056",
-    0x007190E1: "APQ8064",
-    0x009D00E1: "APQ8076",
-    0x009000E1: "APQ8084",
-    0x009300E1: "APQ8092",
-    0x000620E1: "APQ8098",
-    0x008110E1: "MSM8210",
-    0x008140E1: "MSM8212",
-    0x008120E1: "MSM8610",
-    0x008150E1: "MSM8612",
-    0x008010E1: "MSM8626",
-    0x000940E1: "MSM8905",
-    0x009600E1: "MSM8909",
-    0x007050E1: "MSM8916",
-    0x000560E1: "MSM8917",
-    0x000860E1: "MSM8920",
-    0x008050E1: "MSM8926",
-    0x009180E1: "MSM8928",
-    0x0091B0E1: "MSM8929",
-    0x007210E1: "MSM8930",
-    0x0072C0E1: "MSM8930",
-    # 0x000000E1: "MSM8936",
-    0x0004F0E1: "MSM8937",
-    0x0090B0E1: "MSM8939",  # 7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x0006B0E1: "MSM8940",
-    0x009720E1: "MSM8952",  # 0x9B00E1
-    0x000460E1: "MSM8953",
-    0x009B00E1: "MSM8956",
-    0x009100E1: "MSM8962",
-    0x007B00E1: "MSM8974",
-    0x007B40E1: "MSM8974AB",
-    0x007B80E1: "MSM8974Pro",
-    0x007BC0E1: "MSM8974ABv3",
-    0x006B10E1: "MSM8974AC",
-    0x009900E1: "MSM8976",
-    0x009690E1: "MSM8992",
-    0x009400E1: "MSM8994",
-    0x009470E1: "MSM8996",
-    0x0006F0E1: "MSM8996AU",
-    0x1006F0E1: "MSM8996AU",
-    0x4006F0E1: "MSM8996AU",
-    0x0005F0E1: "MSM8996Pro",
-    0x0005E0E1: "MSM8998",
-    0x0094B0E1: "MSM9055",
-    0x009730E1: "MDM9206",
-    0x000480E1: "MDM9207",
-    0x0004A0E1: "MDM9607",
-    0x007F50E1: "MDM9x25",
-    0x009500E1: "MDM9x40",
-    0x009540E1: "MDM9x45",
-    0x009210E1: "MDM9x35",
-    0x000320E1: "MDM9250",
-    0x000340E1: "MDM9255",
-    0x000390E1: "MDM9350",
-    0x0003A0E1: "MDM9650",
-    0x0003B0E1: "MDM9655",
-    0x0007D0E1: "MDM9x60",
-    0x0007F0E1: "MDM9x65",
-    0x008090E1: "MDM9916",
-    0x0080B0E1: "MDM9955",
-    0x000BE0E1: "SDM429",
-    0x000BF0E1: "SDM439",
-    0x0009A0E1: "SDM450",
-    0x000AC0E1: "SDM630",  # 0x30070x00 #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000BA0E1: "SDM632",
-    0x000BB0E1: "SDA632",
-    0x000CC0E1: "SDM636",
-    0x0008C0E1: "SDM660",  # 0x30060000
-    0x000910E1: "SDM670",  # 0x60040100
-    0x000930E1: "SDA670",  # 0x60040100
-    # 0x000930E1: "SDA835", # 0x30020000 => HW_ID1 3002000000290022
-    0x0008B0E1: "SDM845",  # 0x60000100 => HW_ID1 6000000000010000
-    0x000A50E1: "SDM855"
-}
-
-infotbl = {
-    "2432": [[], [0x01900000, 0x100000], []],
-    "APQ8009": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8016": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8017": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8036": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8037": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8039": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8053": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8056": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8076": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8084": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "APQ8092": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "APQ8098": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "MSM7227A": [[], [], []],
-    "MSM8210": [[], [], []],
-    "MSM8212": [[], [], []],
-    "MSM8905": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8909": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8916": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8917": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8920": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8926": [[], [], []],
-    "MSM8928": [[], [], []],
-    "MSM8929": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8930": [[0x100000, 0x18000], [0x700000, 0x1000], []],
-    "MSM8936": [[0x100000, 0x18000], [0x700000, 0x1000], []],
-    "MSM8937": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8939": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8940": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8952": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8953": [[0x100000, 0x18000], [0xA0000, 0x1000], [0x200000, 0x24000]],
-    "MSM8956": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8974": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974Pro": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974AB": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974ABv3": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974AC": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8976": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8992": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6FFF], [0xFE800000, 0x24000]],
-    "MSM8994": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6FFF], [0xFE800000, 0x24000]],
-    "MSM8996": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8996AU": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8996Pro": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8998": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "MSM9206": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM9207": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9250": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9350": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM9607": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9650": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x50": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM429": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM439": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM450": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM632": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDA632": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM630": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM636": [[0x300000, 0x3c000], [0x780000, 0x10000], [0x14009003, 0x24000]],
-    "SDM660": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM670": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDA670": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM845": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-}
-
-secureboottbl = {
-    "2432": 0x019018c8,
-    # "MSM7227A":[[], [], []],
-    # "MSM8210": [[], [], []],
-    # "MSM8212":
-    "APQ8009": 0x00058098,
-    "APQ8036": 0x00058098,
-    "APQ8039": 0x00058098,
-    "APQ8037": 0x000a01d0,
-    "APQ8053": 0x000a01d0,
-    "APQ8052": 0x00058098,
-    "APQ8056": 0x000a01d0,
-    "APQ8076": 0x000a01d0,
-    "APQ8084": 0xFC4B83E8,
-    "APQ8092": 0xFC4B83E8,
-    "APQ8098": 0x00780350,
-    "MSM8226": 0xFC4B83E8,
-    "MSM8610": 0xFC4B83E8,
-    "MSM8909": 0x00058098,
-    "MSM8916": 0x00058098,
-    "MSM8917": 0x000A01D0,
-    "MSM8920": 0x000A01D0,
-    # "MSM8926": [[], [], []],
-    # "MSM8928": [[], [], []],
-    "MSM8929": 0x00058098,
-    "MSM8930": 0x700310,
-    "MSM8936": 0x700310,
-    "MSM8937": 0x000A01D0,
-    "MSM8939": 0x00058098,
-    "MSM8940": 0x000A01D0,
-    "MSM8952": 0x00058098,
-    "MSM8953": 0x000a01d0,
-    "MSM8956": 0x000a01d0,
-    "MSM8974": 0xFC4B83F8,
-    "MSM8974AB": 0xFC4B83F8,
-    "MSM8974ABv3": 0xFC4B83F8,
-    "MSM8974AC": 0xFC4B83F8,
-    "MSM8976": 0x000a01d0,
-    "MSM8992": 0xFC4B83F8,
-    "MSM8994": 0xFC4B83F8,
-    "MSM8996": 0x00070378,
-    "MSM8996AU": 0x00070378,
-    "MSM8996Pro": 0x00070378,
-    "MSM8998": 0x00780350,
-    "MDM9206": 0x000a01d0,
-    "MDM9207": 0x000a01d0,
-    "MDM9250": 0x000a01d0,
-    "MDM9350": 0x000a01d0,
-    "MDM9607": 0x000a01d0,
-    "MDM9650": 0x000a01d0,
-    "MDM9x50": 0x000a01d0,
-    "SDM429": 0x000a01d0,
-    "SDM439": 0x000a01d0,
-    "SDM450": 0x000a01d0,
-    # "SDM636": 0x70378,
-    "SDM630": 0x00780350,
-    "SDM632": 0x000a01d0,
-    "SDA632": 0x000a01d0,
-    "SDM636": 0x00780350,
-    "SDM660": 0x00780350,
-    "SDM670": 0x00780350,
-    "SDA670": 0x00780350,
-    "SDM845": 0x00780350
-}
 
 
 def check_cmd(supported_funcs, func):
@@ -378,7 +165,7 @@ def main():
         if resp == -1:
             logger.error("USB desync, please rerun command !")
             exit(0)
-
+    #print((mode, resp))
     if mode == "sahara":
         if "mode" in resp:
             mode = resp["mode"]
@@ -399,6 +186,7 @@ def main():
                             print("Successfully uploaded programmer :)")
                 else:
                     print("Device is in an unknown sahara state")
+                    print("resp={0}".format(resp))
                     exit(0)
         else:
             print("Device is in an unknown state")
@@ -452,7 +240,7 @@ def handle_streaming(args, cdc, sahara, verbose):
     fh = qualcomm_streaming(cdc, sahara, verbose)
 
 
-def do_firehose_server(mainargs, cdc, sahara):
+def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = mainargs["--memory"]
     cfg.ZLPAwareHost = 1
@@ -461,7 +249,7 @@ def do_firehose_server(mainargs, cdc, sahara):
     cfg.MaxPayloadSizeToTargetInBytes = int(mainargs["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(mainargs["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose, oppoprojid, sahara.serial, skipresponse)
     supported_functions = fh.connect(0)
     TargetName = "Unknown"
     if "hwid" in dir(sahara):
@@ -584,7 +372,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't readi GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         fh.cmd_read(lun, 0, guid_gpt.totalsectors, filename)
@@ -694,7 +482,7 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2",
@@ -703,10 +491,13 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         for partition in guid_gpt.partentries:
                                             if partition.name in pnames:
                                                 response = "<ACK>\n" + f"Detected partition: {partition.name}\n"
-                                                data = fh.cmd_read_buffer(lun, partition.sector + (
-                                                            partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
-                                                                          (0x4000 // cfg.SECTOR_SIZE_IN_BYTES),
-                                                                          filename)
+                                                if partition.name in ["userdata2","userdata"]:
+                                                    data = fh.cmd_read_buffer(lun, partition.sector + (
+                                                                partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
+                                                                              (0x4000 // cfg.SECTOR_SIZE_IN_BYTES),
+                                                                              filename)
+                                                else:
+                                                    data = fh.cmd_read_buffer(lun, partition.sector,(0x4000 // cfg.SECTOR_SIZE_IN_BYTES),filename)
                                                 if data==b"":
                                                     continue
                                                 val = struct.unpack("<I", data[:4])[0]
@@ -944,10 +735,18 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                               int(mainargs["--gpt-part-entry-size"]),
                                                               int(mainargs["--gpt-part-entry-start-lba"]))
                                         if guid_gpt is None:
-                                            response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                            response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
                                             found = False
+                                            if fh.oppoprjid is not None and fh.ops is not None:
+                                                if fh.oppoprjid != "":
+                                                    if "demacia" in fh.supported_functions:
+                                                        if not fh.ops.run(True):
+                                                            exit(0)
+                                                    elif "setprojmodel" in fh.supported_functions:
+                                                        if not fh.ops.run(False):
+                                                            exit(0)
                                             for partition in guid_gpt.partentries:
                                                 if partition.name == partitionname:
                                                     found = True
@@ -975,6 +774,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -993,6 +800,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -1010,10 +825,18 @@ def do_firehose_server(mainargs, cdc, sahara):
                                                           int(mainargs["--gpt-part-entry-size"]),
                                                           int(mainargs["--gpt-part-entry-start-lba"]))
                                     if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't reading GPT Table"
+                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         found = False
+                                        if fh.oppoprjid is not None and fh.ops is not None:
+                                            if fh.oppoprjid != "":
+                                                if "demacia" in fh.supported_functions:
+                                                    if not fh.ops.run(True):
+                                                        exit(0)
+                                                elif "setprojmodel" in fh.supported_functions:
+                                                    if not fh.ops.run(False):
+                                                        exit(0)
                                         for partition in guid_gpt.partentries:
                                             if partition.name == partitionname:
                                                 fh.cmd_erase(lun, partition.sector, partition.sectors)
@@ -1031,6 +854,14 @@ def do_firehose_server(mainargs, cdc, sahara):
                                     lun = int(arguments[0])
                                     start = int(arguments[1])
                                     sectors = int(arguments[2])
+                                    if fh.oppoprjid is not None and fh.ops is not None:
+                                        if fh.oppoprjid != "":
+                                            if "demacia" in fh.supported_functions:
+                                                if not fh.ops.run(True):
+                                                    exit(0)
+                                            elif "setprojmodel" in fh.supported_functions:
+                                                if not fh.ops.run(False):
+                                                    exit(0)
                                     fh.cmd_erase(lun, start, sectors)
                                     print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
                                     connection.sendall(bytes(response, 'utf-8'))
@@ -1096,7 +927,24 @@ def handle_firehose(arguments, cdc, sahara, verbose):
     cfg.MaxPayloadSizeToTargetInBytes = int(arguments["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,sahara.serial)
+    oppoprojid = ""
+    skipresponse=False
+    if "--skipresponse" in arguments:
+        if arguments["--skipresponse"]:
+            skipresponse=True
+    if "--prjid" in arguments:
+        if arguments["--prjid"] is not None:
+            oppoprojid=arguments["--prjid"]
+            try:
+                from Library.oppo import convert_projid
+                oppoprojid = convert_projid(oppoprojid)
+                if oppoprojid == -1:
+                    logger.error("Oppo project id is not supported, ask for support :)")
+                    exit(0)
+            except:
+                print("Sorry, no oppo supported, please remove prjid argument.")
+                exit(0)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,oppoprojid,sahara.serial,skipresponse)
     supported_functions = fh.connect(0)
     funcs="Supported functions:\n-----------------\n"
     for function in supported_functions:
@@ -1108,7 +956,8 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         hwid = sahara.hwid >> 32
         if hwid in msmids:
             TargetName = msmids[hwid]
-
+        elif hwid in sochw:
+            TargetName = sochw[hwid].split(",")[0]
     if arguments["gpt"]:
         luns = getluns(arguments)
         directory = arguments["<directory>"]
@@ -1126,13 +975,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if guid_gpt is None:
                 break
             else:
-                with open(sfilename,"wb") as wf:
+                with open(sfilename, "wb") as wf:
                     wf.write(data)
 
                 print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
                 sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename,"wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES*2:])
+                with open(sfilename, "wb") as wf:
+                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
                 print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
@@ -1350,10 +1199,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         logger.error(f"Error: Couldn't detect footer partition.")
         exit(0)
     elif arguments["rs"]:
-        lun = int(arguments["--lun"])
+        if arguments["--lun"]!='None':
+            lun = int(arguments["--lun"])
+        else:
+            lun=0
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors>"])
-        filename = arguments["<filename"]
+        filename = arguments["<filename>"]
         data = fh.cmd_read_buffer(lun, start, sectors, filename)
         with open(filename, "wb") as wf:
             wf.write(data)
@@ -1487,6 +1339,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if sectors > partition.sectors:
                 logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                 exit(0)
+            if fh.oppoprjid is not None and fh.ops is not None:
+                if fh.oppoprjid != "":
+                    if "demacia" in fh.supported_functions:
+                        if not fh.ops.run(True):
+                            exit(0)
+                    elif "setprojmodel" in fh.supported_functions:
+                        if not fh.ops.run(False):
+                            exit(0)
             if fh.cmd_program(lun, partition.sector, filename):
                 print(f"Wrote {filename} to sector {str(partition.sector)}.")
             else:
@@ -1514,6 +1374,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             logger.error(f"Error: Couldn't find directory: {directory}")
             exit(0)
         filenames = []
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         for dirName, subdirList, fileList in os.walk(directory):
             for fname in fileList:
                 filenames.append(os.path.join(dirName, fname))
@@ -1551,6 +1419,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
@@ -1563,6 +1439,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         if not os.path.exists(filename):
             logger.error(f"Error: Couldn't find file: {filename}")
             exit(0)
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
@@ -1577,6 +1461,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if guid_gpt is None:
                 break
             else:
+                if fh.oppoprjid is not None and fh.ops is not None:
+                    if fh.oppoprjid != "":
+                        if "demacia" in fh.supported_functions:
+                            if not fh.ops.run(True):
+                                exit(0)
+                        elif "setprojmodel" in fh.supported_functions:
+                            if not fh.ops.run(False):
+                                exit(0)
                 if "partentries" in dir(guid_gpt):
                     for partition in guid_gpt.partentries:
                         if partition.name == partitionname:
@@ -1594,6 +1486,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         lun = int(arguments["--lun"])
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors"])
+        if fh.oppoprjid is not None and fh.ops is not None:
+            if fh.oppoprjid != "":
+                if "demacia" in fh.supported_functions:
+                    if not fh.ops.run(True):
+                        exit(0)
+                elif "setprojmodel" in fh.supported_functions:
+                    if not fh.ops.run(False):
+                        exit(0)
         fh.cmd_erase(lun, start, sectors)
         print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
         exit(0)
@@ -1610,7 +1510,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         print(resp)
         exit(0)
     elif arguments["server"]:
-        do_firehose_server(arguments, cdc, sahara)
+        do_firehose_server(arguments, cdc, sahara,oppoprojid,verbose,skipresponse)
         exit(0)
     elif arguments["oemunlock"]:
         partition = "config"
@@ -1632,6 +1532,51 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                 for rpartition in fpartitions[lun]:
                     if arguments["--memory"].lower() == "emmc":
                         logger.error("\t" + rpartition)
+                    else:
+                        logger.error(lun + ":\t" + rpartition)
+        exit(0)
+    elif arguments["ops"]:
+        if fh.ops==None:
+            logger.error("Feature is not supported")
+            exit(0)
+        partition = "param"
+        mode=arguments["<mode>"]
+        enable=False
+        if mode=="enable":
+            enable=True
+        elif mode=="disable":
+            enable=False
+        else:
+            logger.error("Unknown mode given. Available are: enable, disable.")
+            exit(0)
+        res=detect_partition(fh, arguments, partition)
+        if res[0]==True:
+            lun=res[1]
+            rpartition=res[2]
+            paramdata=fh.cmd_read_buffer(lun,rpartition.sector,rpartition.sectors,False)
+            if paramdata==b"":
+                logger.error("Error on reading param partition.")
+                exit(1)
+            paramdata=fh.ops.enable_ops(paramdata,enable)
+            if fh.oppoprjid is not None and fh.ops is not None:
+                if fh.oppoprjid != "":
+                    if "demacia" in fh.supported_functions:
+                        if not fh.ops.run(True):
+                            exit(0)
+                    elif "setprojmodel" in fh.supported_functions:
+                        if not fh.ops.run(False):
+                            exit(0)
+            if fh.cmd_program_buffer(lun,rpartition.sector,paramdata,False):
+                print("Successfully set mode")
+            else:
+                logger.error("Error on writing param partition")
+        else:
+            fpartitions=res[1]
+            logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+            for lun in fpartitions:
+                for rpartition in fpartitions[lun]:
+                    if arguments["--memory"].lower() == "emmc":
+                        logger.error("\t"+rpartition)
                     else:
                         logger.error(lun + ":\t" + rpartition)
         exit(0)

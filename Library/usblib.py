@@ -33,6 +33,18 @@ USB_RECIP_RPIPE=0x05
 
 tag=0
 
+CDC_CMDS = {
+    "SEND_ENCAPSULATED_COMMAND": 0x00,
+    "GET_ENCAPSULATED_RESPONSE": 0x01,
+    "SET_COMM_FEATURE": 0x02,
+    "GET_COMM_FEATURE": 0x03,
+    "CLEAR_COMM_FEATURE": 0x04,
+    "SET_LINE_CODING": 0x20,
+    "GET_LINE_CODING": 0x21,
+    "SET_CONTROL_LINE_STATE": 0x22,
+    "SEND_BREAK": 0x23,   # wValue is break time
+}
+
 class usb_class():
 
     def __init__(self,vid=0x05c6, pid=0x9008, interface=-1, devclass=-1, verbose=10):
@@ -62,6 +74,65 @@ class usb_class():
         self.configuration = self.device.get_active_configuration()
         logger.debug(2, self.configuration)
         return self.configuration.bNumInterfaces
+
+    def setLineCoding(self, baudrate=None, parity=None,databits=None, stopbits=None):
+        sbits = {1: 0, 1.5: 1, 2: 2}
+        dbits = {5, 6, 7, 8, 16}
+        pmodes = {0, 1, 2, 3, 4}
+        brates = {300, 600, 1200, 2400, 4800, 9600, 14400,
+                  19200, 28800, 38400, 57600, 115200, 230400}
+
+        if stopbits is not None:
+            if stopbits not in sbits.keys():
+                valid = ", ".join(str(k) for k in sorted(sbits.keys()))
+                raise ValueError("Valid stopbits are " + valid)
+            self.stopbits = stopbits
+        else:
+            self.stopbits =0
+
+        if databits is not None:
+            if databits not in dbits:
+                valid = ", ".join(str(d) for d in sorted(dbits))
+                raise ValueError("Valid databits are " + valid)
+            self.databits = databits
+        else:
+            self.databits=0
+
+        if parity is not None:
+            if parity not in pmodes:
+                valid = ", ".join(str(pm) for pm in sorted(pmodes))
+                raise ValueError("Valid parity modes are " + valid)
+            self.parity = parity
+        else:
+            self.parity=0
+
+        if baudrate is not None:
+            if baudrate not in brates:
+                brs = sorted(brates)
+                dif = [abs(br - baudrate) for br in brs]
+                best = brs[dif.index(min(dif))]
+                raise ValueError(
+                    "Invalid baudrates, nearest valid is {}".format(best))
+            self.baudrate = baudrate
+
+        linecode = [
+                self.baudrate & 0xff,
+                (self.baudrate >> 8) & 0xff,
+                (self.baudrate >> 16) & 0xff,
+                (self.baudrate >> 24) & 0xff,
+                sbits[self.stopbits],
+                self.parity,
+                self.databits]
+
+        txdir = 0           # 0:OUT, 1:IN
+        req_type = 1        # 0:std, 1:class, 2:vendor
+        recipient = 1       # 0:device, 1:interface, 2:endpoint, 3:other
+        req_type = (txdir << 7) + (req_type << 5) + recipient
+        data=bytearray(linecode)
+        wlen = self.device.ctrl_transfer(
+                req_type, CDC_CMDS["SET_LINE_CODING"],
+                data_or_wLength=data, wIndex=1)
+        logger.debug("Linecoding set, {}b sent".format(wlen))
 
     def connect(self, EP_IN=-1, EP_OUT=-1):
         if self.connected==True:

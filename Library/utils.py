@@ -10,7 +10,12 @@ import struct
 import os
 import shutil
 import stat
-
+try:
+    from capstone import *
+    from keystone import *
+except:
+    print("Capstone and Keystone libraries missing.")
+    
 def del_rw(action, name, exc):
     os.chmod(name, stat.S_IWRITE)
     os.remove(name)
