@@ -97,6 +97,9 @@ or
 - "./edl.py pbl pbl.bin" -> To dump pbl (only on EL3 loaders)
 - "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
 
+### For generic unlocking
+- "./edl.py modules oemunlock" -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
+
 ### QFIL in linux console (credits to LyuOnLine):
 
 - For flashing full image:
@@ -135,7 +138,10 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Tested with
 
-- Oneplus 3T/5/6T/7T/8, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
+- Oneplus 3T/5/6T/7T, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
+
+## Contributions
+- We need an implementation of the VIP Programming, functions addprogram and addpatch should be used (as a Module in Modules)
 
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.

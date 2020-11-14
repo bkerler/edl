@@ -2,7 +2,73 @@ import sys
 import struct
 import logging
 
-logging.basicConfig(level=logging.INFO,format="%(name)s - %(message)s")
+class log_class:
+    def __init__(self,level=logging.INFO,filename="log.txt"):
+        self.level=level
+        logging.basicConfig(level=self.level, format="%(name)s - %(message)s")
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(level)
+        if level==logging.DEBUG:
+            if os.path.exists(filename):
+                os.remove(filename)
+            fh = logging.FileHandler(filename)
+            self.logger.addHandler(fh)
+
+    def getlevel(self):
+        return self.level
+
+    def setlevel(self,level):
+        self.level=level
+        return self.logger.setLevel(level)
+
+    def decoder(self,data):
+        if isinstance(data,bytes) or isinstance(data,bytearray):
+            if data[:5]==b"<?xml":
+                try:
+                    rdata = ""
+                    for line in data.split(b"\n"):
+                        try:
+                            rdata += line.decode('utf-8')+"\n"
+                        except:
+                            rdata += hexlify(line).decode('utf-8')+"\n"
+                    return rdata
+                except:
+                    pass
+        return data
+
+    def verify_data(self,data,pre="RX:"):
+        if isinstance(data,bytes) or isinstance(data,bytearray):
+            if data[:5]==b"<?xml":
+                try:
+                    rdata = b""
+                    for line in data.split(b"\n"):
+                        try:
+                            self.logger.debug(pre + line.decode('utf-8'))
+                            rdata += line+b"\n"
+                        except:
+                            v = hexlify(line)
+                            self.logger.debug(pre + v.decode('utf-8'))
+                    return rdata
+                except:
+                    pass
+            if logging.DEBUG >= logging.root.level:
+                self.logger.debug(pre+hexlify(data).decode('utf-8'))
+        else:
+            if logging.DEBUG >= logging.root.level:
+                self.logger.debug(pre+data)
+        return data
+
+    def debug(self,info):
+        return self.logger.debug(info)
+
+    def info(self,info):
+        return self.logger.info(info)
+
+    def error(self,info):
+        return self.logger.error(info)
+
+    def warning(self,info):
+        return self.logger.warning(info)
 
 import codecs
 from binascii import hexlify, unhexlify

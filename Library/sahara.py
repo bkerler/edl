@@ -1,7 +1,7 @@
 import binascii
 import time
 from Library.utils import *
-from Library.qualcomm_config import *
+from Config.qualcomm_config import *
 logger = logging.getLogger(__name__)
 
 class qualcomm_sahara():

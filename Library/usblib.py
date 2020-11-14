@@ -9,7 +9,7 @@ import time
 import inspect
 import platform
 import logging
-logger = logging.getLogger(__name__)
+from Library.utils import *
 
 USB_DIR_OUT=0		# to device
 USB_DIR_IN=0x80		# to host
@@ -47,32 +47,26 @@ CDC_CMDS = {
 
 class usb_class():
 
-    def __init__(self,vid=0x05c6, pid=0x9008, interface=-1, devclass=-1, verbose=10):
+    def __init__(self,vid=0x05c6, pid=0x9008, interface=-1, devclass=-1, log=None):
         self.vid=vid
         self.pid=pid
         self.interface=interface
-        logger.setLevel(verbose)
-        if verbose==logging.DEBUG:
-            fh = logging.FileHandler('log.txt')
-            fh.setLevel(logging.DEBUG)
-            logger.addHandler(fh)
-            # ch = logging.StreamHandler()
-            # ch.setLevel(logging.ERROR)
         self.connected=False
         self.devclass=devclass
         self.timeout=None
+        self.log=log
 
     def getInterfaceCount(self):
         self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if self.device is None:
-            logger.debug("Couldn't detect the device. Is it connected ?")
+            self.log.debug("Couldn't detect the device. Is it connected ?")
             return False
         try:
             self.device.set_configuration()
         except:
             pass
         self.configuration = self.device.get_active_configuration()
-        logger.debug(2, self.configuration)
+        self.log.debug(2, self.configuration)
         return self.configuration.bNumInterfaces
 
     def setLineCoding(self, baudrate=None, parity=None,databits=None, stopbits=None):
@@ -132,7 +126,7 @@ class usb_class():
         wlen = self.device.ctrl_transfer(
                 req_type, CDC_CMDS["SET_LINE_CODING"],
                 data_or_wLength=data, wIndex=1)
-        logger.debug("Linecoding set, {}b sent".format(wlen))
+        self.log.debug("Linecoding set, {}b sent".format(wlen))
 
     def connect(self, EP_IN=-1, EP_OUT=-1):
         if self.connected==True:
@@ -140,7 +134,7 @@ class usb_class():
             self.connected=False
         self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
         if self.device is None:
-            logger.debug("Couldn't detect the device. Is it connected ?")
+            self.log.debug("Couldn't detect the device. Is it connected ?")
             return False
         try:
             self.device.set_configuration()
@@ -158,7 +152,7 @@ class usb_class():
                     self.interface=interfacenum
                     break
 
-        logger.debug(self.configuration)
+        self.log.debug(self.configuration)
         if self.interface>self.configuration.bNumInterfaces:
             print("Invalid interface, max number is %d" % self.configuration.bNumInterfaces)
             return False
@@ -166,10 +160,10 @@ class usb_class():
             itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
             try:
                 if self.device.is_kernel_driver_active(self.interface):
-                    logger.debug("Detaching kernel driver")
+                    self.log.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
             except:
-                logger.debug("No kernel driver supported.")
+                self.log.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
             if EP_OUT==-1:
@@ -224,18 +218,12 @@ class usb_class():
                     if i==5:
                         return False
                     pass
-        try:
-            logger.debug("TX: "+command.decode('utf-8'))
-        except:
-            try:
-                logger.debug("TX: "+hexlify(command).decode('utf-8'))
-            except:
-                logger.debug("TX: "+command)
+        self.log.verify_data(bytearray(command),"TX:")
         return True
 
     def read(self,length=0x80000, timeout=None):
         tmp=b''
-        logger.debug(inspect.currentframe().f_back.f_code.co_name+":"+hex(length))
+        self.log.debug(inspect.currentframe().f_back.f_code.co_name+":"+hex(length))
         if timeout==None:
             timeout=self.timeout
         while (bytearray(tmp) == b''):
@@ -250,8 +238,8 @@ class usb_class():
                         #if platform.system()=='Windows':
                             #time.sleep(0.05)
                         #print("Waiting...")
-                        logger.debug("Timed out")
-                        logger.debug(tmp)
+                        self.log.debug("Timed out")
+                        self.log.debug(tmp)
                         return bytearray(tmp)
                     elif e.errno != None:
                         print(repr(e), type(e), e.errno)
@@ -259,10 +247,7 @@ class usb_class():
                         raise(e)
                     else:
                         break
-        try:
-            logger.debug("RX: "+tmp.decode('utf-8'))
-        except:
-            logger.debug("RX: "+hexlify(tmp).decode('utf-8'))
+        self.log.verify_data(bytearray(tmp), "RX:")
         return bytearray(tmp)
 
     def ctrl_transfer(self,bmRequestType,bRequest,wValue,wIndex,data_or_wLength):

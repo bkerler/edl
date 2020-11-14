@@ -9,19 +9,19 @@ Usage:
     edl.py [--debugmode]
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -39,12 +39,11 @@ Usage:
     edl.py getstorageinfo [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
-    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py oemunlock [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py ops <mode> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--prjid=projid]
+    edl.py modules <command> <options> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
 
 Description:
     server [--tcpport=portnumber]                                                # Run tcp/ip server
@@ -100,8 +99,9 @@ Options:
     --tcpport=portnumber               Set port for tcp server [default:1340]
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
-    --prjid=projid                     Enable prjid mode
+    --devicemodel=value                Set device model [default: ""]
 """
+
 from docopt import docopt
 args = docopt(__doc__, version='EDL 2.1')
 import time
@@ -110,10 +110,9 @@ from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara
 from Library.firehose import qualcomm_firehose
 from Library.streaming import qualcomm_streaming
-from Library.qualcomm_config import *
+from Config.qualcomm_config import *
 from struct import unpack, pack
 from Library.xmlparser import xmlparser
-logger = logging.getLogger(__name__)
 
 print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2020.")
 
@@ -127,43 +126,45 @@ def check_cmd(supported_funcs, func):
             return True
     return False
 
+log=None
 
 def main():
+    global log
     mode = ""
     loop = 0
     vid = int(args["--vid"], 16)
     pid = int(args["--pid"], 16)
-    verbose=logger.level
+
+    filename="log.txt"
     if args["--debugmode"]:
-        verbose=logging.DEBUG
-        logger.setLevel(verbose)
-        fh = logging.FileHandler('log.txt')
-        fh.setLevel(logging.DEBUG)
-        logger.addHandler(fh)
+        log = log_class(logging.DEBUG, filename)
         # ch = logging.StreamHandler()
         # ch.setLevel(logging.ERROR)
+    else:
+        log = log_class(logging.INFO, filename)
 
-    cdc = usb_class(vid=vid, pid=pid, verbose=verbose)
+
+    cdc = usb_class(vid=vid, pid=pid, log=log)
     sahara = qualcomm_sahara(cdc)
 
     if args["--loader"] == 'None':
-        logger.info("Trying with no loader given ...")
+        log.info("Trying with no loader given ...")
         sahara.programmer = None
     else:
         loader = args["--loader"]
-        logger.info(f"Using loader {loader} ...")
+        log.info(f"Using loader {loader} ...")
         with open(loader, "rb") as rf:
             sahara.programmer = rf.read()
 
-    logger.info("Waiting for the device")
+    log.info("Waiting for the device")
     resp = None
     cdc.timeout = 100
-    logger.debug("Ohuh")
+    log.debug("Ohuh")
     mode, resp = doconnect(cdc, loop, mode, resp, sahara)
     if resp == -1:
         mode, resp = doconnect(cdc, loop, mode, resp, sahara)
         if resp == -1:
-            logger.error("USB desync, please rerun command !")
+            log.error("USB desync, please rerun command !")
             exit(0)
     #print((mode, resp))
     if mode == "sahara":
@@ -196,11 +197,11 @@ def main():
 
     if mode == "firehose":
         cdc.timeout = None
-        handle_firehose(args, cdc, sahara, verbose)
+        handle_firehose(args, cdc, sahara, log)
     elif mode == "nandprg" or mode == "enandprg":
-        handle_streaming(args, cdc, sahara, verbose)
+        handle_streaming(args, cdc, sahara, log)
     else:
-        logger.error("Sorry, couldn't talk to Sahara, please reboot the device !")
+        log.error("Sorry, couldn't talk to Sahara, please reboot the device !")
         exit(0)
 
     exit(0)
@@ -218,7 +219,7 @@ def doconnect(cdc, loop, mode, resp, sahara):
             time.sleep(1)
             sys.stdout.flush()
         else:
-            logger.info("Device detected :)")
+            log.info("Device detected :)")
             try:
                 mode, resp = sahara.connect()
                 if mode == "" or resp == -1:
@@ -227,20 +228,20 @@ def doconnect(cdc, loop, mode, resp, sahara):
                 if mode == "" or resp == -1:
                     mode, resp = sahara.connect()
             if mode == "":
-               logger.info("Unknown mode. Aborting.")
+               log.info("Unknown mode. Aborting.")
                cdc.close()
                exit(0)
-            logger.info(f"Mode detected: {mode}")
+            log.info(f"Mode detected: {mode}")
             break
 
     return mode, resp
 
 
-def handle_streaming(args, cdc, sahara, verbose):
-    fh = qualcomm_streaming(cdc, sahara, verbose)
+def handle_streaming(args, cdc, sahara, log):
+    fh = qualcomm_streaming(cdc, sahara, log)
 
 
-def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
+def do_firehose_server(mainargs, cdc, sahara,projid,log,skipresponse):
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = mainargs["--memory"]
     cfg.ZLPAwareHost = 1
@@ -249,7 +250,7 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
     cfg.MaxPayloadSizeToTargetInBytes = int(mainargs["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(mainargs["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose, oppoprojid, sahara.serial, skipresponse)
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, log, projid, sahara.serial, skipresponse,getluns(mainargs))
     supported_functions = fh.connect(0)
     TargetName = "Unknown"
     if "hwid" in dir(sahara):
@@ -739,14 +740,8 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
                                             connection.sendall(bytes(response, 'utf-8'))
                                         else:
                                             found = False
-                                            if fh.oppoprjid is not None and fh.ops is not None:
-                                                if fh.oppoprjid != "":
-                                                    if "demacia" in fh.supported_functions:
-                                                        if not fh.ops.run(True):
-                                                            exit(0)
-                                                    elif "setprojmodel" in fh.supported_functions:
-                                                        if not fh.ops.run(False):
-                                                            exit(0)
+                                            if fh.modules is not None:
+                                                fh.modules.prerun()
                                             for partition in guid_gpt.partentries:
                                                 if partition.name == partitionname:
                                                     found = True
@@ -774,14 +769,8 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        if fh.oppoprjid is not None and fh.ops is not None:
-                                            if fh.oppoprjid != "":
-                                                if "demacia" in fh.supported_functions:
-                                                    if not fh.ops.run(True):
-                                                        exit(0)
-                                                elif "setprojmodel" in fh.supported_functions:
-                                                    if not fh.ops.run(False):
-                                                        exit(0)
+                                        if fh.modules is not None:
+                                            fh.modules.prerun()
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -800,14 +789,8 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
                                         response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
-                                        if fh.oppoprjid is not None and fh.ops is not None:
-                                            if fh.oppoprjid != "":
-                                                if "demacia" in fh.supported_functions:
-                                                    if not fh.ops.run(True):
-                                                        exit(0)
-                                                elif "setprojmodel" in fh.supported_functions:
-                                                    if not fh.ops.run(False):
-                                                        exit(0)
+                                        if fh.modules is not None:
+                                            fh.modules.prerun()
                                         if fh.cmd_program(lun, start, filename):
                                             response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
                                             connection.sendall(bytes(response, 'utf-8'))
@@ -829,14 +812,8 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
                                         connection.sendall(bytes(response, 'utf-8'))
                                     else:
                                         found = False
-                                        if fh.oppoprjid is not None and fh.ops is not None:
-                                            if fh.oppoprjid != "":
-                                                if "demacia" in fh.supported_functions:
-                                                    if not fh.ops.run(True):
-                                                        exit(0)
-                                                elif "setprojmodel" in fh.supported_functions:
-                                                    if not fh.ops.run(False):
-                                                        exit(0)
+                                        if fh.modules is not None:
+                                            fh.modules.prerun()
                                         for partition in guid_gpt.partentries:
                                             if partition.name == partitionname:
                                                 fh.cmd_erase(lun, partition.sector, partition.sectors)
@@ -854,14 +831,8 @@ def do_firehose_server(mainargs, cdc, sahara,oppoprojid,verbose,skipresponse):
                                     lun = int(arguments[0])
                                     start = int(arguments[1])
                                     sectors = int(arguments[2])
-                                    if fh.oppoprjid is not None and fh.ops is not None:
-                                        if fh.oppoprjid != "":
-                                            if "demacia" in fh.supported_functions:
-                                                if not fh.ops.run(True):
-                                                    exit(0)
-                                            elif "setprojmodel" in fh.supported_functions:
-                                                if not fh.ops.run(False):
-                                                    exit(0)
+                                    if fh.modules is not None:
+                                        fh.modules.prerun()
                                     fh.cmd_erase(lun, start, sectors)
                                     print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
                                     connection.sendall(bytes(response, 'utf-8'))
@@ -900,25 +871,7 @@ def getluns(argument):
         luns = [0]
     return luns
 
-def detect_partition(fh, arguments, partitionname):
-    luns = getluns(arguments)
-    fpartitions = {}
-    for lun in luns:
-        lunname = "Lun" + str(lun)
-        fpartitions[lunname] = []
-        data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
-                                    int(arguments["--gpt-part-entry-size"]),
-                                    int(arguments["--gpt-part-entry-start-lba"]))
-        if guid_gpt is None:
-            break
-        else:
-            for partition in guid_gpt.partentries:
-                fpartitions[lunname].append(partition.name)
-                if partition.name == partitionname:
-                    return [True,lun,partition]
-    return [False,fpartitions]
-
-def handle_firehose(arguments, cdc, sahara, verbose):
+def handle_firehose(arguments, cdc, sahara, log):
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = arguments["--memory"]
     cfg.ZLPAwareHost = 1
@@ -927,30 +880,21 @@ def handle_firehose(arguments, cdc, sahara, verbose):
     cfg.MaxPayloadSizeToTargetInBytes = int(arguments["--maxpayload"], 16)
     cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
     cfg.bit64 = sahara.bit64
-    oppoprojid = ""
+    projid = ""
     skipresponse=False
     if "--skipresponse" in arguments:
         if arguments["--skipresponse"]:
             skipresponse=True
-    if "--prjid" in arguments:
-        if arguments["--prjid"] is not None:
-            oppoprojid=arguments["--prjid"]
-            try:
-                from Library.oppo import convert_projid
-                oppoprojid = convert_projid(oppoprojid)
-                if oppoprojid == -1:
-                    logger.error("Oppo project id is not supported, ask for support :)")
-                    exit(0)
-            except:
-                print("Sorry, no oppo supported, please remove prjid argument.")
-                exit(0)
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, verbose,oppoprojid,sahara.serial,skipresponse)
+    if "--devicemodel" in arguments:
+        if arguments["--devicemodel"] is not None:
+            devicemodel=arguments["--devicemodel"]
+    fh = qualcomm_firehose(cdc, xmlparser(), cfg, log,devicemodel,sahara.serial,skipresponse,getluns(arguments))
     supported_functions = fh.connect(0)
     funcs="Supported functions:\n-----------------\n"
     for function in supported_functions:
         funcs+=function+","
     funcs=funcs[:-1]
-    logger.info(funcs)
+    log.info(funcs)
     TargetName = fh.cfg.TargetName
     if "hwid" in dir(sahara):
         hwid = sahara.hwid >> 32
@@ -1004,13 +948,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         filenames = filename.split(",")
         partitions=partitionname.split(",")
         if len(partitions)!=len(filenames):
-            logger.error("You need to gives as many filenames as given partitions.")
+            log.error("You need to gives as many filenames as given partitions.")
             exit(0)
         i=0
         for partition in partitions:
             partfilename=filenames[i]
             i+=1
-            res=detect_partition(fh, arguments, partition)
+            res=fh.detect_partition(arguments, partition)
             if res[0]==True:
                 lun=res[1]
                 rpartition=res[2]
@@ -1018,13 +962,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                 print(f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} as {partfilename}.")
             else:
                 fpartitions=res[1]
-                logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+                log.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                 for lun in fpartitions:
                     for rpartition in fpartitions[lun]:
                         if arguments["--memory"].lower() == "emmc":
-                            logger.error("\t"+rpartition)
+                            log.error("\t"+rpartition)
                         else:
-                            logger.error(lun + ":\t" + rpartition)
+                            log.error(lun + ":\t" + rpartition)
         exit(0)
     elif arguments["rl"]:
         directory = arguments["<directory>"]
@@ -1070,7 +1014,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                     if partition.name in skip:
                         continue
                     filename = os.path.join(storedir, partitionname + ".bin")
-                    logging.info(
+                    log.info(
                         f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}.")
                     fh.cmd_read(lun, partition.sector, partition.sectors, filename)
         exit(0)
@@ -1093,7 +1037,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["pbl"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             filename = arguments["<filename>"]
@@ -1104,14 +1048,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                         print(f"Dumped pbl at offset {hex(v[0][0])} as {filename}.")
                         exit(0)
                 else:
-                    logger.error("No known pbl offset for this chipset")
+                    log.error("No known pbl offset for this chipset")
             else:
-                logger.error("Unknown target chipset")
-            logger.error("Error on dumping pbl")
+                log.error("Unknown target chipset")
+            log.error("Error on dumping pbl")
         exit(0)
     elif arguments["qfp"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             filename = arguments["<filename>"]
@@ -1122,14 +1066,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                         print(f"Dumped qfprom at offset {hex(v[1][0])} as {filename}.")
                         exit(0)
                 else:
-                    logger.error("No known qfprom offset for this chipset")
+                    log.error("No known qfprom offset for this chipset")
             else:
-                logger.error("Unknown target chipset")
-            logger.error("Error on dumping qfprom")
+                log.error("Unknown target chipset")
+            log.error("Error on dumping qfprom")
         exit(0)
     elif arguments["secureboot"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             if TargetName in secureboottbl:
@@ -1151,11 +1095,11 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                 else:
                     print("Secure boot disabled.")
             else:
-                logger.error("Unknown target chipset")
+                log.error("Unknown target chipset")
         exit(0)
     elif arguments["memtbl"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             filename = arguments["<filename>"]
@@ -1166,10 +1110,10 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                         print(f"Dumped memtbl at offset {hex(v[2][0])} as {filename}.")
                         exit(0)
                 else:
-                    logger.error("No known memtbl offset for this chipset")
+                    log.error("No known memtbl offset for this chipset")
             else:
-                logger.error("Unknown target chipset")
-            logger.error("Error on dumping memtbl")
+                log.error("Unknown target chipset")
+            log.error("Error on dumping memtbl")
         exit(0)
     elif arguments["footer"]:
         luns = getluns(arguments)
@@ -1196,7 +1140,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                                 wf.write(data)
                                 print(f"Dumped footer from {partition.name} as {filename}.")
                                 exit(0)
-        logger.error(f"Error: Couldn't detect footer partition.")
+        log.error(f"Error: Couldn't detect footer partition.")
         exit(0)
     elif arguments["rs"]:
         if arguments["--lun"]!='None':
@@ -1211,11 +1155,11 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             wf.write(data)
             print(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
             exit(0)
-        logger.error(f"Error: Couldn't open {filename} for writing.")
+        log.error(f"Error: Couldn't open {filename} for writing.")
         exit(0)
     elif arguments["peek"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1225,7 +1169,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["peekhex"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1236,7 +1180,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["peekqword"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1246,7 +1190,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["peekdword"]:
         if not check_cmd(supported_functions, "peek"):
-            logger.error("Peek command isn't supported by edl loader")
+            log.error("Peek command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1256,7 +1200,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["poke"]:
         if not check_cmd(supported_functions, "poke"):
-            logger.error("Poke command isn't supported by edl loader")
+            log.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1265,7 +1209,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["pokehex"]:
         if not check_cmd(supported_functions, "poke"):
-            logger.error("Poke command isn't supported by edl loader")
+            log.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1279,7 +1223,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["pokeqword"]:
         if not check_cmd(supported_functions, "poke"):
-            logger.error("Poke command isn't supported by edl loader")
+            log.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1290,7 +1234,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["pokedword"]:
         if not check_cmd(supported_functions, "poke"):
-            logger.error("Poke command isn't supported by edl loader")
+            log.error("Poke command isn't supported by edl loader")
             exit(0)
         else:
             offset = int(arguments["<offset>"], 16)
@@ -1304,21 +1248,21 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         exit(0)
     elif arguments["nop"]:
         if not check_cmd(supported_functions, "nop"):
-            logger.error("Nop command isn't supported by edl loader")
+            log.error("Nop command isn't supported by edl loader")
             exit(0)
         else:
             print(fh.cmd_nop())
         exit(0)
     elif arguments["setbootablestoragedrive"]:
         if not check_cmd(supported_functions, "setbootablestoragedrive"):
-            logger.error("setbootablestoragedrive command isn't supported by edl loader")
+            log.error("setbootablestoragedrive command isn't supported by edl loader")
             exit(0)
         else:
             fh.cmd_setbootablestoragedrive(int(arguments["<lun>"]))
         exit(0)
     elif arguments["getstorageinfo"]:
         if not check_cmd(supported_functions, "getstorageinfo"):
-            logger.error("getstorageinfo command isn't supported by edl loader")
+            log.error("getstorageinfo command isn't supported by edl loader")
             exit(0)
         else:
             fh.cmd_getstorageinfo()
@@ -1327,9 +1271,9 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         partitionname = arguments["<partitionname>"]
         filename = arguments["<filename>"]
         if not os.path.exists(filename):
-            logger.error(f"Error: Couldn't find file: {filename}")
+            log.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        res=detect_partition(fh, arguments, partitionname)
+        res=fh.detect_partition(arguments, partitionname)
         if res[0]==True:
             lun=res[1]
             partition=res[2]
@@ -1337,16 +1281,10 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                 sectors += 1
             if sectors > partition.sectors:
-                logger.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                log.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                 exit(0)
-            if fh.oppoprjid is not None and fh.ops is not None:
-                if fh.oppoprjid != "":
-                    if "demacia" in fh.supported_functions:
-                        if not fh.ops.run(True):
-                            exit(0)
-                    elif "setprojmodel" in fh.supported_functions:
-                        if not fh.ops.run(False):
-                            exit(0)
+            if fh.modules is not None:
+                fh.modules.prerun()
             if fh.cmd_program(lun, partition.sector, filename):
                 print(f"Wrote {filename} to sector {str(partition.sector)}.")
             else:
@@ -1354,13 +1292,13 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             exit(0)
         else:
             fpartitions=res[1]
-            logger.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+            log.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
             for lun in fpartitions:
                 for partition in fpartitions[lun]:
                     if arguments["--memory"].lower() == "emmc":
-                        logger.error("\t"+partition)
+                        log.error("\t"+partition)
                     else:
-                        logger.error(lun + ":\t" + partition)
+                        log.error(lun + ":\t" + partition)
         exit(0)
     elif arguments["wl"]:
         directory = arguments["<directory>"]
@@ -1371,17 +1309,11 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         luns = getluns(arguments)
 
         if not os.path.exists(directory):
-            logger.error(f"Error: Couldn't find directory: {directory}")
+            log.error(f"Error: Couldn't find directory: {directory}")
             exit(0)
         filenames = []
-        if fh.oppoprjid is not None and fh.ops is not None:
-            if fh.oppoprjid != "":
-                if "demacia" in fh.supported_functions:
-                    if not fh.ops.run(True):
-                        exit(0)
-                elif "setprojmodel" in fh.supported_functions:
-                    if not fh.ops.run(False):
-                        exit(0)
+        if fh.modules is not None:
+            fh.modules.prerun()
         for dirName, subdirList, fileList in os.walk(directory):
             for fname in fileList:
                 filenames.append(os.path.join(dirName, fname))
@@ -1404,7 +1336,7 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                                 if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                                     sectors += 1
                                 if sectors > partition.sectors:
-                                    logger.error(
+                                    log.error(
                                         f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                                     exit(0)
                                 print(f"Writing {filename} to partition {str(partition.name)}.")
@@ -1417,40 +1349,28 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         start = int(arguments["<start_sector>"])
         filename = arguments["<filename>"]
         if not os.path.exists(filename):
-            logger.error(f"Error: Couldn't find file: {filename}")
+            log.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        if fh.oppoprjid is not None and fh.ops is not None:
-            if fh.oppoprjid != "":
-                if "demacia" in fh.supported_functions:
-                    if not fh.ops.run(True):
-                        exit(0)
-                elif "setprojmodel" in fh.supported_functions:
-                    if not fh.ops.run(False):
-                        exit(0)
+        if fh.modules is not None:
+            fh.modules.prerun()
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
-            logger.error(f"Error on writing {filename} to sector {str(start)}")
+            log.error(f"Error on writing {filename} to sector {str(start)}")
         exit(0)
     elif arguments["wf"]:
         lun = int(arguments["--lun"])
         start = 0
         filename = arguments["<filename>"]
         if not os.path.exists(filename):
-            logger.error(f"Error: Couldn't find file: {filename}")
+            log.error(f"Error: Couldn't find file: {filename}")
             exit(0)
-        if fh.oppoprjid is not None and fh.ops is not None:
-            if fh.oppoprjid != "":
-                if "demacia" in fh.supported_functions:
-                    if not fh.ops.run(True):
-                        exit(0)
-                elif "setprojmodel" in fh.supported_functions:
-                    if not fh.ops.run(False):
-                        exit(0)
+        if fh.modules is not None:
+            fh.modules.prerun()
         if fh.cmd_program(lun, start, filename):
             print(f"Wrote {filename} to sector {str(start)}.")
         else:
-            logger.error(f"Error on writing {filename} to sector {str(start)}")
+            log.error(f"Error on writing {filename} to sector {str(start)}")
         exit(0)
     elif arguments["e"]:
         luns = getluns(arguments)
@@ -1461,14 +1381,8 @@ def handle_firehose(arguments, cdc, sahara, verbose):
             if guid_gpt is None:
                 break
             else:
-                if fh.oppoprjid is not None and fh.ops is not None:
-                    if fh.oppoprjid != "":
-                        if "demacia" in fh.supported_functions:
-                            if not fh.ops.run(True):
-                                exit(0)
-                        elif "setprojmodel" in fh.supported_functions:
-                            if not fh.ops.run(False):
-                                exit(0)
+                if fh.modules is not None:
+                    fh.modules.prerun()
                 if "partentries" in dir(guid_gpt):
                     for partition in guid_gpt.partentries:
                         if partition.name == partitionname:
@@ -1480,20 +1394,14 @@ def handle_firehose(arguments, cdc, sahara, verbose):
                 else:
                     print("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
                     exit(0)
-        logger.error(f"Error: Couldn't detect partition: {partitionname}")
+        log.error(f"Error: Couldn't detect partition: {partitionname}")
         exit(0)
     elif arguments["es"]:
         lun = int(arguments["--lun"])
         start = int(arguments["<start_sector>"])
         sectors = int(arguments["<sectors"])
-        if fh.oppoprjid is not None and fh.ops is not None:
-            if fh.oppoprjid != "":
-                if "demacia" in fh.supported_functions:
-                    if not fh.ops.run(True):
-                        exit(0)
-                elif "setprojmodel" in fh.supported_functions:
-                    if not fh.ops.run(False):
-                        exit(0)
+        if fh.modules is not None:
+            fh.modules.prerun()
         fh.cmd_erase(lun, start, sectors)
         print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
         exit(0)
@@ -1510,78 +1418,18 @@ def handle_firehose(arguments, cdc, sahara, verbose):
         print(resp)
         exit(0)
     elif arguments["server"]:
-        do_firehose_server(arguments, cdc, sahara,oppoprojid,verbose,skipresponse)
+        do_firehose_server(arguments, cdc, sahara,devicemodel,log,skipresponse)
         exit(0)
-    elif arguments["oemunlock"]:
-        partition = "config"
-        res=detect_partition(fh, arguments, partition)
-        if res[0]==True:
-            lun=res[1]
-            rpartition=res[2]
-            offsettopatch=0x7FFFF
-            sector=rpartition.sector + (offsettopatch//cfg.SECTOR_SIZE_IN_BYTES)
-            offset=offsettopatch%cfg.SECTOR_SIZE_IN_BYTES
-            value=0x1
-            size_in_bytes=1
-            if fh.cmd_patch(lun, sector, offset, value, size_in_bytes, True):
-                print(f"Patched sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
-        else:
-            fpartitions=res[1]
-            logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
-            for lun in fpartitions:
-                for rpartition in fpartitions[lun]:
-                    if arguments["--memory"].lower() == "emmc":
-                        logger.error("\t" + rpartition)
-                    else:
-                        logger.error(lun + ":\t" + rpartition)
-        exit(0)
-    elif arguments["ops"]:
-        if fh.ops==None:
-            logger.error("Feature is not supported")
+    elif arguments["modules"]:
+        command = arguments["<command>"]
+        options = arguments["<options>"]
+        if fh.modules==None:
+            log.error("Feature is not supported")
             exit(0)
-        partition = "param"
-        mode=arguments["<mode>"]
-        enable=False
-        if mode=="enable":
-            enable=True
-        elif mode=="disable":
-            enable=False
         else:
-            logger.error("Unknown mode given. Available are: enable, disable.")
-            exit(0)
-        res=detect_partition(fh, arguments, partition)
-        if res[0]==True:
-            lun=res[1]
-            rpartition=res[2]
-            paramdata=fh.cmd_read_buffer(lun,rpartition.sector,rpartition.sectors,False)
-            if paramdata==b"":
-                logger.error("Error on reading param partition.")
-                exit(1)
-            paramdata=fh.ops.enable_ops(paramdata,enable)
-            if fh.oppoprjid is not None and fh.ops is not None:
-                if fh.oppoprjid != "":
-                    if "demacia" in fh.supported_functions:
-                        if not fh.ops.run(True):
-                            exit(0)
-                    elif "setprojmodel" in fh.supported_functions:
-                        if not fh.ops.run(False):
-                            exit(0)
-            if fh.cmd_program_buffer(lun,rpartition.sector,paramdata,False):
-                print("Successfully set mode")
-            else:
-                logger.error("Error on writing param partition")
-        else:
-            fpartitions=res[1]
-            logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
-            for lun in fpartitions:
-                for rpartition in fpartitions[lun]:
-                    if arguments["--memory"].lower() == "emmc":
-                        logger.error("\t"+rpartition)
-                    else:
-                        logger.error(lun + ":\t" + rpartition)
-        exit(0)
+            fh.modules.run(mainargs=arguments,command=command,args=options)
     else:
-        logger.error("Unknown/Missing command, a command is required.")
+        log.error("Unknown/Missing command, a command is required.")
         exit(0)
 
 

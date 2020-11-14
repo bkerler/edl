@@ -6,8 +6,8 @@ from os import walk
 import hashlib
 import struct
 from shutil import copyfile
-from binascii import hexlify, unhexlify
-from Library.qualcomm_config import *
+from binascii import hexlify
+from Config.qualcomm_config import *
 
 vendor = {}
 vendor["0000"] = "Qualcomm     "
