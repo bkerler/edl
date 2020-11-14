@@ -824,8 +824,8 @@ class qualcomm_firehose:
                 xdata = f"<?xml version=\"1.0\" ?><data><poke address64=\"{str(address + pos)}\" SizeInBytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
                 self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
                 addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                if b'<response' in addrinfo and 'NAK' in addrinfo:
-                    print(f"Error:{addrinfo}")
+                if (b'<response' in addrinfo and 'NAK' in addrinfo) or b"Invalid parameters" in addrinfo:
+                    self.log.error(f"Error:{addrinfo}")
                     return
             if (b"address" in addrinfo and b"can\'t" in addrinfo):
                 tmp = b""
@@ -880,8 +880,8 @@ class qualcomm_firehose:
             data = f"<?xml version=\"1.0\" ?><data><peek address64=\"{hex(address)}\" SizeInBytes=\"{hex(SizeInBytes)}\" /></data>"
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if b'<response' in addrinfo and 'NAK' in addrinfo:
-                print(f"Error:{addrinfo}")
+            if (b'<response' in addrinfo and 'NAK' in addrinfo) or b"Invalid parameters" in addrinfo:
+                self.log.error(f"Error:{addrinfo}")
                 return
         if (b"address" in addrinfo and b"can\'t" in addrinfo):
             tmp = b""
