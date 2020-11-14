@@ -18,7 +18,7 @@
 - sudo sudo apt install liblzma-dev
 
 Linux/Windows: 
-- "python -m pip install -r requirements.txt"
+- "python -m pip install -r requirements.txt" (use python3 instead of python if you use python2 and python3)
 
 Windows:
 - Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows,
