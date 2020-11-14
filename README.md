@@ -143,6 +143,9 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 ## Contributions
 - We need an implementation of the VIP Programming, functions addprogram and addpatch should be used (as a Module in Modules)
 
+## Report issues 
+- Please run using the option --debugmode and then commit an issue and attach the "log.txt" file
+
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.
 
