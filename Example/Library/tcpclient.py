@@ -23,7 +23,10 @@ class tcpclient():
                 if data[0] == "<ACK>":
                     print(data[1])
                 else:
-                    print("Error: " + data[1])
+                    if len(data)>1:
+                        print("Error: " + data[1])
+                    else:
+                        print("Unknown error !")
         finally:
             print("closing socket")
             self.sock.close()

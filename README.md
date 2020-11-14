@@ -40,7 +40,7 @@ or
 ### Generic
 
 - "./edl.py -h" -> to see help with all options
-- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
+- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see Example/tcpclient.py for an example client
 - "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
 - "./edl.py reset" -> To reboot the phone
 - "./edl.py rawxml <xmlstring>' -> To send own xml string, example : 
