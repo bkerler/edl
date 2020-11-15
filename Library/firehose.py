@@ -238,7 +238,7 @@ class qualcomm_firehose:
                 self.log.info(rsp[1])
             return True
         else:
-            self.log.warning("Patch command isn't supported.")
+            self.log.error(f"Error:{rsp}")
             return False
 
 
