@@ -80,7 +80,7 @@ class modules():
             else:
                 self.log.error("A devicemodel is needed for this command")
                 exit(0)
-        elif command["oemunlock"]:
+        elif command=="oemunlock":
             partition = "config"
             res=self.fh.detect_partition(mainargs, partition)
             if res[0]==True:
@@ -93,6 +93,8 @@ class modules():
                 size_in_bytes=1
                 if self.fh.cmd_patch(lun, sector, offset, value, size_in_bytes, True):
                     print(f"Patched sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
+                else:
+                	print(f"Error on writing sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
             else:
                 fpartitions=res[1]
                 self.log.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
