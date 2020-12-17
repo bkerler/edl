@@ -57,8 +57,32 @@ class ColorFormatter(logging.Formatter):
         # now we can let standart formatting take care of the rest
         return super(ColorFormatter, self).format(new_record, *args, **kwargs)
 
+def getluns(memory):
+    luns = []
+    if not memory == "emmc":
+        for i in range(0, 99):
+            luns.append(i)
+    else:
+        luns = [0]
+    return luns
+
+def find_bootable_partition(rawprogram):
+    part = -1
+    for xml in rawprogram:
+        fl = open(xml, "r")
+        for evt, elem in ET.iterparse(fl, events=["end"]):
+            if elem.tag == "program":
+                label = elem.get("label")
+                if label in [ 'xbl', 'xbl_a', 'sbl1' ]:
+                    if part != -1:
+                        log.error("[FIREHOSE] multiple bootloader found!")
+                        return -1
+                    part = elem.get("physical_partition_number")
+
+    return part
 
 if __name__ == '__main__':
+    global log
     parser = argparse.ArgumentParser(description="Qualcomm QFIL tools")
     parser.add_argument("--vid", "-V", type=lambda x: int(x, 16),
                         default=0x05c6, help="usb vendor id, default is 0x05c6.")
@@ -80,69 +104,45 @@ if __name__ == '__main__':
     log_level = {"warn": logging.WARN, "info": logging.INFO,
                  "debug": logging.DEBUG}[args.log_level]
 
-    LOG_CONFIG = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "root": {
-                "()": ColorFormatter,
-                "format": "%(message)s",
-            }
-        },
-        "handlers": {
-            "root": {
-                "level": log_level,
-                "formatter": "root",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            }
-        },
-        "loggers": {
-            "": {
-                "handlers": ["root"],
-                "level": log_level,
-                "propagate": False
-            }
-        },
-    }
-    logging.config.dictConfig(LOG_CONFIG)
+    filename="log.txt"
+    log = log_class(log_level, filename)
 
-    logging.info("[INFO] firehose image: %s" % args.firehose)
-    logging.info("[INFO] rawprogram files: %s" % str(args.rawprogram))
-    logging.info("[INFO] patch files: %s" % str(args.patch))
-    logging.info("[INFO] USB device 0x%04x:0x%04x" % (args.vid, args.pid))
-    cdc = usb_class(vid=args.vid, pid=args.pid)
+    log.info("[INFO] firehose image: %s" % args.firehose)
+    log.info("[INFO] rawprogram files: %s" % str(args.rawprogram))
+    log.info("[INFO] patch files: %s" % str(args.patch))
+    log.info("[INFO] USB device 0x%04x:0x%04x" % (args.vid, args.pid))
+    cdc = usb_class(vid=args.vid, pid=args.pid, log=log)
     cdc.timeout = 100
     sahara = qualcomm_sahara(cdc)
 
-    logging.info("[USB] waiting for device connecting...")
+    log.info("[USB] waiting for device connecting...")
     while True:
         if cdc.connect():
             break
         else:
             time.sleep(1)
 
-    logging.info("[SAHARA] reading firehose images.")
+    log.info("[SAHARA] reading firehose images.")
     fl = open(args.firehose, "rb")
     sahara.programmer = fl.read()
     fl.close()
 
-    logging.info("[SAHARA] connecting...")
+    log.info("[SAHARA] connecting...")
     sahara.connect()
 
-    logging.info("[SAHARA] reading sahara info, hwid, sn, sbl version...")
+    log.info("[SAHARA] reading sahara info, hwid, sn, sbl version...")
     sahara.info()
 
-    logging.info("[SAHARA] entering image tx mode...")
+    log.info("[SAHARA] entering image tx mode...")
     sahara.connect()
 
-    logging.info("[SAHARA] upload firehose image...")
+    log.info("[SAHARA] upload firehose image...")
     m = sahara.upload_loader()
     if not m:
-        logging.error("[ERROR] update firehose image failed!")
+        log.error("[ERROR] update firehose image failed!")
         sys.exit(1)
 
-    logging.info("[FIREHOSE] waiting connecting...")
+    log.info("[FIREHOSE] waiting connecting...")
     cfg = qualcomm_firehose.cfg()
     cfg.MemoryName = args.memory
     cfg.ZLPAwareHost = 1
@@ -152,14 +152,14 @@ if __name__ == '__main__':
     cfg.SECTOR_SIZE_IN_BYTES = 512
     cfg.bit64 = True
     fh = qualcomm_firehose(cdc, xmlparser(), cfg,
-                           log_level, None, sahara.serial,args.skipresponse)
+                           log, None, sahara.serial,args.skipresponse, getluns(args.memory))
     supported_functions = fh.connect(0)
-    logging.info("[FIREHOSE] connected ok. supported functions: %s" %
+    log.info("[FIREHOSE] connected ok. supported functions: %s" %
                  supported_functions)
 
-    logging.info("[FIREHOSE] raw programming...")
+    log.info("[FIREHOSE] raw programming...")
     for xml in args.rawprogram:
-        logging.info("[FIREHOSE] programming %s" % xml)
+        log.info("[FIREHOSE] programming %s" % xml)
         fl = open(xml, "r")
         for evt, elem in ET.iterparse(fl, events=["end"]):
             if elem.tag == "program":
@@ -167,34 +167,43 @@ if __name__ == '__main__':
                     filename = os.path.join(
                         args.imagedir, elem.get("filename"))
                     if not os.path.isfile(filename):
-                        logging.error("[ERROR] %s not existed!" % filename)
+                        log.error("[ERROR] %s not existed!" % filename)
                         sys.exit(1)
                     partition_number = elem.get("physical_partition_number")
                     start_sector = elem.get("start_sector")
-                    logging.info("[FIREHOSE] programming {filename} to partition({partition})@sector({start_sector})...".format(
+                    log.info("[FIREHOSE] programming {filename} to partition({partition})@sector({start_sector})...".format(
                         filename=filename, partition=partition_number, start_sector=start_sector))
                     fh.cmd_program(partition_number, start_sector, filename)
-    logging.info("[FIREHOSE] raw programming ok.")
+    log.info("[FIREHOSE] raw programming ok.")
 
-    logging.info("[FIREHOSE] patching...")
+    log.info("[FIREHOSE] patching...")
     for xml in args.patch:
-        logging.info("[FIREHOSE] patching with %s" % xml)
+        log.info("[FIREHOSE] patching with %s" % xml)
         fl = open(xml, "r")
         for evt, elem in ET.iterparse(fl, events=["end"]):
             if elem.tag == "patch":
                 filename = elem.get("filename")
+                if filename != "DISK":
+                    continue
                 start_sector = elem.get("start_sector")
                 size_in_bytes = elem.get("size_in_bytes")
-                logging.info("[FIREHOSE] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
+                log.info("[FIREHOSE] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                 content = ElementTree.tostring(elem).decode("utf-8")
-                cmd = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
+                cmd = "<?xml version=\"1.0\" ?><data>\n{content}</data>".format(
                     content=content)
                 print(cmd)
-                fh.xmlsend(content)
+                fh.xmlsend(cmd)
 
-    logging.info("[FIREHOSE] patching ok")
+    log.info("[FIREHOSE] patching ok")
 
-    logging.info("[INFO] reset target...")
+    bootable = find_bootable_partition(args.rawprogram)
+    if bootable != -1:
+        if fh.cmd_setbootablestoragedrive(bootable):
+            log.info("[FIREHOSE] partition({partition}) is now bootable\n". format(partition=bootable));
+        else:
+            log.info("[FIREHOSE] set partition({partition}) as bootable failed\n". format(partition=bootable));
+
+    log.info("[INFO] reset target...")
     fh.cmd_reset()
-    logging.info("[INFO] QFIL ok!")
+    log.info("[INFO] QFIL ok!")
