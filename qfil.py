@@ -66,6 +66,20 @@ def getluns(memory):
         luns = [0]
     return luns
 
+def find_bootable_partition(rawprogram):
+    part = -1
+    for xml in rawprogram:
+        fl = open(xml, "r")
+        for evt, elem in ET.iterparse(fl, events=["end"]):
+            if elem.tag == "program":
+                label = elem.get("label")
+                if label in [ 'xbl', 'xbl_a', 'sbl1' ]:
+                    if part != -1:
+                        log.error("[FIREHOSE] multiple bootloader found!")
+                        return -1
+                    part = elem.get("physical_partition_number")
+
+    return part
 
 if __name__ == '__main__':
     global log
@@ -182,6 +196,13 @@ if __name__ == '__main__':
                 fh.xmlsend(cmd)
 
     log.info("[FIREHOSE] patching ok")
+
+    bootable = find_bootable_partition(args.rawprogram)
+    if bootable != -1:
+        if fh.cmd_setbootablestoragedrive(bootable):
+            log.info("[FIREHOSE] partition({partition}) is now bootable\n". format(partition=bootable));
+        else:
+            log.info("[FIREHOSE] set partition({partition}) as bootable failed\n". format(partition=bootable));
 
     log.info("[INFO] reset target...")
     fh.cmd_reset()
