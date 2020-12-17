@@ -169,15 +169,17 @@ if __name__ == '__main__':
         for evt, elem in ET.iterparse(fl, events=["end"]):
             if elem.tag == "patch":
                 filename = elem.get("filename")
+                if filename != "DISK":
+                    continue
                 start_sector = elem.get("start_sector")
                 size_in_bytes = elem.get("size_in_bytes")
                 log.info("[FIREHOSE] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                 content = ElementTree.tostring(elem).decode("utf-8")
-                cmd = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
+                cmd = "<?xml version=\"1.0\" ?><data>\n{content}</data>".format(
                     content=content)
                 print(cmd)
-                fh.xmlsend(content)
+                fh.xmlsend(cmd)
 
     log.info("[FIREHOSE] patching ok")
 
