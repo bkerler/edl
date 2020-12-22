@@ -6,8 +6,8 @@ https://armv8-ref.codingbelief.com/en/chapter_d4/d42_7_the_algorithm_for_finding
 
 """
 
-def get_level_index(va, level):
 
+def get_level_index(va, level):
     if level == 1:
         return (va >> 30) & 0x3F
 
@@ -22,7 +22,7 @@ def get_level_index(va, level):
 
 def get_level_bits(level, tnsz):
     if level == 1:
-        return 37-tnsz+26+1-30
+        return 37 - tnsz + 26 + 1 - 30
 
     if level == 2:
         return 9
@@ -34,32 +34,34 @@ def get_level_bits(level, tnsz):
 
 
 def get_level_size(tnsz, level):
-    return 2**get_level_bits(level, tnsz)*8
+    return 2 ** get_level_bits(level, tnsz) * 8
 
 
 def get_va_for_level(va, index, level):
     if level == 1:
-        return va + (index<<30)
+        return va + (index << 30)
 
     if level == 2:
-        return va + (index<<21)
+        return va + (index << 21)
 
     if level == 3:
-        return va + (index<<12)
+        return va + (index << 12)
+
+    return va
 
 
 def parse_pt(data, base, tnsz, level=1):
     i = 0
     entries = []
     while i < min(len(data), get_level_size(tnsz, level)):
-        entry = struct.unpack("<Q", data[i:i+8])[0]
+        entry = struct.unpack("<Q", data[i:i + 8])[0]
 
         f = get_fld(entry, level)
         if f is None:
             i += 8
             continue
-        va = get_va_for_level(base, int(i/8), level)
-        if (f!='UNSUPPORTED' and f.apx==0 and f.ap==3 and f.xn==0):
+        va = get_va_for_level(base, int(i / 8), level)
+        if (f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.xn == 0):
             print("%016x %s - WX !!" % (va, f))
         else:
             print("%016x %s" % (va, f))
@@ -83,9 +85,12 @@ def get_fld(fld, level):
 
     if s == 3:
         return table_entry4k(fld, level)
+    return None
 
+class descriptor(object):
+    def get_name(self):
+        pass
 
-class descriptor(object):    
     def __repr__(self):
         s = "%8s " % self.get_name()
         for attr, value in self.__dict__.items():
@@ -108,12 +113,12 @@ class entry(fld):
         self.apx = (desc >> 61) & 3
         self.xn = (desc >> 60) & 1
         self.pxn = (desc >> 59) & 1
-        self.attrindex = (desc>>2) & 7
-        self.ns = (desc>>5) & 1
-        self.ap = (desc>>6) & 3
-        self.sh = (desc>>8) & 3
-        self.af = (desc>>10) & 1
-        self.nG = (desc>>11) & 1
+        self.attrindex = (desc >> 2) & 7
+        self.ns = (desc >> 5) & 1
+        self.ap = (desc >> 6) & 3
+        self.sh = (desc >> 8) & 3
+        self.af = (desc >> 10) & 1
+        self.nG = (desc >> 11) & 1
 
 
 class entry4k(entry):
@@ -143,7 +148,6 @@ class table_entry4k(entry4k):
 
     def __init__(self, desc, level):
         entry4k.__init__(self, desc, level)
-
 
     def get_name(self):
         return "TABLE4"

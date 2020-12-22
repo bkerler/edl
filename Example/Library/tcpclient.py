@@ -1,4 +1,5 @@
 import socket
+from binascii import hexlify
 
 class tcpclient():
     def __init__(self, port):
@@ -11,22 +12,16 @@ class tcpclient():
         try:
             for command in commands:
                 self.sock.sendall(bytes(command, 'utf-8'))
-                amount_received = 0
-                amount_expected = 3
-                while amount_received < amount_expected:
-                    data = self.sock.recv(4096)
-                    if data == b"":
-                        break
-                    amount_received += len(data)
-                    # print("received %s" % data)
-                data = data.decode('utf-8').split("\n")
-                if data[0] == "<ACK>":
-                    print(data[1])
-                else:
-                    if len(data)>1:
-                        print("Error: " + data[1])
-                    else:
-                        print("Unknown error !")
+                data=""
+                while not "<ACK>" in data and not "<NAK>" in data:
+                    tmp = self.sock.recv(4096)
+                    if tmp == b"":
+                        continue
+                    try:
+                        data += tmp.decode('utf-8')
+                    except:
+                        data += hexlify(tmp)
+                print(data)
         finally:
             print("closing socket")
             self.sock.close()

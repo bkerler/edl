@@ -2,22 +2,22 @@ import struct
 
 
 def get_n(x):
-    return int(x[6:8]+x[4:6]+x[2:4]+x[0:2], 16)
+    return int(x[6:8] + x[4:6] + x[2:4] + x[0:2], 16)
 
 
 def parse_pt(data):
     va = 0
     entries = []
     while va < len(data):
-        entry = struct.unpack("<L", data[va:va+4])[0]
+        entry = struct.unpack("<L", data[va:va + 4])[0]
         f = get_fld(entry)
 
         if f is None:
             va += 4
             continue
 
-        entries.append((int(va/4) << 20,f))
-        print("%08x %s" % ((int(va/4) << 20), str(f)))
+        entries.append((int(va / 4) << 20, f))
+        print("%08x %s" % ((int(va / 4) << 20), str(f)))
         va += 4
 
     return entries
@@ -26,13 +26,13 @@ def parse_pt(data):
 def parse_spt(data, base):
     va = 0
     while va < 0x400:
-        entry = struct.unpack("<L", data[va:va+4])[0]
+        entry = struct.unpack("<L", data[va:va + 4])[0]
 
         f = get_sld(entry)
-        if (f!='UNSUPPORTED' and f.apx==0 and f.ap==3 and f.nx==0):
+        if f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.nx == 0:
             print("%08x %s - WX !!" % (base + (int(va / 4) << 12), f))
         else:
-            print("%08x %s" % (base+(int(va/4) << 12), f))
+            print("%08x %s" % (base + (int(va / 4) << 12), f))
         va += 4
 
 
@@ -49,6 +49,7 @@ def get_fld(fld):
 
     if s == 3:
         return reserved_desc(fld)
+    return None
 
 
 def get_sld(sld):
@@ -64,6 +65,9 @@ def get_sld(sld):
 
 class descriptor(object):
     def __init__(self, fld):
+        pass
+
+    def get_name(self):
         pass
 
     def __repr__(self):
@@ -103,7 +107,6 @@ class pt_desc(fld):
         self.ns = (desc >> 3) & 1
         self.sbz2 = (desc >> 2) & 1
 
-
     def get_name(self):
         return "PT"
 
@@ -123,7 +126,6 @@ class section_desc(fld):
         self.nx = (desc >> 4) & 1
         self.c = (desc >> 3) & 1
         self.b = (desc >> 2) & 1
-
 
     def get_name(self):
         return "SECTION"
@@ -147,7 +149,6 @@ class sld_lp(sld):
         self.c = (desc >> 3) & 1
         self.b = (desc >> 2) & 1
 
-
     def get_name(self):
         return "LARGEPAGE"
 
@@ -165,7 +166,6 @@ class sld_xsp(sld):
         self.c = (desc >> 3) & 1
         self.b = (desc >> 2) & 1
         self.nx = desc & 1
-
 
     def get_name(self):
         return "XSMALLPAGE"

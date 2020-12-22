@@ -1,6 +1,7 @@
 import binascii
 from Library.utils import *
 
+
 class gpt:
     from enum import Enum
     gpt_header = [
@@ -28,91 +29,91 @@ class gpt:
         ('name', '72s')]
 
     class efi_type(Enum):
-        EFI_UNUSED              = 0x00000000
-        EFI_MBR                 = 0x024DEE41
-        EFI_SYSTEM              = 0xC12A7328
-        EFI_BIOS_BOOT           = 0x21686148
-        EFI_IFFS                = 0xD3BFE2DE
-        EFI_SONY_BOOT           = 0xF4019732
-        EFI_LENOVO_BOOT         = 0xBFBFAFE7
-        EFI_MSR                 = 0xE3C9E316
-        EFI_BASIC_DATA          = 0xEBD0A0A2
-        EFI_LDM_META            = 0x5808C8AA
-        EFI_LDM                 = 0xAF9B60A0
-        EFI_RECOVERY            = 0xDE94BBA4
-        EFI_GPFS                = 0x37AFFC90
-        EFI_STORAGE_SPACES      = 0xE75CAF8F
-        EFI_HPUX_DATA           = 0x75894C1E
-        EFI_HPUX_SERVICE        = 0xE2A1E728
-        EFI_LINUX_DAYA          = 0x0FC63DAF
-        EFI_LINUX_RAID          = 0xA19D880F
-        EFI_LINUX_ROOT32        = 0x44479540
-        EFI_LINUX_ROOT64        = 0x4F68BCE3
-        EFI_LINUX_ROOT_ARM32    = 0x69DAD710
-        EFI_LINUX_ROOT_ARM64    = 0xB921B045
-        EFI_LINUX_SWAP          = 0x0657FD6D
-        EFI_LINUX_LVM           = 0xE6D6D379
-        EFI_LINUX_HOME          = 0x933AC7E1
-        EFI_LINUX_SRV           = 0x3B8F8425
-        EFI_LINUX_DM_CRYPT      = 0x7FFEC5C9
-        EFI_LINUX_LUKS          = 0xCA7D7CCB
-        EFI_LINUX_RESERVED      = 0x8DA63339
-        EFI_FREEBSD_BOOT        = 0x83BD6B9D
-        EFI_FREEBSD_DATA        = 0x516E7CB4
-        EFI_FREEBSD_SWAP        = 0x516E7CB5
-        EFI_FREEBSD_UFS         = 0x516E7CB6
-        EFI_FREEBSD_VINUM       = 0x516E7CB8
-        EFI_FREEBSD_ZFS         = 0x516E7CBA
-        EFI_OSX_HFS             = 0x48465300
-        EFI_OSX_UFS             = 0x55465300
-        EFI_OSX_ZFS             = 0x6A898CC3
-        EFI_OSX_RAID            = 0x52414944
-        EFI_OSX_RAID_OFFLINE    = 0x52414944
-        EFI_OSX_RECOVERY        = 0x426F6F74
-        EFI_OSX_LABEL           = 0x4C616265
-        EFI_OSX_TV_RECOVERY     = 0x5265636F
-        EFI_OSX_CORE_STORAGE    = 0x53746F72
-        EFI_SOLARIS_BOOT        = 0x6A82CB45
-        EFI_SOLARIS_ROOT        = 0x6A85CF4D
-        EFI_SOLARIS_SWAP        = 0x6A87C46F
-        EFI_SOLARIS_BACKUP      = 0x6A8B642B
-        EFI_SOLARIS_USR         = 0x6A898CC3
-        EFI_SOLARIS_VAR         = 0x6A8EF2E9
-        EFI_SOLARIS_HOME        = 0x6A90BA39
-        EFI_SOLARIS_ALTERNATE   = 0x6A9283A5
-        EFI_SOLARIS_RESERVED1   = 0x6A945A3B
-        EFI_SOLARIS_RESERVED2   = 0x6A9630D1
-        EFI_SOLARIS_RESERVED3   = 0x6A980767
-        EFI_SOLARIS_RESERVED4   = 0x6A96237F
-        EFI_SOLARIS_RESERVED5   = 0x6A8D2AC7
-        EFI_NETBSD_SWAP         = 0x49F48D32
-        EFI_NETBSD_FFS          = 0x49F48D5A
-        EFI_NETBSD_LFS          = 0x49F48D82
-        EFI_NETBSD_RAID         = 0x49F48DAA
-        EFI_NETBSD_CONCAT       = 0x2DB519C4
-        EFI_NETBSD_ENCRYPT      = 0x2DB519EC
-        EFI_CHROMEOS_KERNEL     = 0xFE3A2A5D
-        EFI_CHROMEOS_ROOTFS     = 0x3CB8E202
-        EFI_CHROMEOS_FUTURE     = 0x2E0A753D
-        EFI_HAIKU               = 0x42465331
-        EFI_MIDNIGHTBSD_BOOT    = 0x85D5E45E
-        EFI_MIDNIGHTBSD_DATA    = 0x85D5E45A
-        EFI_MIDNIGHTBSD_SWAP    = 0x85D5E45B
-        EFI_MIDNIGHTBSD_UFS     = 0x0394EF8B
-        EFI_MIDNIGHTBSD_VINUM   = 0x85D5E45C
-        EFI_MIDNIGHTBSD_ZFS     = 0x85D5E45D
-        EFI_CEPH_JOURNAL        = 0x45B0969E
-        EFI_CEPH_ENCRYPT        = 0x45B0969E
-        EFI_CEPH_OSD            = 0x4FBD7E29
-        EFI_CEPH_ENCRYPT_OSD    = 0x4FBD7E29
-        EFI_CEPH_CREATE         = 0x89C57F98
+        EFI_UNUSED = 0x00000000
+        EFI_MBR = 0x024DEE41
+        EFI_SYSTEM = 0xC12A7328
+        EFI_BIOS_BOOT = 0x21686148
+        EFI_IFFS = 0xD3BFE2DE
+        EFI_SONY_BOOT = 0xF4019732
+        EFI_LENOVO_BOOT = 0xBFBFAFE7
+        EFI_MSR = 0xE3C9E316
+        EFI_BASIC_DATA = 0xEBD0A0A2
+        EFI_LDM_META = 0x5808C8AA
+        EFI_LDM = 0xAF9B60A0
+        EFI_RECOVERY = 0xDE94BBA4
+        EFI_GPFS = 0x37AFFC90
+        EFI_STORAGE_SPACES = 0xE75CAF8F
+        EFI_HPUX_DATA = 0x75894C1E
+        EFI_HPUX_SERVICE = 0xE2A1E728
+        EFI_LINUX_DAYA = 0x0FC63DAF
+        EFI_LINUX_RAID = 0xA19D880F
+        EFI_LINUX_ROOT32 = 0x44479540
+        EFI_LINUX_ROOT64 = 0x4F68BCE3
+        EFI_LINUX_ROOT_ARM32 = 0x69DAD710
+        EFI_LINUX_ROOT_ARM64 = 0xB921B045
+        EFI_LINUX_SWAP = 0x0657FD6D
+        EFI_LINUX_LVM = 0xE6D6D379
+        EFI_LINUX_HOME = 0x933AC7E1
+        EFI_LINUX_SRV = 0x3B8F8425
+        EFI_LINUX_DM_CRYPT = 0x7FFEC5C9
+        EFI_LINUX_LUKS = 0xCA7D7CCB
+        EFI_LINUX_RESERVED = 0x8DA63339
+        EFI_FREEBSD_BOOT = 0x83BD6B9D
+        EFI_FREEBSD_DATA = 0x516E7CB4
+        EFI_FREEBSD_SWAP = 0x516E7CB5
+        EFI_FREEBSD_UFS = 0x516E7CB6
+        EFI_FREEBSD_VINUM = 0x516E7CB8
+        EFI_FREEBSD_ZFS = 0x516E7CBA
+        EFI_OSX_HFS = 0x48465300
+        EFI_OSX_UFS = 0x55465300
+        EFI_OSX_ZFS = 0x6A898CC3
+        EFI_OSX_RAID = 0x52414944
+        EFI_OSX_RAID_OFFLINE = 0x52414944
+        EFI_OSX_RECOVERY = 0x426F6F74
+        EFI_OSX_LABEL = 0x4C616265
+        EFI_OSX_TV_RECOVERY = 0x5265636F
+        EFI_OSX_CORE_STORAGE = 0x53746F72
+        EFI_SOLARIS_BOOT = 0x6A82CB45
+        EFI_SOLARIS_ROOT = 0x6A85CF4D
+        EFI_SOLARIS_SWAP = 0x6A87C46F
+        EFI_SOLARIS_BACKUP = 0x6A8B642B
+        EFI_SOLARIS_USR = 0x6A898CC3
+        EFI_SOLARIS_VAR = 0x6A8EF2E9
+        EFI_SOLARIS_HOME = 0x6A90BA39
+        EFI_SOLARIS_ALTERNATE = 0x6A9283A5
+        EFI_SOLARIS_RESERVED1 = 0x6A945A3B
+        EFI_SOLARIS_RESERVED2 = 0x6A9630D1
+        EFI_SOLARIS_RESERVED3 = 0x6A980767
+        EFI_SOLARIS_RESERVED4 = 0x6A96237F
+        EFI_SOLARIS_RESERVED5 = 0x6A8D2AC7
+        EFI_NETBSD_SWAP = 0x49F48D32
+        EFI_NETBSD_FFS = 0x49F48D5A
+        EFI_NETBSD_LFS = 0x49F48D82
+        EFI_NETBSD_RAID = 0x49F48DAA
+        EFI_NETBSD_CONCAT = 0x2DB519C4
+        EFI_NETBSD_ENCRYPT = 0x2DB519EC
+        EFI_CHROMEOS_KERNEL = 0xFE3A2A5D
+        EFI_CHROMEOS_ROOTFS = 0x3CB8E202
+        EFI_CHROMEOS_FUTURE = 0x2E0A753D
+        EFI_HAIKU = 0x42465331
+        EFI_MIDNIGHTBSD_BOOT = 0x85D5E45E
+        EFI_MIDNIGHTBSD_DATA = 0x85D5E45A
+        EFI_MIDNIGHTBSD_SWAP = 0x85D5E45B
+        EFI_MIDNIGHTBSD_UFS = 0x0394EF8B
+        EFI_MIDNIGHTBSD_VINUM = 0x85D5E45C
+        EFI_MIDNIGHTBSD_ZFS = 0x85D5E45D
+        EFI_CEPH_JOURNAL = 0x45B0969E
+        EFI_CEPH_ENCRYPT = 0x45B0969E
+        EFI_CEPH_OSD = 0x4FBD7E29
+        EFI_CEPH_ENCRYPT_OSD = 0x4FBD7E29
+        EFI_CEPH_CREATE = 0x89C57F98
         EFI_CEPH_ENCRYPT_CREATE = 0x89C57F98
-        EFI_OPENBSD             = 0x824CC7A0
-        EFI_QNX                 = 0xCEF5A9AD
-        EFI_PLAN9               = 0xC91818F9
-        EFI_VMWARE_VMKCORE      = 0x9D275380
-        EFI_VMWARE_VMFS         = 0xAA31E02A
-        EFI_VMWARE_RESERVED     = 0x9198EFFC
+        EFI_OPENBSD = 0x824CC7A0
+        EFI_QNX = 0xCEF5A9AD
+        EFI_PLAN9 = 0xC91818F9
+        EFI_VMWARE_VMKCORE = 0x9D275380
+        EFI_VMWARE_VMFS = 0xAA31E02A
+        EFI_VMWARE_RESERVED = 0x9198EFFC
 
     def __init__(self, num_part_entries=0, part_entry_size=0, part_entry_start_lba=0, *args, **kwargs):
         self.num_part_entries = num_part_entries
@@ -126,82 +127,90 @@ class gpt:
         '''
 
     def parseheader(self, gptdata, sectorsize=512):
-        return read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)
+        return read_object(gptdata[sectorsize:sectorsize + 0x5C], self.gpt_header)
 
     def parse(self, gptdata, sectorsize=512):
-        self.header = read_object(gptdata[sectorsize:sectorsize+0x5C], self.gpt_header)
-        self.sectorsize=sectorsize
-        if self.header["signature"]!=b"EFI PART":
+        self.header = read_object(gptdata[sectorsize:sectorsize + 0x5C], self.gpt_header)
+        self.sectorsize = sectorsize
+        if self.header["signature"] != b"EFI PART":
             print("Invalid or unknown GPT magic.")
             return False
-        if self.header["revision"]!=0x100:
+        if self.header["revision"] != 0x100:
             print("Unknown GPT revision.")
             return False
-        if self.part_entry_start_lba!=0:
+        if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
         else:
-            start=self.header["part_entry_start_lba"]*sectorsize
+            start = self.header["part_entry_start_lba"] * sectorsize
         if "part_entry_size" in self.header:
-            entrysize=self.header["part_entry_size"]
+            entrysize = self.header["part_entry_size"]
         else:
-            entrysize=self.part_entry_size
-        self.partentries=[]
+            entrysize = self.part_entry_size
+        self.partentries = []
 
         class partf:
-            unique=b""
-            first_lba=0
-            last_lba=0
-            flags=0
-            type=b""
-            name=b""
+            unique = b""
+            first_lba = 0
+            last_lba = 0
+            flags = 0
+            sector = 0
+            sectors = 0
+            type = b""
+            name = b""
 
         if "num_part_entries" in self.header:
-            num_part_entries=self.header["num_part_entries"]
+            num_part_entries = self.header["num_part_entries"]
         else:
-            num_part_entries=self.num_part_entries
-            
-        for idx in range(0,num_part_entries):
-            data=gptdata[start+(idx*entrysize):start+(idx*entrysize)+entrysize]
-            if int(hexlify(data[0:16]),16)==0:
+            num_part_entries = self.num_part_entries
+
+        for idx in range(0, num_part_entries):
+            data = gptdata[start + (idx * entrysize):start + (idx * entrysize) + entrysize]
+            if int(hexlify(data[0:16]), 16) == 0:
                 break
-            partentry=read_object(data,self.gpt_partition)
-            pa=partf()
-            guid1=struct.unpack("<I",partentry["unique"][0:0x4])[0]
-            guid2=struct.unpack("<H",partentry["unique"][0x4:0x6])[0]
-            guid3=struct.unpack("<H",partentry["unique"][0x6:0x8])[0]
-            guid4=struct.unpack("<H",partentry["unique"][0x8:0xA])[0]
-            guid5=binascii.hexlify(partentry["unique"][0xA:0x10]).decode('utf-8')
-            pa.unique = "{:08x}-{:04x}-{:04x}-{:04x}-{}".format(guid1,guid2,guid3,guid4,guid5)
+            partentry = read_object(data, self.gpt_partition)
+            pa = partf()
+            guid1 = struct.unpack("<I", partentry["unique"][0:0x4])[0]
+            guid2 = struct.unpack("<H", partentry["unique"][0x4:0x6])[0]
+            guid3 = struct.unpack("<H", partentry["unique"][0x6:0x8])[0]
+            guid4 = struct.unpack("<H", partentry["unique"][0x8:0xA])[0]
+            guid5 = binascii.hexlify(partentry["unique"][0xA:0x10]).decode('utf-8')
+            pa.unique = "{:08x}-{:04x}-{:04x}-{:04x}-{}".format(guid1, guid2, guid3, guid4, guid5)
             pa.sector = partentry["first_lba"]
-            pa.sectors = partentry["last_lba"]-partentry["first_lba"]+1
+            pa.sectors = partentry["last_lba"] - partentry["first_lba"] + 1
             pa.flags = partentry["flags"]
-            type=int(struct.unpack("<I",partentry["type"][0:0x4])[0])
+            type = int(struct.unpack("<I", partentry["type"][0:0x4])[0])
             try:
                 pa.type = self.efi_type(type).name
             except:
                 pa.type = hex(type)
-            pa.name = partentry["name"].replace(b"\x00\x00",b"").decode('utf-16')
-            if pa.type=="EFI_UNUSED":
+            pa.name = partentry["name"].replace(b"\x00\x00", b"").decode('utf-16')
+            if pa.type == "EFI_UNUSED":
                 break
             self.partentries.append(pa)
-            self.totalsectors=self.header["last_usable_lba"]
+            self.totalsectors = self.header["last_usable_lba"]
         return True
 
     def print(self):
         print("\nGPT Table:\n-------------")
         for partition in self.partentries:
-            print("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
-        print("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
+            print("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(
+                partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
+                partition.flags, partition.unique, partition.type))
+        print("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors * self.sectorsize,
+                                                                      self.totalsectors))
 
     def tostring(self):
-        mstr=("\nGPT Table:\n-------------")
+        mstr = ("\nGPT Table:\n-------------")
         for partition in self.partentries:
-            mstr+=("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(partition.name+":",partition.sector*self.sectorsize,partition.sectors*self.sectorsize,partition.flags,partition.unique,partition.type))
-        mstr+=("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors*self.sectorsize,self.totalsectors))
+            mstr += ("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(
+                partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
+                partition.flags, partition.unique, partition.type))
+        mstr += ("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors * self.sectorsize,
+                                                                         self.totalsectors))
         return mstr
 
     def generate_rawprogram(self, lun, sectorsize, directory):
-        fname="rawprogram" + str(lun) + ".xml"
+        fname = "rawprogram" + str(lun) + ".xml"
         with open(os.path.join(directory, fname), "wb") as wf:
             mstr = "<?xml version=\"1.0\" ?>\n<data>\n"
             partofsingleimage = "false"
@@ -210,16 +219,16 @@ class gpt:
             for partition in self.partentries:
                 filename = partition.name + ".bin"
                 mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" " + \
-                       f"file_sector_offset=\"0\" filename=\"{filename}\" " + \
-                       f"label=\"{partition.name}\" num_partition_sectors=\"{partition.sectors}\" " + \
-                       f"partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" " + \
-                       f"readbackverify=\"{readbackverify}\" size_in_KB=\"{(partition.sector * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" " + \
-                       f"start_byte_hex=\"{hex(partition.sector * sectorsize)}\" start_sector=\"{partition.sector}\"/>\n"
-            partofsingleimage="true"
-            sectors=self.header["first_usable_lba"]
+                        f"file_sector_offset=\"0\" filename=\"{filename}\" " + \
+                        f"label=\"{partition.name}\" num_partition_sectors=\"{partition.sectors}\" " + \
+                        f"partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" " + \
+                        f"readbackverify=\"{readbackverify}\" size_in_KB=\"{(partition.sector * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" " + \
+                        f"start_byte_hex=\"{hex(partition.sector * sectorsize)}\" start_sector=\"{partition.sector}\"/>\n"
+            partofsingleimage = "true"
+            sectors = self.header["first_usable_lba"]
             mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" file_sector_offset=\"0\" filename=\"gpt_main{str(lun)}.bin\" label=\"PrimaryGPT\" num_partition_sectors=\"{sectors}\" partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" readbackverify=\"{readbackverify}\" size_in_KB=\"{(sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" start_byte_hex=\"0x0\" start_sector=\"0\"/>\n"
-            sectors=self.header["first_usable_lba"]-1
-            mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" file_sector_offset=\"0\" filename=\"gpt_backup{str(lun)}.bin\" label=\"BackupGPT\" num_partition_sectors=\"{sectors}\" partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" readbackverify=\"{readbackverify}\" size_in_KB=\"{(sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" start_byte_hex=\"({sectorsize}*NUM_DISK_SECTORS)-{sectorsize*sectors}.\" start_sector=\"NUM_DISK_SECTORS-{sectors}.\"/>\n"
+            sectors = self.header["first_usable_lba"] - 1
+            mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" file_sector_offset=\"0\" filename=\"gpt_backup{str(lun)}.bin\" label=\"BackupGPT\" num_partition_sectors=\"{sectors}\" partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" readbackverify=\"{readbackverify}\" size_in_KB=\"{(sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" start_byte_hex=\"({sectorsize}*NUM_DISK_SECTORS)-{sectorsize * sectors}.\" start_sector=\"NUM_DISK_SECTORS-{sectors}.\"/>\n"
             mstr += "</data>"
             wf.write(bytes(mstr, 'utf-8'))
             print(f"Wrote partition xml as {fname}")

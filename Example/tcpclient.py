@@ -21,8 +21,9 @@ class client():
 def main():
     exp=client()
     exp.commands = [
-        "send:True,nop",
-        #"peek:0x00100000,0x8,qfp.bin"
+        "send:nop",
+        "r:boot,boot.img",
+        "peek:0x00100000,0x8,qfp.bin"
         #"pokehex:0x1402C2CC,1f2003d5",
         #"peek:0x14084840,0xC00,uart.bin"
     ]

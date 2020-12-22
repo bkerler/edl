@@ -1,718 +1,824 @@
-import xml.etree.ElementTree as ET
-import binascii
-import time
-import os
+from struct import unpack, pack
 from Library.utils import *
 from Library.hdlc import *
+from Library.nand_config import BadFlags, SettingsOpt, nand_ids, nand_manuf_ids, nandregs, NandDevice
+
 logger = logging.getLogger(__name__)
 
-nand_ids=[
-            ("NAND 16MiB 1,8V 8-bit", 0x33, 16),
-            ("NAND 16MiB 3,3V 8-bit", 0x73, 16),
-            ("NAND 16MiB 1,8V 16-bit", 0x43, 16),
-            ("NAND 16MiB 3,3V 16-bit", 0x53, 16),
 
-            ("NAND 32MiB 1,8V 8-bit", 0x35, 32),
-            ("NAND 32MiB 3,3V 8-bit", 0x75, 32),
-            ("NAND 32MiB 1,8V 16-bit", 0x45, 32),
-            ("NAND 32MiB 3,3V 16-bit", 0x55, 32),
-
-            ("NAND 64MiB 1,8V 8-bit", 0x36, 64),
-            ("NAND 64MiB 3,3V 8-bit", 0x76, 64),
-            ("NAND 64MiB 1,8V 16-bit", 0x46, 64),
-            ("NAND 64MiB 3,3V 16-bit", 0x56, 64),
-
-            ("NAND 128MiB 1,8V 8-bit", 0x78, 128),
-            ("NAND 128MiB 1,8V 8-bit", 0x39, 128),
-            ("NAND 128MiB 3,3V 8-bit", 0x79, 128),
-            ("NAND 128MiB 1,8V 16-bit", 0x72, 128),
-            ("NAND 128MiB 1,8V 16-bit", 0x49, 128),
-            ("NAND 128MiB 3,3V 16-bit", 0x74, 128),
-            ("NAND 128MiB 3,3V 16-bit", 0x59, 128),
-            ("NAND 256MiB 3,3V 8-bit", 0x71, 256),
-
-            # 512 Megabit
-            ("NAND 64MiB 1,8V 8-bit", 0xA2, 64),
-            ("NAND 64MiB 1,8V 8-bit", 0xA0, 64),
-            ("NAND 64MiB 3,3V 8-bit", 0xF2, 64),
-            ("NAND 64MiB 3,3V 8-bit", 0xD0, 64),
-            ("NAND 64MiB 1,8V 16-bit", 0xB2, 64),
-            ("NAND 64MiB 1,8V 16-bit", 0xB0, 64),
-            ("NAND 64MiB 3,3V 16-bit", 0xC2, 64),
-            ("NAND 64MiB 3,3V 16-bit", 0xC0, 64),
-
-           # 1 Gigabit
-            ("NAND 128MiB 1,8V 8-bit", 0xA1, 128),
-            ("NAND 128MiB 3,3V 8-bit", 0xF1, 128),
-            ("NAND 128MiB 3,3V 8-bit", 0xD1, 128),
-            ("NAND 128MiB 1,8V 16-bit", 0xB1, 128),
-            ("NAND 128MiB 3,3V 16-bit", 0xC1, 128),
-            ("NAND 128MiB 1,8V 16-bit", 0xAD, 128),
-
-            # 2 Gigabit
-            ("NAND 256MiB 1.8V 8-bit", 0xAA, 256),
-            ("NAND 256MiB 3.3V 8-bit", 0xDA, 256),
-            ("NAND 256MiB 1.8V 16-bit", 0xBA, 256),
-            ("NAND 256MiB 3.3V 16-bit", 0xCA, 256),
-
-            # 4 Gigabit
-            ("NAND 512MiB 1.8V 8-bit", 0xAC, 512),
-            ("NAND 512MiB 3.3V 8-bit", 0xDC, 512),
-            ("NAND 512MiB 1.8V 16-bit", 0xBC, 512),
-            ("NAND 512MiB 3.3V 16-bit", 0xCC, 512),
-
-            # 8 Gigabit
-            ("NAND 1GiB 1.8V 8-bit", 0xA3, 1024),
-            ("NAND 1GiB 3.3V 8-bit", 0xD3, 1024),
-            ("NAND 1GiB 1.8V 16-bit", 0xB3, 1024),
-            ("NAND 1GiB 3.3V 16-bit", 0xC3, 1024),
-
-            # 16 Gigabit
-            ("NAND 2GiB 1.8V 8-bit", 0xA5, 2048),
-            ("NAND 2GiB 3.3V 8-bit", 0xD5, 2048),
-            ("NAND 2GiB 1.8V 16-bit", 0xB5, 2048),
-            ("NAND 2GiB 3.3V 16-bit", 0xC5, 2048),
-
-            # 32 Gigabit
-            ("NAND 4GiB 1.8V 8-bit", 0xA7, 4096),
-            ("NAND 4GiB 3.3V 8-bit", 0xD7, 4096),
-            ("NAND 4GiB 1.8V 16-bit", 0xB7, 4096),
-            ("NAND 4GiB 3.3V 16-bit", 0xC7, 4096),
-
-            # 64 Gigabit
-            ("NAND 8GiB 1.8V 8-bit", 0xAE, 8192),
-            ("NAND 8GiB 3.3V 8-bit", 0xDE, 8192),
-            ("NAND 8GiB 1.8V 16-bit", 0xBE, 8192),
-            ("NAND 8GiB 3.3V 16-bit", 0xCE, 8192),
-
-            # 128 Gigabit
-            ("NAND 16GiB 1.8V 8-bit", 0x1A, 16384),
-            ("NAND 16GiB 3.3V 8-bit", 0x3A, 16384),
-            ("NAND 16GiB 1.8V 16-bit", 0x2A, 16384),
-            ("NAND 16GiB 3.3V 16-bit", 0x4A, 16384),
-
-            # 256 Gigabit
-            ("NAND 32GiB 1.8V 8-bit", 0x1C, 32768),
-            ("NAND 32GiB 3.3V 8-bit", 0x3C, 32768),
-            ("NAND 32GiB 1.8V 16-bit", 0x2C, 32768),
-            ("NAND 32GiB 3.3V 16-bit", 0x4C, 32768),
-
-            # 512 Gigabit
-            ("NAND 64GiB 1.8V 8-bit", 0x1E, 65536),
-            ("NAND 64GiB 3.3V 8-bit", 0x3E, 65536),
-            ("NAND 64GiB 1.8V 16-bit", 0x2E, 65536),
-            ("NAND 64GiB 3.3V 16-bit", 0x4E, 65536),
-            (0, 0, 0),
-]
-
-nand_manuf_ids=[
-    (0x98, "Toshiba"),
-    (0xec, "Samsung"),
-    (0x04, "Fujitsu"),
-    (0x8f, "National"),
-    (0x07, "Renesas"),
-    (0x20, "ST Micro"),
-    (0xad, "Hynix"),
-    (0x2c, "Micron"),
-    (0xc8, "Elite Semiconductor"),
-    (0x01, "Spansion/AMD"),
-    (0xef, "Winbond"),
-    (0x0, "")
-]
-
-class settingsopt:
-    def __init__(self,parent,chipset, verbose):
-        self.parent=parent
-        logger.setLevel(verbose)
-        self.bad_loader=0
-        self.spp=0
-        self.pagesize=0
-        self.sectorsize=512
-        self.maxblock=0
-        self.flash_mfr=""
-        self.flash_descr=""
-        self.oobsize=0
-        self.flash16bit=0
-        self.badsector=0
-        self.badflag=0
-        self.badposition=0
-        self.badplace=0
-        self.bch_mode=0
-        self.ecc_size=0
-        self.ecc_bit=0
-        self.ppb=64
-        self.udflag=0
-
-        if chipset<=0:
-            self.bad_loader=1
-        if chipset==3:
-            self.name="MDM9x25"
-            self.loader="NPRG9x25p.bin"
-            self.eloader="ENPRG9x25p.bin"
-            self.msmid=[0x07f1]
-            self.ctrl_type=0
-            self.udflag=1
-            self.nandbase=0xf9af0000
-            self.bcraddr=0xfc401a40
-        elif chipset==8:
-            self.name="MDM9x3X"
-            self.loader="NPRG9x35p.bin"
-            self.eloader="ENPRG9x35p.bin"
-            self.msmid=[0x0922]
-            self.ctrl_type=0
-            self.udflag=1
-            self.nandbase=0xf9af0000
-            self.bcraddr=0xfc401a40
-        elif chipset==10:
-            self.name = "MDM9x4X"
-            self.loader = "NPRG9x45p.bin"
-            self.eloader = "ENPRG9x45p.bin"
-            self.msmid = [0x0950,0x0951]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase=0x079b0000
-            self.bcraddr=0x0183f000
-
-        if self.ctrl_type==0:
-            self.nandcmd_stop=0x01
-            self.nandcmd_read=0x32
-            self.nandcmd_readall=0x34
-            self.nandcmd_program=0x34
-            self.nandcmd_programall=0x39
-            self.nandcmd_erase=0x3A
-            self.nandcmd_identify=0x0B
-            self.nandreg_cmd=0
-            self.nandreg_adr0=4
-            self.nandreg_adr1=8
-            self.nandreg_cs=0xc
-            self.nandreg_exec=0x10
-            self.nandreg_buf_st=0x18
-            self.nandreg_fl_st=0x14
-            self.nandreg_cfg0=0x20
-            self.nandreg_cfg1=0x24
-            self.nandreg_ecc=0x28
-            self.nandreg_id=0x40
-            self.nandreg_sbuf=0x100
-        elif self.ctrl_type==1:
-            self.nandcmd_stop = 0x07
-            self.nandcmd_read = 0x01
-            self.nandcmd_readall = 0xffff
-            self.nandcmd_program = 0x03
-            self.nandcmd_programall = 0xffff
-            self.nandcmd_erase = 0x04
-            self.nandcmd_identify = 0x05
-            self.nandreg_cmd=0x304
-            self.nandreg_adr0=0x300
-            self.nandreg_adr1=0xffff
-            self.nandreg_cs=0x30c
-            self.nandreg_exec=0xffff
-            self.nandreg_buf_st=0xffff
-            self.nandreg_fl_st=0x308
-            self.nandreg_cfg0=0xffff
-            self.nandreg_cfg1=0x328
-            self.nandreg_ecc=0xffff
-            self.nandreg_id=0x320
-            self.nandreg_sbuf=0x0
-
-        self.nandreg_cmd=self.nandbase+self.nandreg_cmd
-        self.nandreg_adr0=self.nandbase+self.nandreg_adr0
-        self.nandreg_adr1=self.nandbase+self.nandreg_adr1
-        self.nandreg_cs=self.nandbase+self.nandreg_cs
-        self.nandreg_exec=self.nandbase+self.nandreg_exec
-        self.nandreg_buf_st=self.nandbase+self.nandreg_buf_st
-        self.nandreg_fl_st=self.nandbase+self.nandreg_fl_st
-        self.nandreg_cfg0=self.nandbase+self.nandreg_cfg0
-        self.nandreg_cfg1=self.nandbase+self.nandreg_cfg1
-        self.nandreg_ecc=self.nandbase+self.nandreg_ecc
-        self.nandreg_id=self.nandbase+self.nandreg_id
-        self.nandreg_sbuf=self.nandbase+self.nandreg_sbuf
+class QualcommStreaming:
+    def __init__(self, cdc, sahara):
+        self.cdc = cdc
+        self.hdlc = hdlc(self.cdc)
+        self.mode = sahara.mode
+        self.settings = None
+        self.flashinfo = None
+        self.bbtbl = {}
+        self.nanddevice = None
+        self.ctrl_type = 0
+        self.nandbase = 0
 
     def get_flash_config(self):
-        self.parent.mempoke(self.nandreg_cmd,0x8000b)
-        self.parent.mempoke(self.nandreg_exec,1)
-        self.parent.nandwait()
-        nandid=self.parent.mempeek(self.nandreg_id)
-        fid = (nandid >> 8) & 0xff
-        pid = nandid & 0xff
+        """
+        self.regs.NAND_DEV0_CFG0=0x2a0408c0
+        self.regs.NAND_DEV0_CFG1=0x804745c
+        self.regs.NAND_DEV0_ECC_CFG=0x42040700
+        self.regs.NAND_EBI2_ECC_BUF_CFG=0x203
+        """
 
-        self.flash_mfr=""
-        for info in nand_manuf_ids:
-            if info[0]==pid:
-                self.flash_mfr=info[1]
+        self.regs.NAND_FLASH_CMD = 0x8000b
+        self.regs.NAND_EXEC_CMD = self.nanddevice.NAND_CMD_SOFT_RESET
+        self.nandwait()
+        dev_cfg0 = self.regs.NAND_DEV0_CFG0
+        dev_cfg1 = self.regs.NAND_DEV0_CFG1
+        dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
+        dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
+        dev_ecc_cfg = self.regs.NAND_DEV0_ECC_CFG
+        dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
+        """
+        self.nand_reset()
+        self.set_address(1, 0)
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ
+        self.regs.NAND_EXEC_CMD = 0x1
+        self.nandwait()
+        tmp = self.memread(self.nanddevice.NAND_FLASH_BUFFER, 512)
+        """
 
-        chipsize=0
-        for info in nand_ids:
-            if info[1]==fid:
-                chipsize=info[2]
-                self.flash_descr=info[0]
+        nandid = self.regs.NAND_READ_ID
+        cfg0, cfg1, ecc_buf_cfg, ecc_bch_cfg = self.nanddevice.nand_setup(nandid)
+        self.regs.NAND_DEV0_CFG0 = cfg0
+        self.regs.NAND_DEV0_CFG1 = cfg1
+        self.regs.NAND_EBI2_ECC_BUF_CFG = ecc_buf_cfg
+        self.regs.NAND_DEV0_ECC_CFG = ecc_bch_cfg
 
-        cfg0 = self.parent.mempeek(self.nandreg_cfg0)
-        cfg1 = self.parent.mempeek(self.nandreg_cfg1)
-        ecccfg = self.parent.mempeek(self.nandreg_ecc)
-        self.sectorsize = 512
+    def nand_post(self):
+        self.mempoke(self.nanddevice.NAND_DEV0_ECC_CFG,
+                     self.mempeek(self.nanddevice.NAND_DEV0_ECC_CFG) & 0xfffffffe)  # ECC on BCH
+        self.mempoke(self.nanddevice.NAND_DEV0_CFG1,
+                     self.mempeek(self.nanddevice.NAND_DEV0_CFG1) & 0xfffffffe)  # ECC on R-S
 
-        devcfg = (nandid>>24) & 0xff
-        self.pagesize = 1024 << (devcfg & 0x3)
-        self.blocksize = 64 << ((devcfg >> 4) & 0x3)
-        self.spp = self.pagesize//self.sectorsize
+    def nand_onfi(self):
+        cmd1 = self.regs.NAND_DEV_CMD1
+        vld = self.regs.NAND_DEV_CMD_VLD
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ
+        self.regs.NAND_ADDR0 = 0
+        self.regs.NAND_ADDR1 = 0
+        self.regs.NAND_DEV0_CFG0 = 0 << self.nanddevice.CW_PER_PAGE | 512 << self.nanddevice.UD_SIZE_BYTES | 5 << self.nanddevice.NUM_ADDR_CYCLES | 0 << self.nanddevice.SPARE_SIZE_BYTES
+        self.regs.NAND_DEV1_CFG1 = 7 << self.nanddevice.NAND_RECOVERY_CYCLES | 0 << self.nanddevice.CS_ACTIVE_BSY | 17 << self.nanddevice.BAD_BLOCK_BYTE_NUM | \
+                                   1 << self.nanddevice.BAD_BLOCK_IN_SPARE_AREA | 2 << self.nanddevice.WR_RD_BSY_GAP | 0 << self.nanddevice.WIDE_FLASH | \
+                                   1 << self.nanddevice.DEV0_CFG1_ECC_DISABLE
+        self.regs.NAND_EBI2_ECC_BUF_CFG = 1 << self.nanddevice.ECC_CFG_ECC_DISABLE
+        self.regs.NAND_DEV_CMD_VLD = self.regs.NAND_DEV_CMD_VLD & ~(1 << self.nanddevice.READ_START_VLD)
+        self.regs.NAND_DEV_CMD1 = (self.regs.NAND_DEV_CMD1 & ~(
+                    0xFF << self.nanddevice.READ_ADDR)) | self.nanddevice.NAND_CMD_PARAM << self.nanddevice.READ_ADDR
+        self.regs.NAND_EXEC_CMD = 1
+        self.regs.NAND_DEV_CMD1_RESTORE = cmd1
+        self.regs.DEV_CMD_VLD_RESTORE = vld
+        self.regs.NAND_DEV_CMD_VLD = 1
+        self.regs.NAND_DEV_CMD1 = 1
 
-        if ((((cfg0 >> 6) & 7) | ((cfg0 >> 2) & 8)) == 0):
-            if self.bad_loader==0:
-                self.parent.mempoke(self.nandreg_cfg0, (cfg0 | 0x40000 | (((spp-1) & 8) << 2) | (((spp-1) & 7) << 6)))
+        # config_cw_read
+        self.regs.NAND_FLASH_CMD = 3
+        self.regs.NAND_DEV0_CFG0 = 3
+        self.regs.NAND_EBI2_ECC_BUF_CFG = 1
+        self.regs.NAND_EXEC_CMD = 1
 
-        self.bch_mode=0
-        if (((cfg1 >> 27) & 1) != 0):
-            self.bch_mode=1
-        if self.bch_mode:
-            self.ecc_size=(ecccfg>>8)&0x1F
-            self.ecc_bit=(((ecccfg>>4)&3)+1)*4 if ((ecccfg>>4)&4) else 4
-        else:
-            self.ecc_size=(cfg0>>19)&0xF
-            self.ecc_bit=4
+        tmp = self.memread(self.nanddevice.NAND_FLASH_BUFFER, 512)
 
-        self.badposition = (cfg1 >> 6) & 0x3ff
-        self.badplace = (cfg1 >> 16) & 1
+        self.regs.NAND_DEV_CMD1_RESTORE = 1
+        self.regs.DEV_CMD_VLD_RESTORE = 1
 
-        linuxcwsize = 528
-        if (self.bch_mode and (self.ecc_bit == 8)):
-            linuxcwsize=532
+        (bytesperpage, spareperpage,
+         bytesperpartialpage, spareperpartialpage,  # obsolete
+         pagesperblock, blocksperunit, units,
+         addresscycles) = unpack('<IHIHIIBB', tmp[80:102])
 
-        c_badmark_pos = (self.pagesize - (linuxcwsize * (self.spp - 1)) + 1)
-        if self.badposition == 0:
-            logging.info("The marker position of defective blocks is autodetected.")
-            self.badplace=0
-            self.badposition=c_badmark_pos
-        if (self.badposition!=c_badmark_pos):
-            logging.warning("The marker position of defective blocks mismatches with calculated one.")
+        res = dict(vendor=tmp[32:44], model=tmp[44:64], bytesperpage=bytesperpage,
+                   spareperpage=spareperpage, bytesperpartialpage=bytesperpartialpage,
+                   spareperpartialpage=spareperpartialpage, pagesperblock=pagesperblock,
+                   blocksperunit=blocksperunit, units=units, addresscycles=addresscycles,
+                   rowaddressbytes=addresscycles & 0x0f, columnaddressbytes=addresscycles >> 4,
+                   totalpages=pagesperblock * blocksperunit * units)
+        # self.pageaddressbits=bitsforaddress(self.pagesperblock)
+        return res
 
-        if ((cfg1 & 2) != 0):
-            self.flash16bit=1
+    def nand_init(self, xflag=0):
+        self.settings.cwsize = self.settings.sectorsize
+        if xflag:
+            # increase the codeword size by the OOB chunk size per sector˰
+            self.settings.cwsize += self.settings.OOBSIZE // self.settings.sectors_per_page
 
-        if (chipsize != 0):
-            self.maxblock=chipsize*1024//self.blocksize
-        else:
-            self.maxblock=0x800
+        self.regs.NAND_DEV0_ECC_CFG = (
+                                                  self.regs.NAND_DEV0_ECC_CFG & 0xfffffffe) | self.settings.args_disable_ecc  # ECC on/off
+        self.regs.NAND_DEV0_CFG1 = (
+                                               self.regs.NAND_DEV0_CFG1 & 0xfffffffe) | self.settings.args_disable_ecc  # ECC on/off
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_SOFT_RESET  # Resetting all controller operations
+        self.regs.NAND_EXEC_CMD = 0x1
+        self.nandwait()
 
-        if self.oobsize==0:
-            if ((nandid == 0x2690ac2c) or (nandid == 0x2690ac98)):
-                self.oobsize = 256
-            else:
-                self.oobsize = (8 << ((devcfg >> 2) & 0x1)) * (self.pagesize >> 9)
+        # set the command code˰
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL  # reading data+ecc+spare
 
-class qualcomm_streaming:
-    def __init__(self,cdc,sahara):
-        self.cdc=cdc
-        self.hdlc = hdlc(self.cdc)
-        self.mode=sahara.mode
-        self.settings=None
+        # clean the sector buffer˰
+        for i in range(0, self.settings.cwsize, 4):
+            self.mempoke(self.nanddevice.NAND_FLASH_BUFFER + i, 0xffffffff)
 
-    def memread(self,address,length):
-        result=b""
-        cmdbuf=bytearray([0x11,0x00,0x24,0x30,0x9f,0xe5,0x24,0x40,0x9f,0xe5,0x12,0x00,0xa0,0xe3,0x04,0x00,
-                          0x81,0xe4,0x04,0x00,0x83,0xe0,0x04,0x20,0x93,0xe4,0x04,0x20,0x81,0xe4,0x00,0x00,
-                          0x53,0xe1,0xfb,0xff,0xff,0x3a,0x04,0x40,0x84,0xe2,0x1e,0xff,0x2f,0xe1])
-        errcount=0
-        blklen=1000
-        for i in range(0,length,1000):
-            tries=20
-            if (i+1000)>length:
-                blklen=length-i
-            resp=b""
-            while (tries>0):
-                resp=self.send(cmdbuf+struct.pack("<I", blklen)+struct.pack("<I",address+i))
-                iolen=len(resp)-1
-                if iolen<(blklen+4):
-                    tries-=1
+    def secure_mode(self):
+        resp = self.send(b"\x17\x01", True)
+        return 0
+
+    def qclose(self, errmode):
+        resp = self.send(b"\x15")
+        if not errmode:
+            time.sleep(0.5)
+            return True
+        if len(resp) > 2 and resp[1] == 0x16:
+            time.sleep(0.5)
+            return True
+        logging.error("Error on closing stream")
+        return False
+
+    def send_section_header(self, name):
+        resp = self.send(b"\x1b\x0e" + name + b"\x00")
+        if resp[1] == 0x1c:
+            return True
+        logger.error("Error on sending section header")
+        return False
+
+    def enter_flash_mode(self, ptable=None):
+        self.secure_mode()
+        self.qclose(0)
+        if ptable != None:
+            self.send_ptable(ptable, 0)  # 1 for fullflash
+
+    def write_flash(self, partname, filename):
+        wbsize = 1024
+        filesize = os.stat(filename).st_size
+        with open(filename, 'rb') as rf:
+            if self.send_section_header(partname):
+                adr = 0
+                while filesize > 0:
+                    subdata = rf.read(wbsize)
+                    if len(subdata) < wbsize + 1:
+                        subdata += b'\xFF' * ((wbsize + 1) - len(subdata))
+                    scmd = b"\x07" + pack("<I", adr) + subdata
+                    resp = self.send(scmd)
+                    if len(resp) == 0 or resp[1] != 0x8:
+                        logger.error("Error on sending data at address %08X" % adr)
+                        return False
+                    adr += len(subdata)
+                    filesize -= len(subdata)
+            if not self.qclose(0):
+                logger.error("Error on closing data stream")
+                return False
+
+    def send_ptable(self, parttable, mode):
+        cmdbuf = b"\x19" + pack("<B", mode) + parttable
+        resp = self.send(cmdbuf)
+        if resp[1] != 0x1a:
+            logger.error("Error on sending raw partition table")
+            return False
+        elif resp[2] == 0x0:
+            return True
+        logger.error("Partition tables do not match - you need to fully flash the modem")
+        return False
+
+    def memread(self, address, length):
+        logging.debug("memread %08X:%08X" % (address, length))
+        result = b""
+        cmdbuf = bytearray(
+            [0x11, 0x00, 0x24, 0x30, 0x9f, 0xe5, 0x24, 0x40, 0x9f, 0xe5, 0x12, 0x00, 0xa0, 0xe3, 0x04, 0x00,
+             0x81, 0xe4, 0x04, 0x00, 0x83, 0xe0, 0x04, 0x20, 0x93, 0xe4, 0x04, 0x20, 0x81, 0xe4, 0x00, 0x00,
+             0x53, 0xe1, 0xfb, 0xff, 0xff, 0x3a, 0x04, 0x40, 0x84, 0xe2, 0x1e, 0xff, 0x2f, 0xe1])
+        errcount = 0
+        blklen = 1000
+        for i in range(0, length, 1000):
+            tries = 20
+            if (i + 1000) > length:
+                blklen = length - i
+            iolen = 0
+            resp = self.send(cmdbuf + pack("<I", address + i) + pack("<I", blklen), True)
+            while tries > 0:
+                iolen = len(resp) - 1
+                if iolen < (blklen + 4):
+                    tries -= 1
                     time.sleep(1)
+                    resp += self.hdlc.receive_reply_nocrc()
                 else:
                     break
-            if tries==0:
-                logging.error(f"Error reading memory at addr {hex(address)}, {str(blklen)} bytes required, {str(iolen)} bytes received.")
-                errcount+=1
-                result+=b"\xeb"*blklen
+            if tries == 0:
+                logging.error(
+                    f"Error reading memory at addr {hex(address)}, {str(blklen)} bytes required, {str(iolen)} bytes "
+                    f"received.")
+                errcount += 1
+                result += b"\xeb" * blklen
             else:
-                result+=resp[1:]
-        return [errcount==0,result]
+                result += resp[5:]
 
-    def mempeek(self,address):
-        res=self.memread(address,4)
-        if res[0]==True:
-            return struct.unpack("<I",res[1][:4])
+        if errcount > 0:
+            return b""
+        return result
+
+    def mempeek(self, address):
+        res = self.memread(address, 4)
+        if res != b"":
+            data = unpack("<I", res)[0]
+            logging.debug("memread %08X:%08X" % (address, data))
+            return data
         return -1
 
-    def memwrite(self,address,data,length):
-        cmdbuf=bytearray([0x11,0x00,0x38,0x00,0x80,0xe2,0x24,0x30,0x9f,0xe5,0x24,0x40,0x9f,0xe5,0x04,0x40,
-                          0x83,0xe0,0x04,0x20,0x90,0xe4,0x04,0x20,0x83,0xe4,0x04,0x00,0x53,0xe1,0xfb,0xff,
-                          0xff,0x3a,0x12,0x00,0xa0,0xe3,0x00,0x00,0xc1,0xe5,0x01,0x40,0xa0,0xe3,0x1e,0xff,
-                          0x2f,0xe1])
-        if len(data)>1000:
-            data=data[0:1000]
-            length=1000
-        self.send(cmdbuf+struct.pack("<I",address)+struct.pack("<I",length)+data)
+    def memwrite(self, address, data):
+        length = len(data)
+        cmdbuf = bytearray(
+            [0x11, 0x00, 0x38, 0x00, 0x80, 0xe2, 0x24, 0x30, 0x9f, 0xe5, 0x24, 0x40, 0x9f, 0xe5, 0x04, 0x40,
+             0x83, 0xe0, 0x04, 0x20, 0x90, 0xe4, 0x04, 0x20, 0x83, 0xe4, 0x04, 0x00, 0x53, 0xe1, 0xfb, 0xff,
+             0xff, 0x3a, 0x12, 0x00, 0xa0, 0xe3, 0x00, 0x00, 0xc1, 0xe5, 0x01, 0x40, 0xa0, 0xe3, 0x1e, 0xff,
+             0x2f, 0xe1])
+        if len(data) > 1000:
+            data = data[0:1000]
+            length = 1000
+        self.send(cmdbuf + pack("<I", address) + pack("<I", length) + data, True)
         return True
 
-    def mempoke(self,address,value):
-        data=struct.pack("<I",value)
-        return self.memwrite(address,data,4)
+    def cmd_memcpy(self, destaddress, sourceaddress, size):
+        data = self.memread(sourceaddress, size)
+        if data != b"" and data:
+            if self.memwrite(destaddress, data):
+                return True
+        return False
+
+    def mempoke(self, address, value):
+        logging.debug("mempoke %08X:%08X" % (address, value))
+        data = pack("<I", value & 0xFFFFFFFF)
+        return self.memwrite(address, data)
+
+    def reset(self):
+        data = self.send(b"\x0B", True)
+        return True
 
     def nandwait(self):
-        if self.settings.ctrl_type==0:
-            while(True):
-                if (self.mempeek(self.settings.nandreg_fl_st)&0xF)==0:
+        if self.settings.ctrl_type == 0:
+            while True:
+                if self.regs.NAND_FLASH_STATUS & 0xF == 0:
                     break
         else:
-            while (True):
-                if (self.mempeek(self.settings.nandreg_fl_st)&0x3)==0:
+            while True:
+                if self.regs.NAND_FLASH_STATUS & 0x3 == 0:
                     break
 
-    def setaddr(self,block,page):
-        address=(block*self.settings.ppb)+page
-        if self.settings.ctrl_type == 0: #MDM
-            self.mempoke(self.settings.nandreg_adr0,address<<16)
-            self.mempoke(self.settings.nandreg_adr0,(address>>16)&0xFF)
-        else: #MSM
-            self.mempoke(self.settings.nandreg_adr0,address<<8)
+    def set_address(self, block, page):
+        address = (block * self.settings.num_pages_per_blk) + page
+        if self.settings.ctrl_type == 0:  # MDM
+            self.regs.NAND_ADDR0 = address << 16
+            self.regs.NAND_ADDR1 = (address >> 16) & 0xFF
+            # self.regs.NAND_FLASH_CHIP_SELECT = 0 | 4  # flash0 + undoc bit
+        else:  # MSM
+            self.regs.NAND_ADDR0 = address << 8
+            self.regs.NAND_FLASH_CHIP_SELECT = 0 | 4  # flash0 + undoc bit
 
-    def exec_nand(self,cmd):
-        if self.settings.ctrl_type == 0: #MDM
-            self.mempoke(self.settings.nandreg_cmd,cmd)
-            self.mempoke(self.settings.nandreg_exec,1)
+    def exec_nand(self, cmd):
+        if self.settings.ctrl_type == 0:  # MDM
+            self.regs.NAND_FLASH_CMD = cmd
+            self.regs.NAND_EXEC_CMD = 1
             self.nandwait()
-        else: #MSM
-            self.mempoke(self.settings.nandreg_cmd,cmd)
+        else:  # MSM
+            self.regs.NAND_FLASH_CMD = cmd
             self.nandwait()
 
     def nand_reset(self):
         self.exec_nand(1)
 
-    def test_badblock(self):
-        badflag=0
-        st=self.mempeek(self.settings.nandreg_buf_st)&0xFFFF0000
-        if self.settings.flash16bit==0:
-            if st!=0xFF0000:
-                badflag=1
-        elif st!=0xFFFF0000:
-            badflag=1
+    def tst_badblock(self):
+        badflag = 0
+        st = self.regs.NAND_BUFFER_STATUS & 0xFFFF0000
+        if self.settings.IsWideFlash == 0:
+            if st != 0xFF0000:
+                badflag = 1
+        elif st != 0xFFFF0000:
+            badflag = 1
         return badflag
 
-    def check_block(self,block):
+    def check_block(self, block):
         self.nand_reset()
-        self.setaddr(block,0)
-        self.mempoke(self.settings.nandreg_cmd,0x34)
-        self.mempoke(self.settings.nandreg_exec, 0x1)
+        self.set_address(block, 0)
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
+        self.regs.NAND_FLASH_EXEC = 0x1
         self.nandwait()
-        return self.test_badblock()
+        return self.tst_badblock()
+
+    """
+    def check_block(self, block):
+        cwperpage = (self.settings.pagesize >> 9)
+        CFG1_WIDE_FLASH=1<<1
+        #if self.settings.bch_mode:
+        #    NAND_CFG0_RAW=0xA80420C0
+        #else:
+        #    NAND_CFG0_RAW=0xA80428C0
+        self.nand_reset()
+        self.set_address(block, 0)
+        self.regs.NAND_FLASH_CMD=self.nanddevice.NAND_CMD_PAGE_READ
+        #self.regs.NAND_DEV0_CFG0=NAND_CFG0_RAW & ~(7 << 6)
+        self.regs.NAND_EXEC_CMD=0x1
+        self.nandwait()
+        flashstatus = self.regs.NAND_FLASH_STATUS
+        if flashstatus & 0x110:
+            return 1
+        
+        if self.settings.cfg1_enable_bch_ecc and self.settings.ecc_bit == 8:
+            val=532 * (cwperpage - 1)
+        else:
+            val=528 * (cwperpage - 1)
+        #val=self.settings.BAD_BLOCK_BYTE_NUM
+        ptr = self.nanddevice.NAND_FLASH_BUFFER + (self.settings.pagesize - val)
+        flag=self.memread(ptr,2)
+        if self.regs.NAND_DEV0_CFG1 & CFG1_WIDE_FLASH:
+            if flag[0] != 0xFF or flag[1] != 0xFF:
+                return 1
+        elif flag[0] != 0xFF:
+            return 1
+        return 0
+    """
 
     def check_ecc_status(self):
-        bs=self.mempeek(self.settings.nandreg_buf_st)
-        if ((bs&0x100)!=0) and ((self.mempeek(self.settings.nandreg_cmd+0xec)&0x40)==0):
+        bs = self.regs.NAND_BUFFER_STATUS
+        if (bs & 0x100) != 0 and (self.regs.NAND_FLASH_CMD + 0xec) & 0x40 == 0:
             return -1
-        return bs&0x1f
+        return bs & 0x1f
 
-    def write_badmark(self,block,value):
-        udsize=0x220
-        cfg1bak=self.mempeek(self.settings.nandreg_cfg1)
-        cfgeccback=self.mempeek(self.settings.nandreg_ecc)
-        self.mempoke(self.settings.nandreg_ecc,self.mempeek(self.settings.nandreg_ecc)|1)
-        self.mempoke(self.settings.nandreg_cfg1, self.mempeek(self.settings.nandreg_cfg1) | 1)
+    def write_badmark(self, block, value):
+        udsize = 0x220
+        cfg1bak = self.regs.NAND_DEV0_CFG1
+        cfgeccbak = self.regs.NAND_DEV0_ECC_CFG
+        self.regs.NAND_DEV0_ECC_CFG = self.regs.NAND_DEV0_ECC_CFG | 1
+        self.regs.NAND_DEV0_CFG1 = self.regs.NAND_DEV0_CFG1 | 1
         self.hardware_bad_off()
-        buf=bytearray([0xeb])
-        for i in range(1,udsize):
+        buf = bytearray([0xeb])
+        for i in range(1, udsize):
             buf.append(value)
         self.nand_reset()
         self.nandwait()
-        self.setaddr(block,0)
-        self.mempoke(self.settings.nandreg_cmd,0x39)
-        for i in range(0,self.settings.spp):
-            self.memwrite(self.settings.nandreg_sbuf,buf,udsize)
-            self.mempoke(self.settings.nandreg_exec,1)
+        self.set_address(block, 0)
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PRG_PAGE_ALL
+        for i in range(0, self.settings.sectors_per_page):
+            self.memwrite(self.nanddevice.NAND_FLASH_BUFFER, buf[:udsize])
+            self.regs.NAND_EXEC_CMD = 1
             self.nandwait()
         self.hardware_bad_on()
-        self.mempoke(self.settings.nandreg_cfg1,cfg1bak)
-        self.mempoke(self.settings.nandreg_ecc,cfgeccbak)
+        self.regs.NAND_DEV0_CFG1 = cfg1bak
+        self.regs.NAND_DEV0_ECC_CFG = cfgeccbak
 
-    def mark_bad(self,block):
+    def mark_bad(self, block):
         if not self.check_block(block):
-            self.write_badmark(block,0)
+            self.write_badmark(block, 0)
             return 1
         return 0
 
-    def unmark_bad(self,block):
+    def unmark_bad(self, block):
         if self.check_block(block):
             self.block_erase(block)
             return 1
         return 0
 
-    def test_badpattern(self,buffer):
-        for i in range(0,len(buffer)):
-            if buffer[i]!=0xbb:
+    """
+    def tst_badpattern(self, buffer):
+        for i in range(0, len(buffer)):
+            if buffer[i] != 0xbb:
                 return 0
         return 1
+    """
 
-    def flash_read(self,block,page,sector):
-        self.nand_reset()
-        self.setaddr(block,page)
+    def flash_read(self, block, page, sectors, cwsize=None):
+        buffer = bytearray()
+        spare = bytearray()
+        cursize = 0
+        newblock = False
+        cfg0 = self.regs.NAND_DEV0_CFG0
+        if block not in self.bbtbl:
+            newblock = True
+        if self.settings.bad_processing_flag == BadFlags.BAD_DISABLE.value:
+            self.hardware_bad_off()
+        elif self.settings.bad_processing_flag != BadFlags.BAD_IGNORE.value:
+            if newblock:
+                res = 0
+                if block in self.bbtbl:
+                    res = self.bbtbl[block]
+                else:
+                    if self.check_block(block):
+                        res = 1
+                    self.bbtbl[block] = res
+                if res == 1:
+                    for i in range(0, self.settings.PAGESIZE):
+                        buffer.append(0xbb)
+                    return buffer, spare
+
+            self.nand_reset()
+            if self.settings.ctrl_type == 0:
+                if self.settings.ECC_MODE == 1:
+                    if cwsize >= self.settings.sectorsize + 4:
+                        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
+                    else:
+                        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ECC
+                else:
+                    self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
+            self.bch_reset()
+
         if self.settings.ctrl_type == 0:
-            self.mempoke(self.settings.nandreg_cmd,0x34)
-            for i in range(0,sector+1):
-                self.mempoke(self.settings.nandreg_exec,0x1)
+            self.set_address(block, page)
+            bad_ecc = False
+            for sector in range(0, sectors):
+                self.regs.NAND_EXEC_CMD = 0x1
                 self.nandwait()
-        else:
-            for i in range(0,sector+1):
-                self.mempoke(self.settings.nandreg_cmd,0x34)
-                self.nandwait()
-        if self.test_badblock()==0:
-            return 0
-        return 1
+                ecc_status = self.check_ecc_status()
+                if ecc_status == -1:
+                    bad_ecc = True
+                tmp = self.memread(self.nanddevice.NAND_FLASH_BUFFER, cwsize)
+                size = self.settings.UD_SIZE_BYTES
+                if cursize + size > self.settings.PAGESIZE:
+                    size = cursize + size - self.settings.PAGESIZE
+                    buffer.extend(tmp[:-size])
+                    spare.extend(tmp[-size:])
+                else:
+                    buffer.extend(tmp)
+                cursize += size
+            if bad_ecc:
+                logger.debug("ECC error at : Block %08X Page %08X" % (block, page))
+
+        if self.settings.bad_processing_flag == BadFlags.BAD_DISABLE.value:
+            self.hardware_bad_off()
+
+        self.regs.NAND_DEV0_CFG0 = cfg0
+        return buffer, spare
 
     def hardware_bad_off(self):
-        cfg1=self.mempeek(self.settings.nandreg_cfg1)
-        cfg1 &= ~(0x3ff<<6)
-        self.mempoke(self.settings.nandreg_cfg1,cfg1)
+        cfg1 = self.regs.NAND_DEV0_CFG1
+        cfg1 &= ~(0x3ff << 6)
+        self.regs.NAND_DEV0_CFG1 = cfg1
 
     def hardware_bad_on(self):
-        cfg1=self.mempeek(self.settings.nandreg_cfg1)
-        cfg1 &= ~(0x7ff<<6)
-        cfg1 |=(self.settings.badposition & 0x3FF)<<6
-        cfg1 |= self.settings.badplace<<16
-        self.mempoke(self.settings.nandreg_cfg1,cfg1)
+        cfg1 = self.regs.NAND_DEV0_CFG1
+        cfg1 &= ~(0x7ff << 6)
+        cfg1 |= (self.settings.BAD_BLOCK_BYTE_NUM & 0x3FF) << 6
+        cfg1 |= self.settings.BAD_BLOCK_IN_SPARE_AREA << 16
+        self.regs.NAND_DEV0_CFG1 = cfg1
 
-    def set_badmark_pos(self,pos,place):
-        self.settings.badposition=pos
-        self.settings.badplace=place&1
+    def set_badmark_pos(self, pos, place):
+        self.settings.BAD_BLOCK_BYTE_NUM = pos
+        self.settings.BAD_BLOCK_IN_SPARE_AREA = place & 1
         self.hardware_bad_on()
 
-    def set_udsize(self,size):
-        tmpreg=self.mempeek(self.settings.nandreg_cfg0)
-        tmpreg=(tmpreg&(~(0x3ff<<9)))|(size<<9)
-        self.mempoke(self.settings.nandreg_cfg0,tmpreg)
-        if (((self.mempeek(self.settings.nandreg_cfg1)>>27)&1)!=0):
-            tmpreg = self.mempeek(self.settings.nandreg_ecc)
+    def set_udsize(self, size):
+        tmpreg = self.regs.NAND_DEV0_CFG0
+        tmpreg = (tmpreg & (~(0x3ff << 9))) | (size << 9)
+        self.regs.NAND_DEV0_CFG0 = tmpreg
+        if ((self.regs.NAND_DEV0_CFG1 >> 27) & 1) != 0:
+            tmpreg = self.regs.NAND_DEV0_ECC_CFG
             tmpreg = (tmpreg & (~(0x3ff << 16))) | (size << 16)
-            self.mempoke(self.settings.nandreg_ecc, tmpreg)
+            self.regs.NAND_DEV0_ECC_CFG = tmpreg
 
-    def set_sparesize(self,size):
-        cfg0=self.mempeek(self.settings.nandreg_cfg0)
-        cfg0=cfg0&(~(0xf<<23))|(size<<23)
-        self.mempoke(self.settings.nandreg_cfg0,cfg0)
+    def set_sparesize(self, size):
+        cfg0 = self.regs.NAND_DEV0_CFG0
+        cfg0 = cfg0 & (~(0xf << 23)) | (size << 23)
+        self.regs.NAND_DEV0_CFG0 = cfg0
 
-    def set_eccsize(self,size):
-        cfg1 = self.mempeek(self.settings.nandreg_cfg1)
-        if ((cfg1>>27)&1)!=0:
-            self.settings.bch_mode=1
-        if self.settings.bch_mode==1:
-            ecccfg = self.mempeek(self.settings.nandreg_ecc)
-            ecccfg = (ecccfg&(~(0x1f<<8))|(size<<8))
-            self.mempoke(self.settings.nandreg_ecc,ecccfg)
+    def set_eccsize(self, size):
+        cfg1 = self.regs.NAND_DEV0_CFG1
+        if ((cfg1 >> 27) & 1) != 0:
+            self.settings.cfg1_enable_bch_ecc = 1
+        if self.settings.cfg1_enable_bch_ecc == 1:
+            ecccfg = self.regs.NAND_DEV0_ECC_CFG
+            ecccfg = (ecccfg & (~(0x1f << 8)) | (size << 8))
+            self.regs.NAND_DEV0_ECC_CFG = ecccfg
         else:
-            cfg0 = self.mempeek(self.settings.nandreg_cfg0)
-            cfg0=cfg0&(~(0xf<<19))|(size<<19)
-            self.mempoke(self.settings.nandreg_cfg0,cfg0)
+            cfg0 = self.regs.NAND_DEV0_CFG0
+            cfg0 = cfg0 & (~(0xf << 19)) | (size << 19)
+            self.regs.NAND_DEV0_CFG0 = cfg0
 
     def bch_reset(self):
-        if not self.settings.bch_mode:
+        if not self.settings.cfg1_enable_bch_ecc:
             return
-        cfgecctemp=self.mempeek(self.settings.nandreg_ecc)
-        self.mempoke(self.settings.nandreg_ecc,cfgecctemp|2)
-        self.mempoke(self.settings.nandreg_ecc, cfgecctemp)
+        cfgecc_temp = self.regs.NAND_DEV0_ECC_CFG
+        self.regs.NAND_DEV0_ECC_CFG = cfgecc_temp | 2
+        self.regs.NAND_DEV0_ECC_CFG = cfgecc_temp
 
-    def set_blocksize(self,udsize,ss,eccs):
+    def set_blocksize(self, udsize, ss, eccs):
         self.set_udsize(udsize)
         self.set_sparesize(ss)
         self.set_eccsize(eccs)
 
-
     def get_udsize(self):
-        return (self.mempeek(self.settings.nandreg_cfg0) & (0x3ff<<9))>>9
+        return (self.regs.NAND_DEV0_CFG0 & (0x3ff << 9)) >> 9
 
-    def block_erase(self,block):
+    def block_erase(self, block):
         self.nand_reset()
-        self.mempoke(self.settings.nandreg_adr0,block*self.settings.ppb)
-        self.mempoke(self.settings.nandreg_adr1,0)
-        oldcfg=self.mempeek(self.settings.nandreg_cfg0)
-        self.mempoke(self.settings.nandreg_cf0, oldcfg&~(0x1c0))
+        self.regs.NAND_ADDR0 = block * self.settings.num_pages_per_blk
+        self.regs.NAND_ADDR1 = 0
+        oldcfg = self.regs.NAND_DEV0_CFG0
+        self.regs.NAND_DEV0_CFG0 = oldcfg & ~0x1c0
 
-        self.mempoke(self.settings.nandreg_cmd,0x3a)
-        self.mempoke(self.settings.nandreg_exec,1)
+        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_BLOCK_ERASE
+        self.regs.NAND_EXEC_CMD = 1
         self.nandwait()
-        self.mempoke(self.settings.nandreg_cfg0,oldcfg)
+        self.regs.NAND_DEV0_CFG0 = oldcfg
 
     def disable_bam(self):
-        nandcstate=[]
-        for i in range(0,0xec,4):
-            nandcstate.append(self.mempeek(self.settings.nandreg_cmd+i))
-        self.mempoke(self.settings.bcraddr,1)
-        self.mempoke(self.settings.bcraddr,0)
-        for i in range(0,0xec,4):
-            self.mempoke(self.settings.nandreg_cmd+i, nandcstate[i])
-        self.mempoke(self.settings.nandreg_exec,1)
-
-    def load_ptable_flash(self):
-        udsize=512
-        if self.settings.udflag:
-            udsize=516
-        partitions=[]
-        for block in range(0,12):
-            self.flash_read(block,0,0)
-            buffer=self.memread(self.settings.nandreg_sbuf,udsize)
-            if buffer[0:8]!=b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd":
-                continue
-            self.flash_read(block,1,0)
-            buffer=self.memread(self.settings.nandreg_sbuf,udsize)
-            self.mempoke(self.settings.nandreg_exec,1)
-            self.nandwait()
-            buffer+=self.memread(self.settings.nandreg_sbuf,udsize)
-            magic1,magic2,version,numparts=struct.unpack("<IIII",buffer[0:0x10])[0]
-            if magic1==0xAA7D1B9A and magic2==0x1F7D48BC:
-                data=buffer[0x10:]
-                for i in range(0,len(data),0x1c):
-                    name,offset,length,attr1,attr2,attr3,which_flash=struct.unpack("16sIIBBBB",data[i:i+0x1C])
-                    partitions.append(dict(name=name,offset=offset,length=length,attr1=attr1,attr2=attr2,attr3=attr3,which_flash=which_flash))
-                return partitions
-            return []
-
-    def connect(self,mode=1):
-        time.sleep(0.200)
-        if mode==0:
-            cmdbuf=bytearray([0x11,0x00,0x12,0x00,0xa0,0xe3,0x00,0x00,0xc1,0xe5,0x01,0x40,0xa0,0xe3,0x1e,0xff,0x2f,0xe1])
-            resp=self.send(cmdbuf)
-            i=resp[1]
-            if i==0x12:
-                if not self.test_loader():
-                    print("Unlocked bootloader being used, cannot continue")
-                    exit(2)
-                # self.get_flash_config()
-                chipset=self.identify_chipset()
-                self.settings=settingsopt(self,chipset)
-
-        info=self.send(b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20")
-        resp=self.send(info)
-        if resp[1]!=2:
-            resp = self.send(info)
-        infolen=resp[0x2c]
-
-        if mode==2:
-            logging.info("Detected flash memory: %s" % resp[0x2d:0x2d+infolen].decode('utf-8'))
-            return
-
-        chipset=self.identify_chipset()
-        self.settings=settingsopt(self,chipset)
-        self.disable_bam() #only for sahara
-        self.settings.get_flash_config()
-        cfg0=self.mempeek(self.settings.nandreg_cfg0)
-
-        logging.info("HELLO protocol version: %i",resp[0x22])
-        logging.info("Chipset: %s",self.settings.name)
-        logging.info("Base address of the NAND controller: %08x",self.settings.nandbase)
-        val=resp[0x2d:0x2d+infolen].decode('utf-8') if resp[0x2d] != 0x65 else ""
-        logging.info("Flash memory: %s %s, %s",self.settings.flash_mfr,val,self.settings.flash_descr)
-        #logging.info("Maximum packet size: %i byte",*((unsigned int*)&rbuf[0x24]))
-        logging.info("Sector size: %u bytes",(cfg0&(0x3ff<<9))>>9)
-        logging.info("Page size: %u bytes (%u sectors)",self.settings.pagesize,self.settings.spp)
-        logging.info("The number of pages in the block: %u",self.settings.ppb)
-        logging.info("The size OOB: %u bytes",self.settings.oobsize)
-        ecctype="BCH" if self.settings.bch_mode else "R-S"
-        logging.info("Type of ECC: %s, %i bit",ecctype,self.settings.ecc_bit)
-        logging.info("The size ЕСС: %u bytes",self.settings.ecc_size)
-        logging.info("Spare bytes: %u bytes",(cfg0>>23)&0xf)
-        markerpos="spare" if self.settings.badplace else "user"
-        logging.info("Defective block marker position: %s+%x",markerpos,self.settings.badposition)
-        logging.info("The total size of the flash memory = %u blocks (%i MB)",self.settings.maxblock,self.settings.maxblock*self.settings.ppb/1024*self.settings.pagesize/1024)
-
-    def lock_block(self,block,cwsize):
-        errcount=0
-        blockbuf=bytearray()
-        if self.bad_processing_flag==BAD_DISABLE:
-            self.hardware_bad_off()
-        elif self.bad_processing_flag!=BAD_IGNORE:
-            if self.check_block(block):
-                for i in range(0,cwsize*self.settings.spp*self.settings.ppb):
-                    blockbuf.append(0xbb)
-                return [0,blockbuf]
-        cfg0=self.mempeek(self.settings.nandreg_cfg0)
-        self.nand_reset()
-        if (cwsize>(self.settings.sectorsize+4)):
-            self.mempoke(self.settings.nandreg_cmd,0x34)
-        else:
-            self.mempoke(self.settings.nandreg_cmd,0x33)
-        self.bch_reset()
-        for page in range(0,self.settings.ppb):
-            self.setaddr(block,page)
-            for sec in range(0,self.settings.spp):
-                self.mempoke(self.settings.nandreg_exec,1)
-                self.nandwait()
-                status=self.check_ecc_status()
-                if status!=0:
-                    print("blk %x  pg %i  sec  %i err %i---",block,page,sec,status)
-                    errcount+=1
-                blockbuf.extend(self.memread(self.settings.nandreg_sbuf,cwsize)) #blockbuf+(pg*spp+sec)*cwsize
-        if self.bad_processing_flag==BAD_DISABLE:
-            self.hardware_bad_on()
-        self.mempoke(self.settings.nandreg_cfg0,cfg0)
-
-    def read_block(self,block,cwsize,filename):
-        with open(filename,'wb') as fw:
-            [okflag,blockbuf]=self.load_block(block,cwsize)
-            if okflag or (self.settings.bad_processing_flag != BAD_SKIP):
-                fw.write(blockbuf[:cwsize*self.settings.spp*self.settings.ppb])
-
-    def read_block_ext(self,block,filename,yaffsmode):
-        with open(filename,'wb') as fw:
-            [okflag,blockbuf]=self.load_block(block,self.settings.sectorsize+4)
-            if not okflag and (self.settings.bad_processing_flag==BAD_SKIP):
-                return 1
-            for page in range(0,self.settings.ppb):
-                pgoffset=page*self.settings.spp*(self.settings.sectorsize+4)
-                for sec in range(0,self.settings.spp):
-                    udoffset=pgoffset+sec*(self.settings.sectorsize+4)
-                    if sec!=(spp-1):
-                        fw.write(blockbuf[udoffset:udoffset+self.settings.sectorsize-4])
-                    else:
-                        fw.write(blockbuf[udoffset:udoffset+self.settings.sectorsize-4*(self.settings.spp-1)])
-            if yaffsmode==1:
-                extbuf=bytearray()
-                soff=pgoffset+(self.settings.sectorsize+4)*(self.settings.spp-1)+(self.settings.sectorsize-4*(self.settings.spp-1))
-                extbuf.extend(blockbuf[soff])
-                for i in range(0,self.settings.oobsize):
-                    extbuf.append(0xff)
-                fw.write(extbuf)
+        nandcstate = []
+        for i in range(0, 0xec, 4):
+            nandcstate.append(self.mempeek(self.nanddevice.NAND_FLASH_CMD + i))
+        self.mempoke(self.settings.bcraddr, 1)
+        self.mempoke(self.settings.bcraddr, 0)
+        for i in range(len(nandcstate)):
+            addr = self.nanddevice.NAND_FLASH_CMD + (i * 4)
+            value = nandcstate[i]
+            self.mempoke(addr, value)
+        self.regs.NAND_EXEC_CMD = 1
 
     def read_partition_table(self):
-        self.connect(0)
-        cwsize=self.settings.sectorsize
-        #if readfullsector:
-        #    cwsize+=self.settings.oobsize//self.settings.spp
-        self.mempoke(self.settings.nandreg_ecc,self.mempeek(self.settings.nandreg_ecc)&0xfffffffe|eccflag)
-        self.mempoke(self.settings.nandreg_cfg1,self.mempeek(self.settings.nandreg_cfg1) & 0xfffffffe | eccflag)
-        self.mempoke(self.settings.nandreg_cmd,1)
-        self.mempoke(self.settings.nandreg_cmd,1)
-        self.nandwait()
-        self.mempoke(self.settings.nandreg_cmd,0x34)
-        for i in range(0,cwsize,4):
-            self.mempoke(self.settings.nandreg_sbuf+i,0xffffffff)
+        cwsize = self.settings.sectorsize
+        if self.settings.ECC_MODE == 1:
+            cwsize = self.settings.UD_SIZE_BYTES
+        for block in range(0, 12):
+            buffer, spare = self.flash_read(block, 0, 1, cwsize)
+            if buffer[0:8] != b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd":
+                continue
 
-    def read_raw(self,start,len,cwsize,filename,rflag):
-        for block in range(start,start+len):
-            if rflag==0: #normal
-                badflag=self.read_block(block,cwsize,filename)
-            elif rflag==1: #linux
-                badflag=self.read_block_ext(block, filename, 0)
-            elif rflag==2: #yaffs
-                badflag=self.read_block_ext(block, filename, 1)
+            buffer, spare = self.flash_read(block, 1, 2, cwsize)
+            magic1, magic2, version, numparts = unpack("<IIII", buffer[0:0x10])
+            if magic1 == 0x55EE73AA or magic2 == 0xE35EBDDB:
+                return buffer
+        return -1
 
-    def send(self, cmd):
-        if self.hdlc != None:
-           return self.hdlc.send_cmd_np(cmd)
+    def get_partitions(self):
+        partitions = {}
+        partdata = self.read_partition_table()
+        if partdata != -1:
+            data = partdata[0x10:]
+            for i in range(0, len(data) // 0x1C):
+                name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
+                                                                                data[i * 0x1C:(i * 0x1C) + 0x1C])
+                if name[1] != 0x3A:
+                    break
+                partitions[name[2:].rstrip(b"\x00").decode('utf-8').lower()] = dict(offset=offset,
+                                                                                    length=length & 0xFFFF,
+                                                                                    attr1=attr1, attr2=attr2,
+                                                                                    attr3=attr3,
+                                                                                    which_flash=which_flash)
+            return partitions
+        return {}
+
+    def tst_loader(self):
+        i = self.identify_chipset()
+        if i <= 0:
+            self.settings.bad_loader = 1
+            return 0
+        return 1
+
+    def setupregs(self):
+        self.regs = nandregs(self)
+        self.regs.register_mapping = {
+            "NAND_FLASH_CMD": self.nanddevice.NAND_FLASH_CMD,
+            "NAND_ADDR0": self.nanddevice.NAND_ADDR0,
+            "NAND_ADDR1": self.nanddevice.NAND_ADDR1,
+            "NAND_FLASH_CHIP_SELECT": self.nanddevice.NAND_FLASH_CHIP_SELECT,
+            "NAND_EXEC_CMD": self.nanddevice.NAND_EXEC_CMD,
+            "NAND_FLASH_STATUS": self.nanddevice.NAND_FLASH_STATUS,
+            "NAND_BUFFER_STATUS": self.nanddevice.NAND_BUFFER_STATUS,
+            "NAND_DEV0_CFG0": self.nanddevice.NAND_DEV0_CFG0,
+            "NAND_DEV0_CFG1": self.nanddevice.NAND_DEV0_CFG1,
+            "NAND_DEV0_ECC_CFG": self.nanddevice.NAND_DEV0_ECC_CFG,
+            "NAND_DEV1_ECC_CFG": self.nanddevice.NAND_DEV1_ECC_CFG,
+            "NAND_DEV1_CFG0": self.nanddevice.NAND_DEV1_CFG0,
+            "NAND_DEV1_CFG1": self.nanddevice.NAND_DEV1_CFG1,
+            "NAND_READ_ID": self.nanddevice.NAND_READ_ID,
+            "NAND_READ_STATUS": self.nanddevice.NAND_READ_STATUS,
+            "NAND_DEV_CMD0": self.nanddevice.NAND_DEV_CMD0,
+            "NAND_DEV_CMD1": self.nanddevice.NAND_DEV_CMD1,
+            "NAND_DEV_CMD2": self.nanddevice.NAND_DEV_CMD2,
+            "NAND_DEV_CMD_VLD": self.nanddevice.NAND_DEV_CMD_VLD,
+            "SFLASHC_BURST_CFG": self.nanddevice.SFLASHC_BURST_CFG,
+            "NAND_EBI2_ECC_BUF_CFG": self.nanddevice.NAND_EBI2_ECC_BUF_CFG,
+            "NAND_FLASH_BUFFER": self.nanddevice.NAND_FLASH_BUFFER
+        }
+
+    def connect(self, mode=1):
+        time.sleep(0.200)
+        if mode == 0:
+            cmdbuf = bytearray(
+                [0x11, 0x00, 0x12, 0x00, 0xa0, 0xe3, 0x00, 0x00, 0xc1, 0xe5, 0x01, 0x40, 0xa0, 0xe3, 0x1e, 0xff, 0x2f,
+                 0xe1])
+            resp = self.send(cmdbuf, True)
+            i = resp[1]
+            if i == 0x12:
+                # if not self.tst_loader():
+                #    print("Unlocked bootloader being used, cannot continue")
+                #    exit(2)
+                chipset = self.identify_chipset()
+                self.settings = SettingsOpt(self, chipset, logger)
+                self.nanddevice = NandDevice(self.settings)
+                self.setupregs()
+                self.get_flash_config()
+                return True
+
+        info = b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20"
+        resp = self.send(info, True)
+        resp = bytearray(resp)
+        if resp[1] != 2:
+            resp = self.send(info, True)
+        if len(resp) > 0x2c:
+            logging.info("Successfully uploaded programmer :)")
+            infolen = resp[0x2c]
+
+            if mode == 2:
+                logging.info("Detected flash memory: %s" % resp[0x2d:0x2d + infolen].decode('utf-8'))
+                return True
+
+            chipset = self.identify_chipset()
+            self.settings = SettingsOpt(self, chipset, logger, False)
+            self.nanddevice = NandDevice(self.settings)
+            self.setupregs()
+            if self.settings.sahara:
+                self.disable_bam()  # only for sahara
+            self.get_flash_config()
+            cfg0 = self.mempeek(self.nanddevice.NAND_DEV0_CFG0)
+            sectorsize = (cfg0 & (0x3ff << 9)) >> 9
+            sparebytes = (cfg0 >> 23) & 0xf
+            logging.info("HELLO protocol version: %i" % resp[0x22])
+            logging.info("Chipset: %s" % self.settings.name)
+            logging.info("Base address of the NAND controller: %08x" % self.settings.nandbase)
+            val = resp[0x2d:0x2d + infolen].decode('utf-8') if resp[0x2d] != 0x65 else ""
+            logging.info("Flash memory: %s %s, %s" % (self.settings.flash_mfr, val, self.settings.flash_descr))
+            # logging.info("Maximum packet size: %i byte",*((unsigned int*)&rbuf[0x24]))
+            logging.info("Sector size: %d bytes" % sectorsize)
+            logging.info("Page size: %d bytes (%d sectors)" % (self.settings.PAGESIZE, self.settings.sectors_per_page))
+            logging.info("The number of pages in the block: %d" % self.settings.num_pages_per_blk)
+            logging.info("OOB size: %d bytes" % self.settings.OOBSIZE)
+            ecctype = "BCH" if self.settings.cfg1_enable_bch_ecc else "R-S"
+            logging.info("ECC: %s, %i bit" % (ecctype, self.settings.ecc_bit))
+            logging.info("ЕСС size: %d bytes" % self.settings.ecc_size)
+            logging.info("Spare bytes: %d bytes" % sparebytes)
+            markerpos = "spare" if self.nanddevice.BAD_BLOCK_IN_SPARE_AREA else "user"
+            logging.info("Defective block marker position: %s+%x" % (markerpos, self.nanddevice.BAD_BLOCK_BYTE_NUM))
+            logging.info("The total size of the flash memory = %u blocks (%i MB)" % (self.settings.MAXBLOCK,
+                                                                                     self.settings.MAXBLOCK * self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
+            return True
+        else:
+            logging.error("Uploaded programmer doesn't respond :(")
+            return False
+
+    def load_block(self, block, cwsize):
+        buffer = bytearray()
+        for page in range(0, self.settings.num_pages_per_blk):
+            tmp, spare = self.flash_read(block, page, self.settings.sectors_per_page, cwsize)
+            buffer.extend(tmp)
+        return buffer
+
+    def read_blocks(self, fw, block, length, cwsize, savespare=False, info=True):
+        badblocks = 0
+        old = 0
+        pos = 0
+        totallength = length * self.settings.num_pages_per_blk * self.settings.PAGESIZE
+        if info:
+            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        startoffset = block * self.settings.num_pages_per_blk * self.settings.PAGESIZE
+        endoffset = startoffset + totallength
+
+        for offset in range(startoffset, endoffset, self.settings.PAGESIZE):
+            pages = int(offset / self.settings.PAGESIZE)
+            curblock = int(pages / self.settings.num_pages_per_blk)
+            curpage = int(pages - curblock * self.settings.num_pages_per_blk)
+            data, spare = self.flash_read(curblock, curpage, self.settings.sectors_per_page, cwsize)
+            if self.bbtbl[curblock] != 1 or (self.settings.bad_processing_flag != BadFlags.BAD_SKIP.value):
+                fw.write(data)
+                if savespare:
+                    fw.write(spare)
+            else:
+                logger.debug("Bad block at block %d" % curblock)
+                badblocks += 1
+            pos += self.settings.PAGESIZE
+            if info:
+                prog = int(float(pos) / float(totallength) * float(100))
+                if prog > old:
+                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                    old = prog
+        return badblocks
+
+    """
+    def read_blocks_ext(self, fw, block, length, yaffsmode, info=True):
+        buffer = bytearray()
+        badblocks = 0
+        pos = 0
+        old = 0
+        totallength = length * self.settings.num_pages_per_blk * self.settings.PAGESIZE
+        if info:
+            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        for curblock in range(block, block + length):
+            for page in range(0, self.settings.num_pages_per_blk):
+                tmp, spare = self.flash_read(block, page, self.settings.sectors_per_page, self.settings.sectorsize + 4)
+                buffer.extend(tmp)
+                if info:
+                    prog = int(float(pos) / float(totallength) * float(100))
+                    if prog > old:
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                        old = prog
+
+            if self.bbtbl[block] == 1 and (self.settings.bad_processing_flag != BadFlags.BAD_SKIP.value):
+                print("Bad block at block %d" % curblock)
+                badblocks += 1
+            else:
+                for page in range(0, self.settings.num_pages_per_blk):
+                    pgoffset = page * self.settings.sectors_per_page * (self.settings.sectorsize + 4)
+                    for sec in range(0, self.settings.sectors_per_page):
+                        udoffset = pgoffset + sec * (self.settings.sectorsize + 4)
+                        if sec != (self.settings.sectors_per_page - 1):
+                            fw.write(buffer[udoffset:udoffset + self.settings.sectorsize - 4])
+                        else:
+                            fw.write(buffer[udoffset:udoffset + self.settings.sectorsize - 4 * (
+                                    self.settings.sectors_per_page - 1)])
+
+                    if yaffsmode == 1:
+                        extbuf = bytearray()
+                        soff = pgoffset + (self.settings.sectorsize + 4) * (self.settings.sectors_per_page - 1) + (
+                                self.settings.sectorsize - 4 * (self.settings.sectors_per_page - 1))
+                        extbuf.extend(buffer[soff])
+                        for i in range(0, self.settings.OOBSIZE):
+                            extbuf.append(0xff)
+                        fw.write(extbuf)
+        return badblocks
+    """
+
+    def read_raw(self, start, length, cwsize, filename):
+        with open(filename, 'wb') as fw:
+            if self.settings.rflag == 0:  # normal
+                self.read_blocks(fw, start, length, cwsize)
+            """
+            elif self.settings.rflag == 1:  # linux
+                self.read_blocks_ext(fw, start, length, 0)  # Fixme
+            elif self.settings.rflag == 2:  # yaffs
+                self.read_blocks_ext(fw, start, length, 1)  # Fixme
+            """
+
+    def send(self, cmd, nocrc=False):
+        if self.hdlc is not None:
+            return self.hdlc.send_cmd_np(cmd, nocrc)
+        return False
 
     def identify_chipset(self):
-        cmd=bytearray([0x11,0x00,0x04,0x10,0x2d,0xe5,0x0e,0x00,0xa0,0xe1,0x03,0x00,0xc0,0xe3,0xff,0x30,
-                       0x80,0xe2,0x34,0x10,0x9f,0xe5,0x04,0x20,0x90,0xe4,0x01,0x00,0x52,0xe1,0x03,0x00,
-                       0x00,0x0a,0x03,0x00,0x50,0xe1,0xfa,0xff,0xff,0x3a,0x00,0x00,0xa0,0xe3,0x00,0x00,
-                       0x00,0xea,0x00,0x00,0x90,0xe5,0x04,0x10,0x9d,0xe4,0x01,0x00,0xc1,0xe5,0xaa,0x00,
-                       0xa0,0xe3,0x00,0x00,0xc1,0xe5,0x02,0x40,0xa0,0xe3,0x1e,0xff,0x2f,0xe1,0xef,0xbe,
-                       0xad,0xde])
-        resp=self.send(cmd)
-        if resp[1]!=0xaa:
-            return -1
-        return resp[2] #08
+        cmd = bytearray([0x11, 0x00, 0x04, 0x10, 0x2d, 0xe5, 0x0e, 0x00, 0xa0, 0xe1, 0x03, 0x00, 0xc0, 0xe3, 0xff, 0x30,
+                         0x80, 0xe2, 0x34, 0x10, 0x9f, 0xe5, 0x04, 0x20, 0x90, 0xe4, 0x01, 0x00, 0x52, 0xe1, 0x03, 0x00,
+                         0x00, 0x0a, 0x03, 0x00, 0x50, 0xe1, 0xfa, 0xff, 0xff, 0x3a, 0x00, 0x00, 0xa0, 0xe3, 0x00, 0x00,
+                         0x00, 0xea, 0x00, 0x00, 0x90, 0xe5, 0x04, 0x10, 0x9d, 0xe4, 0x01, 0x00, 0xc1, 0xe5, 0xaa, 0x00,
+                         0xa0, 0xe3, 0x00, 0x00, 0xc1, 0xe5, 0x02, 0x40, 0xa0, 0xe3, 0x1e, 0xff, 0x2f, 0xe1, 0xef, 0xbe,
+                         0xad, 0xde])
+        resp = self.send(cmd, True)
+        if resp[1] != 0xaa:
+            resp = self.send(cmd, True)
+            if resp[1] != 0xaa:
+                return -1
+        return resp[2]  # 08
 
+
+def test_nand_config():
+    class sahara:
+        mode = None
+
+    qs = QualcommStreaming(None, sahara())
+    qs.settings = SettingsOpt(qs, 8, logger)
+    qs.nanddevice = NandDevice(qs.settings)
+    testconfig = [
+        # nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, cfg1, eccbufcfg, bccbchcfg, badblockbyte
+        [0x1590aaad, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        # ZTE MF920V, MDM9x07
+        [0x1590ac01, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        # ZTE OSH-150
+        [0x1590acad, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x1590aac8, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x1590acc8, 8, 512, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x1d00f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x1d80f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x2690ac2c, 8, 512, 4096, 262144, 224, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
+        [0x2690dc98, 8, 512, 4096, 262144, 128, 4, 0x2a0409c0, 0x0804645c, 0x00000203, 0x42040700, 0x00000191],
+        # Sierra Wireless EM7455, MDM9x35, Quectel EC25, Toshiba KSLCMBL2VA2M2A
+        [0x2690ac98, 8, 512, 4096, 262144, 256, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
+        [0x9590daef, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x9580f1c2, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x9580f1c2, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x9590dac2, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        [0x1590ac01, 8, 512, 2048, 128, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1]
+    ]
+    errorids = []
+    for test in testconfig:
+        nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, cfg1, eccbufcfg, bccbchcfg, badblockbyte = test
+        res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
+        if cfg0 != res_cfg0 or cfg1 != res_cfg1 or eccbufcfg != res_ecc_buf_cfg or res_ecc_bch_cfg != bccbchcfg:
+            errorids.append(nandid)
+    if len(errorids) > 0:
+        st = ""
+        for id in errorids:
+            st += hex(id) + ","
+        st = st[:-1]
+        assert ("Error at : " + st)
+    else:
+        print("Yay, all nand_config tests are ok !!!!")
+
+
+if __name__ == "__main__":
+    test_nand_config()

@@ -10,18 +10,19 @@ Usage:
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py printgpt [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py memorydump [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py printgpt [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py r <partitionname> <filename> [--memory=memtype] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py r <partitionname> <filename> [--memory=memtype] [--sectorsize==bytes] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py rf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py wl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py wf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -32,7 +33,7 @@ Usage:
     edl.py pokehex <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pokedword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pokeqword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py memcpy <srcoffset> <dstoffset> <size> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py memcpy <offset> <size> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
@@ -69,7 +70,7 @@ Description:
     pokehex <offset> <data>                                                      # Write hex string data at offset to memory
     pokedword <offset> <data>                                                    # Write DWORD to memory at offset
     pokeqword <offset> <data>                                                    # Write QWORD to memory at offset
-    memcpy <srcoffset> <dstoffset> <size>                                        # Copy memory from srcoffset with given size to dstoffset
+    memcpy <offset> <size>                                                       # Copy memory from srcoffset with given size to dstoffset
     secureboot                                                                   # Print secureboot fields from qfprom fuses
     pbl <filename>                                                               # Dump primary bootloader to filename
     qfp <filename>                                                               # Dump QFPROM fuses to filename
@@ -80,6 +81,7 @@ Description:
     rawxml <xmlstring>                                                           # Send firehose xml raw string
     reset                                                                        # Send firehose reset command
     nop                                                                          # Send firehose nop command
+    modules <command> <options>                                                  # Enable submodules, for example: "oemunlock enable"
 
 Options:
     --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
@@ -96,118 +98,32 @@ Options:
     --gpt-num-part-entries=number      Set GPT entry count [default: 0]
     --gpt-part-entry-size=number       Set GPT entry size [default: 0]
     --gpt-part-entry-start-lba=number  Set GPT entry start lba sector [default: 0]
-    --tcpport=portnumber               Set port for tcp server [default:1340]
+    --tcpport=portnumber               Set port for tcp server [default: 1340]
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
     --devicemodel=value                Set device model [default: ""]
 """
-
-from docopt import docopt
-args = docopt(__doc__, version='EDL 2.1')
+import sys
 import time
-from Library.utils import *
+import logging
+from docopt import docopt
+
+args = docopt(__doc__, version='3')
+
+from Library.utils import log_class
 from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara
-from Library.firehose import qualcomm_firehose
-from Library.streaming import qualcomm_streaming
-from Config.qualcomm_config import *
-from struct import unpack, pack
-from Library.xmlparser import xmlparser
+from Library.streaming_client import streaming_client
+from Library.firehose_client import firehose_client
+from Library.streaming import QualcommStreaming
 
-print("Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2020.")
+print("Qualcomm Sahara / Firehose Client V3 (c) B.Kerler 2018-2020.")
 
-
-
-def check_cmd(supported_funcs, func):
-    if not supported_funcs:
-        return True
-    for sfunc in supported_funcs:
-        if func.lower() == sfunc.lower():
-            return True
-    return False
-
-log=None
-
-def main():
-    global log
-    mode = ""
-    loop = 0
-    vid = int(args["--vid"], 16)
-    pid = int(args["--pid"], 16)
-
-    filename="log.txt"
-    if args["--debugmode"]:
-        log = log_class(logging.DEBUG, filename)
-        # ch = logging.StreamHandler()
-        # ch.setLevel(logging.ERROR)
-    else:
-        log = log_class(logging.INFO, filename)
-
-
-    cdc = usb_class(vid=vid, pid=pid, log=log)
-    sahara = qualcomm_sahara(cdc)
-
-    if args["--loader"] == 'None':
-        log.info("Trying with no loader given ...")
-        sahara.programmer = None
-    else:
-        loader = args["--loader"]
-        log.info(f"Using loader {loader} ...")
-        with open(loader, "rb") as rf:
-            sahara.programmer = rf.read()
-
-    log.info("Waiting for the device")
-    resp = None
-    cdc.timeout = 100
-    log.debug("Ohuh")
-    mode, resp = doconnect(cdc, loop, mode, resp, sahara)
-    if resp == -1:
-        mode, resp = doconnect(cdc, loop, mode, resp, sahara)
-        if resp == -1:
-            log.error("USB desync, please rerun command !")
-            exit(0)
-    #print((mode, resp))
-    if mode == "sahara":
-        if "mode" in resp:
-            mode = resp["mode"]
-            if mode == sahara.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
-                print("Device is in memory dump mode, dumping memory")
-                sahara.debug_mode()
-                exit(0)
-            else:
-                print("Device is in EDL mode .. continuing.")
-                cdc.timeout = None
-                m = sahara.info()
-                if m:
-                    mode, resp = sahara.connect()
-                    if mode == "sahara":
-                        mode = sahara.upload_loader()
-                        if mode != "":
-                            time.sleep(0.3)
-                            print("Successfully uploaded programmer :)")
-                else:
-                    print("Device is in an unknown sahara state")
-                    print("resp={0}".format(resp))
-                    exit(0)
-        else:
-            print("Device is in an unknown state")
-            exit(0)
-    else:
-        sahara.bit64 = True
-
-    if mode == "firehose":
-        cdc.timeout = None
-        handle_firehose(args, cdc, sahara, log)
-    elif mode == "nandprg" or mode == "enandprg":
-        handle_streaming(args, cdc, sahara, log)
-    else:
-        log.error("Sorry, couldn't talk to Sahara, please reboot the device !")
-        exit(0)
-
-    exit(0)
+LOGGER = None
 
 
 def doconnect(cdc, loop, mode, resp, sahara):
+    global LOGGER
     while not cdc.connected:
         cdc.connected = cdc.connect()
         if not cdc.connected:
@@ -219,1218 +135,228 @@ def doconnect(cdc, loop, mode, resp, sahara):
             time.sleep(1)
             sys.stdout.flush()
         else:
-            log.info("Device detected :)")
+            LOGGER.info("Device detected :)")
             try:
                 mode, resp = sahara.connect()
                 if mode == "" or resp == -1:
                     mode, resp = sahara.connect()
-            except:
+            except Exception as e:
                 if mode == "" or resp == -1:
                     mode, resp = sahara.connect()
             if mode == "":
-               log.info("Unknown mode. Aborting.")
-               cdc.close()
-               exit(0)
-            log.info(f"Mode detected: {mode}")
+                LOGGER.info("Unknown mode. Aborting.")
+                cdc.close()
+                sys.exit()
+            LOGGER.info(f"Mode detected: {mode}")
             break
 
     return mode, resp
 
+def exit(cdc):
+    cdc.close()
+    sys.exit()
 
-def handle_streaming(args, cdc, sahara, log):
-    fh = qualcomm_streaming(cdc, sahara, log)
+def parse_option(args):
+    options={}
+    for arg in args:
+        if "--" in arg or "<" in arg:
+            options[arg]=args[arg]
+    return options
 
+def parse_cmd(args):
+    cmd=""
+    if args["server"]:
+        cmd = "server"
+    elif args["printgpt"]:
+        cmd = "printgpt"
+    elif args["gpt"]:
+        cmd = "gpt"
+    elif args["r"]:
+        cmd = "r"
+    elif args["rl"]:
+        cmd = "rl"
+    elif args["rf"]:
+        cmd = "rf"
+    elif args["rs"]:
+        cmd = "rs"
+    elif args["w"]:
+        cmd = "w"
+    elif args["wl"]:
+        cmd = "wl"
+    elif args["wf"]:
+        cmd = "wf"
+    elif args["ws"]:
+        cmd = "ws"
+    elif args["e"]:
+        cmd = "e"
+    elif args["es"]:
+        cmd = "es"
+    elif args["footer"]:
+        cmd = "footer"
+    elif args["peek"]:
+        cmd = "peek"
+    elif args["peekhex"]:
+        cmd = "peekhex"
+    elif args["peekdword"]:
+        cmd = "peekdword"
+    elif args["peekqword"]:
+        cmd = "peekqword"
+    elif args["memtbl"]:
+        cmd = "memtbl"
+    elif args["poke"]:
+        cmd = "poke"
+    elif args["pokehex"]:
+        cmd = "pokehex"
+    elif args["pokedword"]:
+        cmd = "pokedword"
+    elif args["pokeqword"]:
+        cmd = "pokeqword"
+    elif args["memcpy"]:
+        cmd = "memcpy"
+    elif args["secureboot"]:
+        cmd = "secureboot"
+    elif args["pbl"]:
+        cmd = "pbl"
+    elif args["qfp"]:
+        cmd = "qfp"
+    elif args["getstorageinfo"]:
+        cmd = "getstorageinfo"
+    elif args["setbootablestoragedrive"]:
+        cmd = "setbootablestoragedrive"
+    elif args["send"]:
+        cmd = "send"
+    elif args["xml"]:
+        cmd = "xml"
+    elif args["rawxml"]:
+        cmd = "rawxml"
+    elif args["reset"]:
+        cmd = "reset"
+    elif args["nop"]:
+        cmd = "nop"
+    return cmd
 
-def do_firehose_server(mainargs, cdc, sahara,projid,log,skipresponse):
-    cfg = qualcomm_firehose.cfg()
-    cfg.MemoryName = mainargs["--memory"]
-    cfg.ZLPAwareHost = 1
-    cfg.SkipStorageInit = mainargs["--skipstorageinit"]
-    cfg.SkipWrite = mainargs["--skipwrite"]
-    cfg.MaxPayloadSizeToTargetInBytes = int(mainargs["--maxpayload"], 16)
-    cfg.SECTOR_SIZE_IN_BYTES = int(mainargs["--sectorsize"], 16)
-    cfg.bit64 = sahara.bit64
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, log, projid, sahara.serial, skipresponse,getluns(mainargs))
-    supported_functions = fh.connect(0)
-    TargetName = "Unknown"
-    if "hwid" in dir(sahara):
-        hwid = sahara.hwid
-        if hwid >> 8 in msmids:
-            TargetName = msmids[hwid >> 8]
+def main():
+    global LOGGER
+    mode = ""
+    loop = 0
+    vid = int(args["--vid"], 16)
+    pid = int(args["--pid"], 16)
+    usbids = [[vid, pid], [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0]]
+    filename = "log.txt"
+    if args["--debugmode"]:
+        LOGGER = log_class(logging.DEBUG, filename)
+        # ch = logging.StreamHandler()
+        # ch.setLevel(logging.ERROR)
     else:
-        TargetName = fh.cfg.TargetName
+        LOGGER = log_class(logging.INFO, filename)
 
-    import socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_address = ('localhost', int(mainargs["--tcpport"]))
-    print('starting up on %s port %s' % server_address)
-    sock.bind(server_address)
-    sock.listen(1)
-    while True:
-        print('waiting for a connection')
-        connection, client_address = sock.accept()
-        try:
-            print('connection from', client_address)
-            while True:
-                data = connection.recv(4096).decode('utf-8')
-                print('received %s' % data)
-                if data:
-                    print('handling request')
-                    lines = data.split("\n")
-                    for line in lines:
-                        if ":" in line:
-                            cmd = line.split(":")[0]
-                            arguments = line.split(":")[1]
-                            if "," in arguments:
-                                arguments = arguments.split(",")
-                            else:
-                                arguments = [arguments]
-                            if cmd == "gpt":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: gpt:<lun>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    fh.cmd_read(lun, 0, 0x6000//cfg.SECTOR_SIZE_IN_BYTES, arguments[1])
-                                    response = f"<ACK>\n" + f"Dumped GPT to {arguments[1]}"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "printgpt":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: printgpt:<lun>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is not None:
-                                        response = "<ACK>\n" + guid_gpt.tostring()
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "Error on reading GPT, maybe wrong memoryname given ?"
-                                        response = "<NAK>\n" + response
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "r":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: r:<lun>,<partitionname>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    partitionname = arguments[1]
-                                    filename = arguments[2]
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error reading GPT Table"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        found = False
-                                        for partition in guid_gpt.partentries:
-                                            if partition.name == partitionname:
-                                                fh.cmd_read(lun, partition.sector, partition.sectors, filename)
-                                                response = "<ACK>\n" + f"Dumped sector {str(partition.sector)} with sector count {str(partition.sectors)} as {filename}."
-                                                connection.sendall(bytes(response, 'utf-8'))
-                                                found = True
-                                                break
-                                        if not found:
-                                            response = "<NAK>\n" + f"Error: Couldn't detect partition: {partitionname}"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "rl":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: rl:<lun>,<directory><skip_partname>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    directory = arguments[1]
-                                    skip = arguments[2]
-                                    if not os.path.exists(directory):
-                                        os.mkdir(directory)
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error reading GPT Table"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "<ACK>\n"
-                                        for partition in guid_gpt.partentries:
-                                            partitionname = partition.name
-                                            if partition.name == skip:
-                                                continue
-                                            filename = os.path.join(directory, partitionname + ".bin")
-                                            fh.cmd_read(lun, partition.sector, partition.sectors, filename)
-                                            response += f"Dumped partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "rf":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: rf:<lun>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    filename = arguments[1]
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't readi GPT Table"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        fh.cmd_read(lun, 0, guid_gpt.totalsectors, filename)
-                                        response = "<ACK>\n" + f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "pbl":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: pbl:<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        filename = arguments[0]
-                                        if TargetName in infotbl:
-                                            v = infotbl[TargetName]
-                                            if len(v[0]) > 0:
-                                                if fh.cmd_peek(v[0][0], v[0][1], filename, True):
-                                                    response = "<ACK>\n" + f"Dumped pbl at offset {hex(v[0][0])} as {filename}."
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                                else:
-                                                    response = "<NAK>\n" + "No known pbl offset for this chipset"
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                            else:
-                                                response = "<NAK>\n" + "Unknown target chipset"
-                                                connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "qfp":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: qfp:<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        filename = arguments
-                                        if TargetName in infotbl:
-                                            v = infotbl[TargetName]
-                                            if len(v[1]) > 0:
-                                                if fh.cmd_peek(v[1][0], v[1][1], filename):
-                                                    response = "<ACK>\n" + "Dumped qfprom at offset {hex(v[1][0])} as {filename}."
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                            else:
-                                                response = "<NAK>\n" + "No known qfprom offset for this chipset"
-                                                connection.sendall(bytes(response, 'utf-8'))
-                                        else:
-                                            response = "<NAK>\n" + "Unknown target chipset"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "secureboot":
-                                if not check_cmd(supported_functions, "peek"):
-                                    response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    response = "<ACK>\n"
-                                    if TargetName in secureboottbl:
-                                        v = secureboottbl[TargetName]
-                                        value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
-                                        is_secure = False
-                                        for area in range(0, 4):
-                                            sec_boot = (value >> (area * 8)) & 0xFF
-                                            pk_hashindex = sec_boot & 3
-                                            oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
-                                            auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
-                                            use_serial = True if ((sec_boot >> 6) & 1) == 1 else False
-                                            if auth_enabled:
-                                                is_secure = True
-                                            response += f"Sec_Boot{str(area)} PKHash-Index:{str(pk_hashindex)} OEM_PKHash: {str(oem_pkhash)} Auth_Enabled: {str(auth_enabled)} Use_Serial: {str(use_serial)}\n"
-                                        if is_secure:
-                                            response += f"Secure boot enabled."
-                                        else:
-                                            response += "Secure boot disabled."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "<NAK>\n" + "Unknown target chipset"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "memtbl":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: memtbl:<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        filename = arguments[0]
-                                        if TargetName in infotbl:
-                                            v = infotbl[TargetName]
-                                            if len(v[2]) > 0:
-                                                if fh.cmd_peek(v[2][0], v[2][1], filename):
-                                                    response = "<ACK>\n" + f"Dumped qfprom at offset {hex(v[2][0])} as {filename}."
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                            else:
-                                                response = "<NAK>\n" + "No known memory table offset for this chipset"
-                                                connection.sendall(bytes(response, 'utf-8'))
-                                        else:
-                                            response = "<NAK>\n" + "Unknown target chipset"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "footer":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: footer:<lun>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    filename = arguments[1]
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2",
-                                                  "reserved3"]
-                                        found = False
-                                        for partition in guid_gpt.partentries:
-                                            if partition.name in pnames:
-                                                response = "<ACK>\n" + f"Detected partition: {partition.name}\n"
-                                                if partition.name in ["userdata2","userdata"]:
-                                                    data = fh.cmd_read_buffer(lun, partition.sector + (
-                                                                partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
-                                                                              (0x4000 // cfg.SECTOR_SIZE_IN_BYTES),
-                                                                              filename)
-                                                else:
-                                                    data = fh.cmd_read_buffer(lun, partition.sector,(0x4000 // cfg.SECTOR_SIZE_IN_BYTES),filename)
-                                                if data==b"":
-                                                    continue
-                                                val = struct.unpack("<I", data[:4])[0]
-                                                if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
-                                                    with open(filename, "wb") as wf:
-                                                        wf.write(data)
-                                                        response += f"Dumped footer from {partition.name} as {filename}."
-                                                        connection.sendall(bytes(response, 'utf-8'))
-                                                        break
-                                                else:
-                                                    response = "<NAK>\n" + f"Unknown footer structure or no footer found."
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                                found = True
-                                        if not found:
-                                            response = "<NAK>\n" + f"Error: Couldn't find footer"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "rs":
-                                if len(arguments) != 4:
-                                    response = "<NAK>\n" + f"Usage: -rs <lun>,<start_sector> <sectors> <filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    start = int(arguments[1])
-                                    sectors = int(arguments[2])
-                                    filename = arguments[3]
-                                    fh.cmd_read(lun, start, sectors, filename)
-                                    response = "<ACK>\n" + f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}."
-                                    connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "peek":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: peek:<offset>,<length>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        length = int(arguments[1], 16)
-                                        filename = arguments[2]
-                                        fh.cmd_peek(offset, length, filename, False)
-                                        response = "<ACK>\n" + f"Dumped data from {str(offset)} with length {str(length)} to {filename}."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "peekhex":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: peekhex:<offset>,<length>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        length = int(arguments[1], 16)
-                                        resp = fh.cmd_peek(offset, length, "", False)
-                                        response = "<ACK>\n" + hexlify(resp)
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "peekqword":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: peekqword:<offset>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        resp = fh.cmd_peek(offset, 8, "", False)
-                                        response = "<ACK>\n" + hex(unpack("<Q", resp[:8])[0])
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "peekdword":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: peekdword:<offset>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "peek"):
-                                        response = "<NAK>\n" + "Peek command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        resp = fh.cmd_peek(offset, 4, "", False)
-                                        response = "<ACK>\n" + hex(unpack("<I", resp[:4])[0])
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "poke":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: poke:<offset>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "poke"):
-                                        response = "<NAK>\n" + "Poke command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        filename = unhexlify(arguments[1])
-                                        fh.cmd_poke(offset, "", filename, False)
-                                        response = "<ACK>\n" + f"Successfully wrote data to {hex(offset)} from {filename}."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "pokehex":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: pokehex:<offset>,<data>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "poke"):
-                                        response = "<NAK>\n" + "Poke command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        data = unhexlify(arguments[1])
-                                        fh.cmd_poke(offset, data, "", False)
-                                        resp = fh.cmd_peek(offset, len(data), "", False)
-                                        if resp == data:
-                                            response = "<ACK>\n" + f"Data correctly written to {hex(offset)}."
-                                        else:
-                                            response = "<NAK>\n" + f"Writing data to {hex(offset)} failed."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "pokeqword":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: pokeqword:<offset>,<qword>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "poke"):
-                                        response = "<NAK>\n" + "Poke command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        data = pack("<Q", int(arguments[1], 16))
-                                        fh.cmd_poke(offset, data, "", False)
-                                        resp = fh.cmd_peek(offset, 8, "", False)
-                                        if resp == data:
-                                            response = "<ACK>\n" + f"QWORD {arguments[1]} correctly written to {hex(offset)}."
-                                        else:
-                                            response = "<NAK>\n" + f"Error writing data to {hex(offset)}."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "pokedword":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: pokedword:<offset>,<dword>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "poke"):
-                                        response = "<NAK>\n" + "Poke command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        offset = int(arguments[0], 16)
-                                        data = pack("<I", int(arguments[1], 16))
-                                        fh.cmd_poke(offset, data, "", False)
-                                        resp = fh.cmd_peek(offset, 4, "", False)
-                                        response = "<ACK>\n" + hex(unpack("<I", resp[:4])[0])
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "memcpy":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: memcpy:<dstoffset>,<srcoffset>,<size>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "poke"):
-                                        response = "<NAK>\n" + "Poke command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        dstoffset = int(arguments[0], 16)
-                                        srcoffset = int(arguments[1], 16)
-                                        size = int(arguments[2], 16)
-                                        resp = fh.cmd_memcpy(dstoffset, srcoffset, size)
-                                        response = "<ACK>\n" + hex(unpack("<I", resp[:4])[0])
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "reset":
-                                fh.cmd_reset()
-                                response = "<ACK>\nSent reset cmd."
-                                connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "nop":
-                                if not check_cmd(supported_functions, "Nop"):
-                                    response = "<NAK>\n" + "Nop command isn't supported by edl loader"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    info = fh.cmd_nop()
-                                    if info:
-                                        response = "<ACK>\n" + info
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "<NAK>\n" + "Error sending nop cmd"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "setbootablestoragedrive":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: setbootablestoragedrive:<lun>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    if not check_cmd(supported_functions, "setbootablestoragedrive"):
-                                        response = "<NAK>\n" + "setbootablestoragedrive command isn't supported by edl loader"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        lun = int(arguments[0])
-                                        fh.cmd_setbootablestoragedrive(lun)
-                                        response = "<ACK>\n" + f"Bootable Storage Drive set to {arguments[0]}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "getstorageinfo":
-                                if not check_cmd(supported_functions, "GetStorageInfo"):
-                                    response = "<NAK>\n" + "GetStorageInfo command isn't supported by edl loader"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    data = fh.cmd_getstorageinfo_string()
-                                    if data == "":
-                                        response = "<NAK>\nGetStorageInfo command isn't supported."
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "<ACK>\n" + data
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "send":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: send:<response:True/False>,<command>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    scmd = arguments[1]
-                                    if arguments[0] == "True":
-                                        resp = fh.cmd_send(scmd)
-                                        if not resp:
-                                            response = f"<NAK>\nCommand {scmd} failed."
-                                        else:
-                                            response = "<ACK>\n" + resp.decode('utf-8').replace("\n", "")
-                                    else:
-                                        fh.cmd_send(scmd, False)
-                                        response = "<ACK>\n" + f"Executed {arguments[1]}"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "w":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: w:<lun>,<partitionname>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    partitionname = arguments[1]
-                                    filename = arguments[2]
+    cdc = usb_class(usbids, log=LOGGER, interface=-1)
+    sahara = qualcomm_sahara(cdc)
 
-                                    if not os.path.exists(filename):
-                                        response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                              int(mainargs["--gpt-part-entry-size"]),
-                                                              int(mainargs["--gpt-part-entry-start-lba"]))
-                                        if guid_gpt is None:
-                                            response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                                        else:
-                                            found = False
-                                            if fh.modules is not None:
-                                                fh.modules.prerun()
-                                            for partition in guid_gpt.partentries:
-                                                if partition.name == partitionname:
-                                                    found = True
-                                                    sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
-                                                    if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                                                        sectors += 1
-                                                    if sectors > partition.sectors:
-                                                        response = "<NAK>\n" + f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}."
-                                                    else:
-                                                        fh.cmd_program(lun, partition.sector, filename)
-                                                        response = "<ACK>\n" + f"Wrote {filename} to sector {str(partition.sector)}."
-                                                    connection.sendall(bytes(response, 'utf-8'))
-                                            if not found:
-                                                response = "<NAK>\n" + f"Error: Couldn't detect partition: {partitionname}"
-                                                connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "ws":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: ws:<lun>,<start_sector>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    start = int(arguments[1])
-                                    filename = arguments[2]
-                                    if not os.path.exists(filename):
-                                        response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        if fh.modules is not None:
-                                            fh.modules.prerun()
-                                        if fh.cmd_program(lun, start, filename):
-                                            response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
-                                            connection.sendall(bytes(response, 'utf-8'))
-                                        else:
-                                            response = "<NAK>\n" + f"Error on writing {filename} to sector {str(start)}"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "wf":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: wf:<lun>,<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    start = 0
-                                    filename = arguments[1]
-                                    if not os.path.exists(filename):
-                                        response = "<NAK>\n" + f"Error: Couldn't find file: {filename}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        if fh.modules is not None:
-                                            fh.modules.prerun()
-                                        if fh.cmd_program(lun, start, filename):
-                                            response = "<ACK>\n" + f"Wrote {filename} to sector {str(start)}."
-                                            connection.sendall(bytes(response, 'utf-8'))
-                                        else:
-                                            response = "<NAK>\n" + f"Error on writing {filename} to sector {str(start)}"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "e":
-                                if len(arguments) != 2:
-                                    response = "<NAK>\n" + "Usage: e:<lun>,<partname>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    partitionname = arguments[1]
-                                    data, guid_gpt = fh.get_gpt(lun, int(mainargs["--gpt-num-part-entries"]),
-                                                          int(mainargs["--gpt-part-entry-size"]),
-                                                          int(mainargs["--gpt-part-entry-start-lba"]))
-                                    if guid_gpt is None:
-                                        response = "<NAK>\n" + f"Error: Couldn't read GPT Table"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        found = False
-                                        if fh.modules is not None:
-                                            fh.modules.prerun()
-                                        for partition in guid_gpt.partentries:
-                                            if partition.name == partitionname:
-                                                fh.cmd_erase(lun, partition.sector, partition.sectors)
-                                                response = "<ACK>\n" + f"Erased {partitionname} starting at sector {str(partition.sector)} with sector count " + f"{str(partition.sectors)}."
-                                                connection.sendall(bytes(response, 'utf-8'))
-                                                found = True
-                                        if not found:
-                                            response = "<NAK>\n" + f"Error: Couldn't detect partition: {partitionname}"
-                                            connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "es":
-                                if len(arguments) != 3:
-                                    response = "<NAK>\n" + "Usage: es:<lun>,<start_sector>,<sectors>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    lun = int(arguments[0])
-                                    start = int(arguments[1])
-                                    sectors = int(arguments[2])
-                                    if fh.modules is not None:
-                                        fh.modules.prerun()
-                                    fh.cmd_erase(lun, start, sectors)
-                                    print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
-                                    connection.sendall(bytes(response, 'utf-8'))
-                            elif cmd == "xml":
-                                if len(arguments) != 1:
-                                    response = "<NAK>\n" + "Usage: xml:<filename>"
-                                    connection.sendall(bytes(response, 'utf-8'))
-                                else:
-                                    filename = arguments[0]
-                                    if fh.cmd_xml(filename):
-                                        response = "<ACK>\n" + f"Sent xml content of {filename}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                                    else:
-                                        response = "<NAK>\n" + f"Error running xml:{filename}"
-                                        connection.sendall(bytes(response, 'utf-8'))
-                            else:
-                                response = "<NAK>\n" + "Unknown/Missing command, a command is required."
-                                connection.sendall(bytes(response, 'utf-8'))
+    if args["--loader"] == 'None':
+        LOGGER.info("Trying with no loader given ...")
+        sahara.programmer = ""
+    else:
+        loader = args["--loader"]
+        LOGGER.info(f"Using loader {loader} ...")
+        sahara.programmer = loader
 
+    LOGGER.info("Waiting for the device")
+    resp = None
+    cdc.timeout = 100
+    LOGGER.debug("Ohuh")
+    mode, resp = doconnect(cdc, loop, mode, resp, sahara)
+    if resp == -1:
+        mode, resp = doconnect(cdc, loop, mode, resp, sahara)
+        if resp == -1:
+            LOGGER.error("USB desync, please rerun command !")
+            sys.exit()
+    # print((mode, resp))
+    if mode == "sahara":
+        if "mode" in resp:
+            mode = resp["mode"]
+            if mode == sahara.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
+                if args["memorydump"]:
+                    time.sleep(0.5)
+                    print("Device is in memory dump mode, dumping memory")
+                    sahara.debug_mode()
+                    exit(cdc)
                 else:
-                    print('no more data from', client_address)
-                    break
-        finally:
-            connection.close()
-
-
-def getluns(argument):
-    if argument["--lun"] != "None":
-        return [int(argument["--lun"])]
-
-    luns = []
-    if not argument["--memory"].lower() == "emmc":
-        for i in range(0, 99):
-            luns.append(i)
-    else:
-        luns = [0]
-    return luns
-
-def handle_firehose(arguments, cdc, sahara, log):
-    cfg = qualcomm_firehose.cfg()
-    cfg.MemoryName = arguments["--memory"]
-    cfg.ZLPAwareHost = 1
-    cfg.SkipStorageInit = arguments["--skipstorageinit"]
-    cfg.SkipWrite = arguments["--skipwrite"]
-    cfg.MaxPayloadSizeToTargetInBytes = int(arguments["--maxpayload"], 16)
-    cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
-    cfg.bit64 = sahara.bit64
-    projid = ""
-    skipresponse=False
-    if "--skipresponse" in arguments:
-        if arguments["--skipresponse"]:
-            skipresponse=True
-    if "--devicemodel" in arguments:
-        if arguments["--devicemodel"] is not None:
-            devicemodel=arguments["--devicemodel"]
-    fh = qualcomm_firehose(cdc, xmlparser(), cfg, log,devicemodel,sahara.serial,skipresponse,getluns(arguments))
-    supported_functions = fh.connect(0)
-    funcs="Supported functions:\n-----------------\n"
-    for function in supported_functions:
-        funcs+=function+","
-    funcs=funcs[:-1]
-    log.info(funcs)
-    TargetName = fh.cfg.TargetName
-    if "hwid" in dir(sahara):
-        hwid = sahara.hwid >> 32
-        if hwid in msmids:
-            TargetName = msmids[hwid]
-        elif hwid in sochw:
-            TargetName = sochw[hwid].split(",")[0]
-    if arguments["gpt"]:
-        luns = getluns(arguments)
-        directory = arguments["<directory>"]
-        if directory is None:
-            directory=""
-        genxml = False
-        if "--genxml" in arguments:
-            if arguments["--genxml"]:
-                genxml = True
-        for lun in luns:
-            sfilename = os.path.join(directory, f"gpt_main{str(lun)}.bin")
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
-                                        int(arguments["--gpt-part-entry-size"]),
-                                        int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
+                    print("Device is in streaming mode, uploading loader")
+                    cdc.timeout = None
+                    sahara_info = sahara.streaminginfo()
+                    if sahara_info:
+                        mode, resp = sahara.connect()
+                        if mode == "sahara":
+                            mode = sahara.upload_loader()
+                            if "enprg" in sahara.programmer.lower():
+                                mode = "load_enandprg"
+                            elif "nprg" in sahara.programmer.lower():
+                                mode = "load_nandprg"
+                            else:
+                                mode = "load_" + mode
+                            if mode != "load_":
+                                time.sleep(0.3)
+                            else:
+                                print("Error, couldn't find suitable enprg/nprg loader :(")
+                                exit(cdc)
             else:
-                with open(sfilename, "wb") as wf:
-                    wf.write(data)
-
-                print(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
-                sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename, "wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
-                print(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
-                if genxml:
-                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, directory)
-
-        exit(0)
-    elif arguments["printgpt"]:
-        luns = getluns(arguments)
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                print(f"\nParsing Lun {str(lun)}:")
-                guid_gpt.print()
-        exit(0)
-    elif arguments["r"]:
-        partitionname = arguments["<partitionname>"]
-        filename = arguments["<filename>"]
-        filenames = filename.split(",")
-        partitions=partitionname.split(",")
-        if len(partitions)!=len(filenames):
-            log.error("You need to gives as many filenames as given partitions.")
-            exit(0)
-        i=0
-        for partition in partitions:
-            partfilename=filenames[i]
-            i+=1
-            res=fh.detect_partition(arguments, partition)
-            if res[0]==True:
-                lun=res[1]
-                rpartition=res[2]
-                fh.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename)
-                print(f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} as {partfilename}.")
-            else:
-                fpartitions=res[1]
-                log.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
-                for lun in fpartitions:
-                    for rpartition in fpartitions[lun]:
-                        if arguments["--memory"].lower() == "emmc":
-                            log.error("\t"+rpartition)
+                print("Device is in EDL mode .. continuing.")
+                cdc.timeout = None
+                sahara_info = sahara.info()
+                if sahara_info:
+                    mode, resp = sahara.connect()
+                    if mode == "sahara":
+                        mode = sahara.upload_loader()
+                        if mode == "firehose":
+                            if "enprg" in sahara.programmer.lower():
+                                mode = "enandprg"
+                            elif "nprg" in sahara.programmer.lower():
+                                mode = "nandprg"
+                        if mode != "":
+                            if mode != "firehose":
+                                streaming = QualcommStreaming(cdc, sahara)
+                                if streaming.connect(1):
+                                    print("Successfully uploaded programmer :)")
+                                    mode = "nandprg"
+                                else:
+                                    print("Device is in an unknown state")
+                                    exit(cdc)
+                            else:
+                                print("Successfully uploaded programmer :)")
                         else:
-                            log.error(lun + ":\t" + rpartition)
-        exit(0)
-    elif arguments["rl"]:
-        directory = arguments["<directory>"]
-        if arguments["--skip"]:
-            skip = arguments["--skip"].split(",")
-        else:
-            skip = []
-        genxml = False
-        if "--genxml" in arguments:
-            if arguments["--genxml"]:
-                genxml = True
-        if not os.path.exists(directory):
-            os.mkdir(directory)
-
-        luns = getluns(arguments)
-
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]),
-                                        int(arguments["--gpt-part-entry-size"]),
-                                        int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                if len(luns) > 1:
-                    storedir = os.path.join(directory, "lun" + str(lun))
+                            print("No suitable loader found :(")
+                            exit(cdc)
                 else:
-                    storedir = directory
-                if not os.path.exists(storedir):
-                    os.mkdir(storedir)
-                sfilename = os.path.join(storedir, f"gpt_main{str(lun)}.bin")
-                with open(sfilename, "wb") as wf:
-                    wf.write(data)
-
-                sfilename = os.path.join(storedir, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename, "wb") as wf:
-                    wf.write(data[fh.cfg.SECTOR_SIZE_IN_BYTES * 2:])
-
-                if genxml:
-                    guid_gpt.generate_rawprogram(lun, cfg.SECTOR_SIZE_IN_BYTES, storedir)
-
-                for partition in guid_gpt.partentries:
-                    partitionname = partition.name
-                    if partition.name in skip:
-                        continue
-                    filename = os.path.join(storedir, partitionname + ".bin")
-                    log.info(
-                        f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} as {filename}.")
-                    fh.cmd_read(lun, partition.sector, partition.sectors, filename)
-        exit(0)
-    elif arguments["rf"]:
-        filename = arguments["<filename>"]
-        luns = getluns(arguments)
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                if len(luns) > 1:
-                    sfilename = f"lun{str(lun)}_" + filename
-                else:
-                    sfilename = filename
-                print(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
-                fh.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename)
-                print(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
-        exit(0)
-    elif arguments["pbl"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
+                    print("Device is in an unknown sahara state")
+                    print("resp={0}".format(resp))
+                    exit(cdc)
         else:
-            filename = arguments["<filename>"]
-            if TargetName in infotbl:
-                v = infotbl[TargetName]
-                if len(v[0]) > 0:
-                    if fh.cmd_peek(v[0][0], v[0][1], filename, True):
-                        print(f"Dumped pbl at offset {hex(v[0][0])} as {filename}.")
-                        exit(0)
-                else:
-                    log.error("No known pbl offset for this chipset")
-            else:
-                log.error("Unknown target chipset")
-            log.error("Error on dumping pbl")
-        exit(0)
-    elif arguments["qfp"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            filename = arguments["<filename>"]
-            if TargetName in infotbl:
-                v = infotbl[TargetName]
-                if len(v[1]) > 0:
-                    if fh.cmd_peek(v[1][0], v[1][1], filename):
-                        print(f"Dumped qfprom at offset {hex(v[1][0])} as {filename}.")
-                        exit(0)
-                else:
-                    log.error("No known qfprom offset for this chipset")
-            else:
-                log.error("Unknown target chipset")
-            log.error("Error on dumping qfprom")
-        exit(0)
-    elif arguments["secureboot"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            if TargetName in secureboottbl:
-                v = secureboottbl[TargetName]
-                value = struct.unpack("<I",fh.cmd_peek(v, 4))[0]
-                is_secure = False
-                for area in range(0, 4):
-                    sec_boot = (value >> (area * 8))&0xFF
-                    pk_hashindex = sec_boot & 3
-                    oem_pkhash = True if ((sec_boot >> 4) & 1) == 1 else False
-                    auth_enabled = True if ((sec_boot >> 5) & 1) == 1 else False
-                    use_serial = True if ((sec_boot >> 6) & 1) == 1 else False
-                    if auth_enabled:
-                        is_secure = True
-                    print(
-                        f"Sec_Boot{str(area)} PKHash-Index:{str(pk_hashindex)} OEM_PKHash: {str(oem_pkhash)} Auth_Enabled: {str(auth_enabled)} Use_Serial: {str(use_serial)}")
-                if is_secure:
-                    print(f"Secure boot enabled.")
-                else:
-                    print("Secure boot disabled.")
-            else:
-                log.error("Unknown target chipset")
-        exit(0)
-    elif arguments["memtbl"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            filename = arguments["<filename>"]
-            if TargetName in infotbl:
-                v = infotbl[TargetName]
-                if len(v[2]) > 0:
-                    if fh.cmd_peek(v[2][0], v[2][1], filename):
-                        print(f"Dumped memtbl at offset {hex(v[2][0])} as {filename}.")
-                        exit(0)
-                else:
-                    log.error("No known memtbl offset for this chipset")
-            else:
-                log.error("Unknown target chipset")
-            log.error("Error on dumping memtbl")
-        exit(0)
-    elif arguments["footer"]:
-        luns = getluns(arguments)
-        filename = arguments["<filename>"]
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2", "reserved3"]
-                for partition in guid_gpt.partentries:
-                    if partition.name in pnames:
-                        print(f"Detected partition: {partition.name}")
-                        data = fh.cmd_read_buffer(lun,
-                                                  partition.sector + (
-                                                              partition.sectors - (0x4000 // cfg.SECTOR_SIZE_IN_BYTES)),
-                                                  (0x4000 // cfg.SECTOR_SIZE_IN_BYTES), filename)
-                        if data==b"":
-                            continue
-                        val = struct.unpack("<I", data[:4])[0]
-                        if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
-                            with open(filename, "wb") as wf:
-                                wf.write(data)
-                                print(f"Dumped footer from {partition.name} as {filename}.")
-                                exit(0)
-        log.error(f"Error: Couldn't detect footer partition.")
-        exit(0)
-    elif arguments["rs"]:
-        if arguments["--lun"]!='None':
-            lun = int(arguments["--lun"])
-        else:
-            lun=0
-        start = int(arguments["<start_sector>"])
-        sectors = int(arguments["<sectors>"])
-        filename = arguments["<filename>"]
-        data = fh.cmd_read_buffer(lun, start, sectors, filename)
-        with open(filename, "wb") as wf:
-            wf.write(data)
-            print(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
-            exit(0)
-        log.error(f"Error: Couldn't open {filename} for writing.")
-        exit(0)
-    elif arguments["peek"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            length = int(arguments["<length>"], 16)
-            filename = arguments["<filename"]
-            fh.cmd_peek(offset, length, filename, True)
-        exit(0)
-    elif arguments["peekhex"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            length = int(arguments["<length>"], 16)
-            resp = fh.cmd_peek(offset, length, "", True)
-            print("\n")
-            print(hexlify(resp))
-        exit(0)
-    elif arguments["peekqword"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            resp = fh.cmd_peek(offset, 8, "", True)
-            print("\n")
-            print(hex(unpack("<Q", resp[:8])[0]))
-        exit(0)
-    elif arguments["peekdword"]:
-        if not check_cmd(supported_functions, "peek"):
-            log.error("Peek command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            resp = fh.cmd_peek(offset, 4, "", True)
-            print("\n")
-            print(hex(unpack("<I", resp[:4])[0]))
-        exit(0)
-    elif arguments["poke"]:
-        if not check_cmd(supported_functions, "poke"):
-            log.error("Poke command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            filename = unhexlify(arguments["<filename>"])
-            fh.cmd_poke(offset, "", filename, True)
-        exit(0)
-    elif arguments["pokehex"]:
-        if not check_cmd(supported_functions, "poke"):
-            log.error("Poke command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            data = unhexlify(arguments["<data>"])
-            fh.cmd_poke(offset, data, "", True)
-            resp = fh.cmd_peek(offset, len(data), "", True)
-            if resp == data:
-                print("Data correctly written")
-            else:
-                print("Sending data failed")
-        exit(0)
-    elif arguments["pokeqword"]:
-        if not check_cmd(supported_functions, "poke"):
-            log.error("Poke command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            data = pack("<Q", int(arguments["<data>"], 16))
-            fh.cmd_poke(offset, data, "", True)
-            resp = fh.cmd_peek(offset, 8, "", True)
-            print(hex(unpack("<Q", resp[:8])[0]))
-        exit(0)
-    elif arguments["pokedword"]:
-        if not check_cmd(supported_functions, "poke"):
-            log.error("Poke command isn't supported by edl loader")
-            exit(0)
-        else:
-            offset = int(arguments["<offset>"], 16)
-            data = pack("<I", int(arguments["<data>"], 16))
-            fh.cmd_poke(offset, data, "", True)
-            resp = fh.cmd_peek(offset, 4, "", True)
-            print(hex(unpack("<I", resp[:4])[0]))
-        exit(0)
-    elif arguments["reset"]:
-        fh.cmd_reset()
-        exit(0)
-    elif arguments["nop"]:
-        if not check_cmd(supported_functions, "nop"):
-            log.error("Nop command isn't supported by edl loader")
-            exit(0)
-        else:
-            print(fh.cmd_nop())
-        exit(0)
-    elif arguments["setbootablestoragedrive"]:
-        if not check_cmd(supported_functions, "setbootablestoragedrive"):
-            log.error("setbootablestoragedrive command isn't supported by edl loader")
-            exit(0)
-        else:
-            fh.cmd_setbootablestoragedrive(int(arguments["<lun>"]))
-        exit(0)
-    elif arguments["getstorageinfo"]:
-        if not check_cmd(supported_functions, "getstorageinfo"):
-            log.error("getstorageinfo command isn't supported by edl loader")
-            exit(0)
-        else:
-            fh.cmd_getstorageinfo()
-        exit(0)
-    elif arguments["w"]:
-        partitionname = arguments["<partitionname>"]
-        filename = arguments["<filename>"]
-        if not os.path.exists(filename):
-            log.error(f"Error: Couldn't find file: {filename}")
-            exit(0)
-        res=fh.detect_partition(arguments, partitionname)
-        if res[0]==True:
-            lun=res[1]
-            partition=res[2]
-            sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
-            if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                sectors += 1
-            if sectors > partition.sectors:
-                log.error(f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                exit(0)
-            if fh.modules is not None:
-                fh.modules.prerun()
-            if fh.cmd_program(lun, partition.sector, filename):
-                print(f"Wrote {filename} to sector {str(partition.sector)}.")
-            else:
-                print(f"Error writing {filename} to sector {str(partition.sector)}.")
-            exit(0)
-        else:
-            fpartitions=res[1]
-            log.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
-            for lun in fpartitions:
-                for partition in fpartitions[lun]:
-                    if arguments["--memory"].lower() == "emmc":
-                        log.error("\t"+partition)
-                    else:
-                        log.error(lun + ":\t" + partition)
-        exit(0)
-    elif arguments["wl"]:
-        directory = arguments["<directory>"]
-        if arguments["--skip"]:
-            skip = arguments["--skip"].split(",")
-        else:
-            skip = []
-        luns = getluns(arguments)
-
-        if not os.path.exists(directory):
-            log.error(f"Error: Couldn't find directory: {directory}")
-            exit(0)
-        filenames = []
-        if fh.modules is not None:
-            fh.modules.prerun()
-        for dirName, subdirList, fileList in os.walk(directory):
-            for fname in fileList:
-                filenames.append(os.path.join(dirName, fname))
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                if "partentries" in dir(guid_gpt):
-                    for filename in filenames:
-                        for partition in guid_gpt.partentries:
-                            partname = filename[filename.rfind("/") + 1:]
-                            if ".bin" in partname[-4:]:
-                                partname = partname[:-4]
-                            if partition.name == partname:
-                                if partition.name in skip:
-                                    continue
-                                sectors = os.stat(filename).st_size // fh.cfg.SECTOR_SIZE_IN_BYTES
-                                if (os.stat(filename).st_size % fh.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                                    sectors += 1
-                                if sectors > partition.sectors:
-                                    log.error(
-                                        f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                                    exit(0)
-                                print(f"Writing {filename} to partition {str(partition.name)}.")
-                                fh.cmd_program(lun, partition.sector, filename)
-                else:
-                    print("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
-        exit(0)
-    elif arguments["ws"]:
-        lun = int(arguments["--lun"])
-        start = int(arguments["<start_sector>"])
-        filename = arguments["<filename>"]
-        if not os.path.exists(filename):
-            log.error(f"Error: Couldn't find file: {filename}")
-            exit(0)
-        if fh.modules is not None:
-            fh.modules.prerun()
-        if fh.cmd_program(lun, start, filename):
-            print(f"Wrote {filename} to sector {str(start)}.")
-        else:
-            log.error(f"Error on writing {filename} to sector {str(start)}")
-        exit(0)
-    elif arguments["wf"]:
-        lun = int(arguments["--lun"])
-        start = 0
-        filename = arguments["<filename>"]
-        if not os.path.exists(filename):
-            log.error(f"Error: Couldn't find file: {filename}")
-            exit(0)
-        if fh.modules is not None:
-            fh.modules.prerun()
-        if fh.cmd_program(lun, start, filename):
-            print(f"Wrote {filename} to sector {str(start)}.")
-        else:
-            log.error(f"Error on writing {filename} to sector {str(start)}")
-        exit(0)
-    elif arguments["e"]:
-        luns = getluns(arguments)
-        partitionname = arguments["<partitionname>"]
-        for lun in luns:
-            data, guid_gpt = fh.get_gpt(lun, int(arguments["--gpt-num-part-entries"]), int(arguments["--gpt-part-entry-size"]),
-                                  int(arguments["--gpt-part-entry-start-lba"]))
-            if guid_gpt is None:
-                break
-            else:
-                if fh.modules is not None:
-                    fh.modules.prerun()
-                if "partentries" in dir(guid_gpt):
-                    for partition in guid_gpt.partentries:
-                        if partition.name == partitionname:
-                            fh.cmd_erase(lun, partition.sector, partition.sectors)
-                            print(
-                                f"Erased {partitionname} starting at sector {str(partition.sector)} with sector count " +
-                                f"{str(partition.sectors)}.")
-                            exit(0)
-                else:
-                    print("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
-                    exit(0)
-        log.error(f"Error: Couldn't detect partition: {partitionname}")
-        exit(0)
-    elif arguments["es"]:
-        lun = int(arguments["--lun"])
-        start = int(arguments["<start_sector>"])
-        sectors = int(arguments["<sectors"])
-        if fh.modules is not None:
-            fh.modules.prerun()
-        fh.cmd_erase(lun, start, sectors)
-        print(f"Erased sector {str(start)} with sector count {str(sectors)}.")
-        exit(0)
-    elif arguments["xml"]:
-        fh.cmd_xml(arguments["<xmlfile>"])
-        exit(0)
-    elif arguments["rawxml"]:
-        fh.cmd_rawxml(arguments["<xmlstring>"])
-        exit(0)
-    elif arguments["send"]:
-        command = arguments["<command>"]
-        resp = fh.cmd_send(command, True)
-        print("\n")
-        print(resp)
-        exit(0)
-    elif arguments["server"]:
-        do_firehose_server(arguments, cdc, sahara,devicemodel,log,skipresponse)
-        exit(0)
-    elif arguments["modules"]:
-        command = arguments["<command>"]
-        options = arguments["<options>"]
-        if fh.modules==None:
-            log.error("Feature is not supported")
-            exit(0)
-        else:
-            fh.modules.run(mainargs=arguments,command=command,args=options)
+            print("Device is in an unknown state")
+            exit(cdc)
     else:
-        log.error("Unknown/Missing command, a command is required.")
-        exit(0)
+        sahara.bit64 = True
+
+    if mode == "firehose":
+        cdc.timeout = None
+        fh = firehose_client(args, cdc, sahara, LOGGER,print)
+        cmd=parse_cmd(args)
+        options=parse_option(args)
+        if cmd!="":
+            fh.handle_firehose(cmd,options)
+    elif mode == "nandprg" or mode == "enandprg" or mode == "load_nandprg" or mode == "load_enandprg":
+        sc = streaming_client(args, cdc, sahara, LOGGER,print)
+        cmd = parse_cmd(args)
+        options = parse_option(args)
+        if "load_" in mode:
+            options["<mode>"] = 1
+        else:
+            options["<mode>"] = 0
+        sc.handle_streaming(cmd, options)
+    else:
+        LOGGER.error("Sorry, couldn't talk to Sahara, please reboot the device !")
+
+    exit(cdc)
 
 
 if __name__ == '__main__':

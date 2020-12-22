@@ -49,7 +49,7 @@ def pt32_walk(data, ttbr, skip):
             pt.parse_spt(sldata, va)
 
 def main():
-    parser = argparse.ArgumentParser(\
+    parser = argparse.ArgumentParser(
             prog="memparse",
             usage="python memparse.py -arch <32,64> -in <filename> -mem <offset>",
             formatter_class=argparse.RawTextHelpFormatter)
@@ -57,7 +57,7 @@ def main():
     parser.add_argument('-arch', '--arch', dest='arch', help='architecture=32,64', default="32")
     parser.add_argument('-mem', '--mem', dest='mem', help='memoryoffset', default="0x200000")
     args = parser.parse_args()
-    if (args.infile==""):
+    if args.infile=="":
         print("You need to add an -in [memorydump filename]")
         return
 

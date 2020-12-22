@@ -1,49 +1,62 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#(c) B.Kerler 2018-2019
+# (c) B.Kerler 2018-2019
 
 import hashlib
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
 from Crypto.Hash import CMAC
 from Crypto.Util.number import long_to_bytes, bytes_to_long
-from binascii import hexlify,unhexlify
+from binascii import hexlify, unhexlify
+
 
 class PKCS1BaseException(Exception):
     pass
 
+
 class DecryptionError(PKCS1BaseException):
     pass
+
 
 class MessageTooLong(PKCS1BaseException):
     pass
 
+
 class WrongLength(PKCS1BaseException):
     pass
+
 
 class MessageTooShort(PKCS1BaseException):
     pass
 
+
 class InvalidSignature(PKCS1BaseException):
     pass
+
 
 class RSAModulusTooShort(PKCS1BaseException):
     pass
 
+
 class IntegerTooLarge(PKCS1BaseException):
     pass
+
 
 class MessageRepresentativeOutOfRange(PKCS1BaseException):
     pass
 
+
 class CiphertextRepresentativeOutOfRange(PKCS1BaseException):
     pass
+
 
 class SignatureRepresentativeOutOfRange(PKCS1BaseException):
     pass
 
+
 class EncodingError(PKCS1BaseException):
     pass
+
 
 class InvalidInputException(Exception):
     def __init__(self, msg):
@@ -52,27 +65,17 @@ class InvalidInputException(Exception):
     def __str__(self):
         return str(self.msg)
 
+
 class InvalidTagException(Exception):
     def __str__(self):
         return 'The authentication tag is invalid.'
 
+
 class cryptutils:
     class aes:
-        # GF(2^128) defined by 1 + a + a^2 + a^7 + a^128
-        # Please note the MSB is x0 and LSB is x127
-        def gf_2_128_mul(self, x, y):
-            assert x < (1 << 128)
-            assert y < (1 << 128)
-            res = 0
-            for i in range(127, -1, -1):
-                res ^= x * ((y >> i) & 1)  # branchless
-                x = (x >> 1) ^ ((x & 1) * 0xE1000000000000000000000000000000)
-            assert res < 1 << 128
-            return res
-
         class AES_GCM:
             # Galois/Counter Mode with AES-128 and 96-bit IV
-            '''
+            """
             Example:
             master_key = 0x0ADAABC70895E008147A48C27791F654 #54F69177C2487A1408E09508C7ABDA0A
             init_value = 0x2883B4173F9A838437C1CD86CCFAA5ED #EDA5FACC86CDC13784839A3F17B48328
@@ -106,9 +109,22 @@ class cryptutils:
                         b"\xA0\x62\x9E\xF9\xF4\xE7\xE8\x65"
             my_gcm = AES_GCM(master_key)
             decrypted = my_gcm.decrypt(init_value, ciphertext, auth_tag)
-            '''
+            """
+
             def __init__(self, master_key):
                 self.change_key(master_key)
+
+            # GF(2^128) defined by 1 + a + a^2 + a^7 + a^128
+            # Please note the MSB is x0 and LSB is x127
+            def gf_2_128_mul(self, x, y):
+                assert x < (1 << 128)
+                assert y < (1 << 128)
+                res = 0
+                for i in range(127, -1, -1):
+                    res ^= x * ((y >> i) & 1)  # branchless
+                    x = (x >> 1) ^ ((x & 1) * 0xE1000000000000000000000000000000)
+                assert res < 1 << 128
+                return res
 
             def change_key(self, master_key):
                 if master_key >= (1 << 128):
@@ -231,9 +247,9 @@ class cryptutils:
 
                 return plaintext
 
-        def aes_gcm(self,ciphertext,nounce,aes_key, hdr, tag_auth, decrypt=True):
+        def aes_gcm(self, ciphertext, nounce, aes_key, hdr, tag_auth, decrypt=True):
             cipher = AES.new(aes_key, AES.MODE_GCM, nounce)
-            if hdr!=None:
+            if hdr is not None:
                 cipher.update(hdr)
             if decrypt:
                 plaintext = cipher.decrypt(ciphertext)
@@ -242,24 +258,24 @@ class cryptutils:
                     return plaintext
                 except ValueError:
                     return None
+            return None
 
-        def aes_cbc(self,key,iv,data,decrypt=True):
+        def aes_cbc(self, key, iv, data, decrypt=True):
             if decrypt:
                 return AES.new(key, AES.MODE_CBC, IV=iv).decrypt(data)
             else:
                 return AES.new(key, AES.MODE_CBC, IV=iv).encrypt(data)
 
-        def aes_ecb(self,key,data,decrypt=True):
+        def aes_ecb(self, key, data, decrypt=True):
             if decrypt:
                 return AES.new(key, AES.MODE_ECB).decrypt(data)
             else:
                 return AES.new(key, AES.MODE_ECB).encrypt(data)
 
-        def aes_ctr(self,key,counter,enc_data,decrypt=True):
+        def aes_ctr(self, key, counter, enc_data, decrypt=True):
             ctr = Counter.new(128, initial_value=counter)
             # Create the AES cipher object and decrypt the ciphertext, basically this here is just aes ctr 256 :)
             cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
-            data = b""
             if decrypt:
                 data = cipher.decrypt(enc_data)
             else:
@@ -279,30 +295,29 @@ class cryptutils:
                 ciphertext = cipher.encrypt(data)
                 return ciphertext
 
-        def aes_cmac_verify(key,plain,compare):
+        def aes_cmac_verify(self, key, plain, compare):
             ctx = CMAC.new(key, ciphermod=AES)
             ctx.update(plain)
-            result=ctx.hexdigest()
-            if result!=compare:
+            result = ctx.hexdigest()
+            if result != compare:
                 print("AES-CMAC failed !")
             else:
                 print("AES-CMAC ok !")
 
     class rsa:  # RFC8017
         def __init__(self, hashtype="SHA256"):
-            hh=hash()
             if hashtype == "SHA1":
-                self.hash = hh.sha1
+                self.hash = hashlib.sha1
                 self.digestLen = 0x14
             elif hashtype == "SHA256":
-                self.hash = hh.sha256
+                self.hash = hashlib.sha256
                 self.digestLen = 0x20
 
         def pss_test(self):
             N = "a2ba40ee07e3b2bd2f02ce227f36a195024486e49c19cb41bbbdfbba98b22b0e577c2eeaffa20d883a76e65e394c69d4b3c05a1e8fadda27edb2a42bc000fe888b9b32c22d15add0cd76b3e7936e19955b220dd17d4ea904b1ec102b2e4de7751222aa99151024c7cb41cc5ea21d00eeb41f7c800834d2c6e06bce3bce7ea9a5"
             e = "010001"
             D = "050e2c3e38d886110288dfc68a9533e7e12e27d2aa56d2cdb3fb6efa990bcff29e1d2987fb711962860e7391b1ce01ebadb9e812d2fbdfaf25df4ae26110a6d7a26f0b810f54875e17dd5c9fb6d641761245b81e79f8c88f0e55a6dcd5f133abd35f8f4ec80adf1bf86277a582894cb6ebcd2162f1c7534f1f4947b129151b71"
-            MSG = "859eef2fd78aca00308bdc471193bf55bf9d78db8f8a672b484634f3c9c26e6478ae10260fe0dd8c082e53a5293af2173cd50c6d5d354febf78b26021c25c02712e78cd4694c9f469777e451e7f8e9e04cd3739c6bbfedae487fb55644e9ca74ff77a53cb729802f6ed4a5ffa8ba159890fc"
+            MSG = "859eef2fd78aca00308bdc471193bf55bf9d78db8f8a672b484634f3c9c26e6478ae10260fe0dd8c082e53a5293af2173cd50c6d5d354febf78b26021c25c02712e78cd4694c9f469777e451e7f8e9e04cd3739c6bbfedae487fb55644e9ca74ff77a53cb729802f6ed4a5ffa8ba159890fc "
             salt = "e3b5d5d002c1bce50c2b65ef88a188d83bce7e61"
 
             N = int(N, 16)
@@ -318,9 +333,9 @@ class cryptutils:
                 print("Test failed.")
 
         def i2osp(self, x, x_len):
-            '''Converts the integer x to its big-endian representation of length
+            """Converts the integer x to its big-endian representation of length
                x_len.
-            '''
+            """
             if x > 256 ** x_len:
                 raise IntegerTooLarge
             h = hex(x)[2:]
@@ -331,20 +346,20 @@ class cryptutils:
             x = unhexlify(h)
             return b'\x00' * int(x_len - len(x)) + x
 
-        def os2ip(self,x):
-            '''Converts the byte string x representing an integer reprented using the
+        def os2ip(self, x):
+            """Converts the byte string x representing an integer reprented using the
                big-endian convient to an integer.
-            '''
+            """
             h = hexlify(x)
             return int(h, 16)
 
-        #def os2ip(self, X):
+        # def os2ip(self, X):
         #    return int.from_bytes(X, byteorder='big')
 
         def mgf1(self, input, length):
             counter = 0
             output = b''
-            while (len(output) < length):
+            while len(output) < length:
                 C = self.i2osp(counter, 4)
                 output += self.hash(input + C)
                 counter += 1
@@ -355,7 +370,7 @@ class cryptutils:
                 return
             raise TypeError('%s should be an integer, not %s' % (name, var.__class__))
 
-        def sign(self,tosign,D,N,emBits=1024):
+        def sign(self, tosign, D, N, emBits=1024):
             self.assert_int(tosign, 'message')
             self.assert_int(D, 'D')
             self.assert_int(N, 'n')
@@ -364,8 +379,8 @@ class cryptutils:
                 raise ValueError('Only non-negative numbers are supported')
 
             if tosign > N:
-                tosign1=divmod(tosign,N)[1]
-                signature=pow(tosign1,D,N)
+                tosign1 = divmod(tosign, N)[1]
+                signature = pow(tosign1, D, N)
                 raise OverflowError("The message %i is too long for n=%i" % (tosign, N))
 
             signature = pow(tosign, D, N)
@@ -373,30 +388,30 @@ class cryptutils:
             return hexsign
 
         def pss_sign(self, D, N, msghash, salt, emBits=1024):
-            if isinstance(D,str):
-                D=unhexlify(D)
-                D=self.os2ip(D)
-            if isinstance(N,str):
-                N=unhexlify(N)
-                N=self.os2ip(N)
-            slen=len(salt)
+            if isinstance(D, str):
+                D = unhexlify(D)
+                D = self.os2ip(D)
+            if isinstance(N, str):
+                N = unhexlify(N)
+                N = self.os2ip(N)
+            slen = len(salt)
             emLen = self.ceil_div(emBits, 8)
             inBlock = b"\x00" * 8 + msghash + salt
-            hash = self.hash(inBlock)
-            PSlen=emLen - self.digestLen - slen - 1 - 1
+            hhash = self.hash(inBlock)
+            PSlen = emLen - self.digestLen - slen - 1 - 1
             DB = (PSlen * b"\x00") + b"\x01" + salt
-            rlen = emLen - len(hash) - 1
-            dbMask = self.mgf1(hash, rlen)
+            rlen = emLen - len(hhash) - 1
+            dbMask = self.mgf1(hhash, rlen)
             maskedDB = bytearray()
             for i in range(0, len(dbMask)):
                 maskedDB.append(dbMask[i] ^ DB[i])
-            maskedDB[0]=maskedDB[0]&0x7F
-            EM = maskedDB + hash + b"\xbc"
-            tosign=self.os2ip(EM)
-            #EM=hexlify(EM).decode('utf-8')
-            #tosign = int(EM,16)
-            return self.sign(tosign,D,N,emBits)
-            #6B1EAA2042A5C8DA8B1B4A8320111A70A0CBA65233D1C6E418EF8156E82A8F96BD843F047FF25AB9702A6582C8387298753E628F23448B4580E09CBD2A483C623B888F47C4BD2C5EFF09013C6DFF67DB59BAB3037F0BEE05D5660264D28CC6251631FE75CE106D931A04FA032FEA31259715CE0FAB1AE0E2F8130807AF4019A61B9C060ECE59104F22156FEE8108F17DC80D7C2F8397AFB9780994F7C5A0652F93D1B48010B0B248AB9711235787D797FBA4D10A29BCF09628585D405640A866B15EE9D7526A2703E72A19811EF447F6E5C43F915B3808EBC79EA4BCF78903DBDE32E47E239CFB5F2B5986D0CBBFBE6BACDC29B2ADE006D23D0B90775B1AE4DD
+            maskedDB[0] = maskedDB[0] & 0x7F
+            EM = maskedDB + hhash + b"\xbc"
+            tosign = self.os2ip(EM)
+            # EM=hexlify(EM).decode('utf-8')
+            # tosign = int(EM,16)
+            return self.sign(tosign, D, N, emBits)
+            # 6B1EAA2042A5C8DA8B1B4A8320111A70A0CBA65233D1C6E418EF8156E82A8F96BD843F047FF25AB9702A6582C8387298753E628F23448B4580E09CBD2A483C623B888F47C4BD2C5EFF09013C6DFF67DB59BAB3037F0BEE05D5660264D28CC6251631FE75CE106D931A04FA032FEA31259715CE0FAB1AE0E2F8130807AF4019A61B9C060ECE59104F22156FEE8108F17DC80D7C2F8397AFB9780994F7C5A0652F93D1B48010B0B248AB9711235787D797FBA4D10A29BCF09628585D405640A866B15EE9D7526A2703E72A19811EF447F6E5C43F915B3808EBC79EA4BCF78903DBDE32E47E239CFB5F2B5986D0CBBFBE6BACDC29B2ADE006D23D0B90775B1AE4DD
 
         def ceil_div(self, a, b):
             (q, r) = divmod(a, b)
@@ -413,8 +428,8 @@ class cryptutils:
             sig = self.os2ip(signature)
 
             EM = pow(sig, e, N)
-            #EM = unhexlify(hex(EM)[2:])
-            EM=self.i2osp(EM,emBits//8)
+            # EM = unhexlify(hex(EM)[2:])
+            EM = self.i2osp(EM, emBits // 8)
 
             emLen = len(signature)
 
@@ -422,16 +437,15 @@ class cryptutils:
             if valBC != 0xbc:
                 print("[rsa_pss] : 0xbc check failed")
                 return False
-            hash = EM[emLen - self.digestLen - 1:-1]
+            mhash = EM[emLen - self.digestLen - 1:-1]
             maskedDB = EM[:emLen - self.digestLen - 1]
 
-            lmask=~(0xFF >> (8 * emLen + 1 - emBits))
-            if EM[0]&lmask:
+            lmask = ~(0xFF >> (8 * emLen + 1 - emBits))
+            if EM[0] & lmask:
                 print("[rsa_pss] : lmask check failed")
                 return False
 
-
-            dbMask = self.mgf1(hash, emLen - self.digestLen - 1)
+            dbMask = self.mgf1(mhash, emLen - self.digestLen - 1)
 
             DB = bytearray()
             for i in range(0, len(dbMask)):
@@ -448,22 +462,21 @@ class cryptutils:
                 print("[rsa_pss] : 0x01 check failed")
                 return False
 
-            if salt != None:
+            if salt is not None:
                 inBlock = b"\x00" * 8 + msghash + salt
                 mhash = self.hash(inBlock)
-                if mhash == hash:
+                if mhash == mhash:
                     return True
                 else:
                     return False
             else:
-                salt=TS[-self.digestLen:]
+                salt = TS[-self.digestLen:]
                 inBlock = b"\x00" * 8 + msghash + salt
                 mhash = self.hash(inBlock)
-                if mhash == hash:
+                if mhash == mhash:
                     return True
                 else:
                     return False
-            return maskedDB
 
     class hash():
         def __init__(self, hashtype="SHA256"):

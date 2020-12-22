@@ -18,7 +18,7 @@
 - sudo sudo apt install liblzma-dev
 
 Linux/Windows: 
-- "python -m pip install -r requirements.txt" (use python3 instead of python if you use python2 and python3)
+- "python -m pip install -r requirements.txt"
 
 Windows:
 - Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows,
@@ -40,7 +40,7 @@ or
 ### Generic
 
 - "./edl.py -h" -> to see help with all options
-- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see Example/tcpclient.py for an example client
+- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see Examples/tcpclient.py for an example client
 - "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
 - "./edl.py reset" -> To reboot the phone
 - "./edl.py rawxml <xmlstring>' -> To send own xml string, example : 
@@ -97,8 +97,20 @@ or
 - "./edl.py pbl pbl.bin" -> To dump pbl (only on EL3 loaders)
 - "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
 
-### For generic unlocking
-- "./edl.py modules oemunlock" -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
+### Streaming mode (credits to forth32)
+
+#### Dump memory (0x900E mode)
+- "./edl.py dumpmemory"
+
+#### Sierra Wireless Modem 
+- Send AT!BOOTHOLD and AT!QPSTDLOAD to modem port or use ./boottodwnload.py script
+- Send AT!ENTERCND="A710" and then AT!EROPTION=0 for memory dump
+- "./edl.py --vid 1199 --pid 9070 --loader=Loaders/qualcomm/patched/NPRG9x35p.bin printgpt" -> To show the partition table
+
+#### ZTE MF920V 
+- Send to at port "AT+ZCDRUN=E", or run "./diag.py -sahara"
+- "adb reboot edl"
+- "./edl.py printgpt" -> To show the partition table
 
 ### QFIL in linux console (credits to LyuOnLine):
 
@@ -133,18 +145,12 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Issues
 
-- Secure loader with SDM660 on Xiaomi not yet supported
+- Secure loader with SDM660 on Xiaomi (EDL auth) and Oppo (VIP Programming) not yet supported
 - EFS directory write and file read has to be added
 
 ## Tested with
 
-- Oneplus 3T/5/6T/7T, BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210
-
-## Contributions
-- We need an implementation of the VIP Programming, functions addprogram and addpatch should be used (as a Module in Modules)
-
-## Report issues 
-- Please run using the option --debugmode and then commit an issue and attach the "log.txt" file
+- Oneplus 3T/5/6T/7T/8/8t/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Quectel EC25
 
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.

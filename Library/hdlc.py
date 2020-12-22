@@ -1,9 +1,9 @@
 import logging
-from binascii import hexlify, unhexlify
-from struct import pack, unpack
+from binascii import hexlify
+from struct import unpack
 import time
 
-MAX_PACKET_LEN=4096
+MAX_PACKET_LEN = 4096
 
 crcTbl = (
     0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
@@ -40,31 +40,31 @@ crcTbl = (
     0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78)
 
 
-class hdlc():
-    def __init__(self, cdc, timeout=5000):
+class hdlc:
+    def __init__(self, cdc):
         self.cdc = cdc
         self.programmer = None
-        self.timeout=500
+        self.timeout = 1500
 
-    def serial16(self,data):
+    def serial16(self, data):
         out = bytearray()
         out.append((data >> 8) & 0xFF)
         out.append(data & 0xFF)
         return out
 
-    def serial16le(self,data):
+    def serial16le(self, data):
         out = bytearray()
         out.append(data & 0xFF)
         out.append((data >> 8) & 0xFF)
         return out
 
-    def serial32(self,data):
+    def serial32(self, data):
         out = bytearray()
         out += self.serial16((data >> 16) & 0xFFFF)
         out += self.serial16(data & 0xFFFF)
         return out
 
-    def serial32le(self,data):
+    def serial32le(self, data):
         out = bytearray()
         out += self.serial16le(data & 0xFFFF)
         out += self.serial16le((data >> 16) & 0xFFFF)
@@ -75,21 +75,21 @@ class hdlc():
             iv = ((iv >> 8) & 0xFFFF) ^ crcTbl[(iv ^ byte) & 0xFF]
         return ~iv & 0xFFFF
 
-    def convert_cmdbuf(self,indata):
-        crc16val=self.crc16(0xFFFF,indata)
+    def convert_cmdbuf(self, indata):
+        crc16val = self.crc16(0xFFFF, indata)
         indata.extend(bytearray(self.serial16le(crc16val)))
-        outdata=self.escape(indata)
+        outdata = self.escape(indata)
         outdata.append(0x7E)
         return outdata
 
-    def escape(self,indata):
-        outdata=bytearray()
-        for i in range(0,len(indata)):
-            buf=indata[i]
-            if buf==0x7e:
+    def escape(self, indata):
+        outdata = bytearray()
+        for i in range(0, len(indata)):
+            buf = indata[i]
+            if buf == 0x7e:
                 outdata.append(0x7d)
                 outdata.append(0x5e)
-            elif buf==0x7d:
+            elif buf == 0x7d:
                 outdata.append(0x7d)
                 outdata.append(0x5d)
             else:
@@ -118,51 +118,105 @@ class hdlc():
             return None
         return out
 
-    def receive_reply(self,masslen):
-        replybuf=bytearray()
-        tmp=self.cdc.read(MAX_PACKET_LEN,self.timeout)
-        if tmp==bytearray():
+    def receive_reply(self):
+        replybuf = bytearray()
+        tmp = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+        if tmp == bytearray():
             return 0
+        if tmp == b"":
+            return 0
+        retry = 0
+        while tmp[-1] != 0x7E:
+            time.sleep(0.05)
+            tmp += self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            retry += 1
+            if retry > 5:
+                break
         replybuf.extend(tmp)
-        data=self.unescape(replybuf)
-        #print(hexlify(data))
-        crc16val = self.crc16(0xFFFF, data[:-3])
-        reccrc=int(data[-3])+(int(data[-2])<<8)
-        if crc16val!=reccrc:
-            return -1
+        data = self.unescape(replybuf)
+        # print(hexlify(data))
+        if len(data) > 3:
+            crc16val = self.crc16(0xFFFF, data[:-3])
+            reccrc = int(data[-3]) + (int(data[-2]) << 8)
+            if crc16val != reccrc:
+                return -1
+        else:
+            time.sleep(0.5)
+            data = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            if len(data) > 3:
+                crc16val = self.crc16(0xFFFF, data[:-3])
+                reccrc = int(data[-3]) + (int(data[-2]) << 8)
+                if crc16val != reccrc:
+                    return -1
+                return data
         return data[:-3]
 
-    def send_unframed_buf(self,outdata,prefixflag):
-        #ttyflush()
+    def receive_reply_nocrc(self):
+        replybuf = bytearray()
+        tmp = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+        if tmp == bytearray():
+            return 0
+        if tmp == b"":
+            return 0
+        retry = 0
+        while tmp[-1] != 0x7E:
+            # time.sleep(0.05)
+            tmp += self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            retry += 1
+            if retry > 5:
+                break
+        replybuf.extend(tmp)
+        data = self.unescape(replybuf)
+        # print(hexlify(data))
+        if len(data) > 3:
+            # crc16val = self.crc16(0xFFFF, data[:-3])
+            # reccrc = int(data[-3]) + (int(data[-2]) << 8)
+            return data[:-3]
+        else:
+            time.sleep(0.5)
+            data = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            if len(data) > 3:
+                # crc16val = self.crc16(0xFFFF, data[:-3])
+                # reccrc = int(data[-3]) + (int(data[-2]) << 8)
+                return data[:-3]
+            else:
+                return data
+
+    def send_unframed_buf(self, outdata, prefixflag):
+        # ttyflush()
         if prefixflag:
-            tmp=bytearray()
+            tmp = bytearray()
             tmp.append(0x7E)
             tmp.extend(outdata)
-            outdata=tmp
-        return self.cdc.write(outdata,MAX_PACKET_LEN)
-        #FlushFileBuffers(ser)
+            outdata = tmp
+        return self.cdc.write(outdata, MAX_PACKET_LEN)
+        # FlushFileBuffers(ser)
 
-    def send_cmd_base(self,outdata,prefixflag):
-        packet=self.convert_cmdbuf(bytearray(outdata))
-        if (self.send_unframed_buf(packet, prefixflag)):
-            return self.receive_reply(0)
+    def send_cmd_base(self, outdata, prefixflag, nocrc=False):
+        packet = self.convert_cmdbuf(bytearray(outdata))
+        if self.send_unframed_buf(packet, prefixflag):
+            if nocrc:
+                return self.receive_reply_nocrc()
+            else:
+                return self.receive_reply()
+        return b""
 
-    def send_cmd(self,outdata):
-        return self.send_cmd_base(outdata,1)
+    def send_cmd(self, outdata, nocrc=False):
+        return self.send_cmd_base(outdata, 1, nocrc)
 
-    def send_cmd_np(self,outdata):
-        return self.send_cmd_base(outdata,0)
+    def send_cmd_np(self, outdata, nocrc=False):
+        return self.send_cmd_base(outdata, 0, nocrc)
 
     def show_errpacket(self, descr, pktbuf):
-        if (len(pktbuf) == 0):
+        if len(pktbuf) == 0:
             return
         logging.error("Error: %s " % descr)
 
-        if (pktbuf[1] == 0x0e):
-            pktbuf[len-4]=0
-            #puts(pktbuf+2)
-            ret=self.receive_reply(0)
-            errorcode=unpack("<I",ret[2:2+4])
-            logging.error("Error code = %08x\n\n",errorcode)
+        if pktbuf[1] == 0x0e:
+            pktbuf[-4] = 0
+            # puts(pktbuf+2)
+            ret = self.receive_reply()
+            errorcode = unpack("<I", ret[2:2 + 4])
+            logging.error("Error code = %08x\n\n", errorcode)
         else:
             print(hexlify(pktbuf))
