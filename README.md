@@ -98,7 +98,7 @@ or
 - "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
 
 ### For generic unlocking
-- "./edl.py modules oemunlock" -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
+- "./edl.py modules oemunlock enable" -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
 
 ### Streaming mode (credits to forth32)
 
