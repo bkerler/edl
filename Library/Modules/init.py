@@ -1,6 +1,9 @@
 try:
-    from Library.Modules.oneplus import oneplus
     from Library.Modules.generic import generic
+except Exception as e:
+    pass
+try:
+    from Library.Modules.oneplus import oneplus
 except Exception as e:
     pass
 
