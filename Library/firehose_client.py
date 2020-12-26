@@ -41,11 +41,12 @@ class firehose_client:
         LOGGER.info(funcs)
         self.target_name = self.firehose.cfg.TargetName
         if "hwid" in dir(sahara):
-            hwid = sahara.hwid >> 32
-            if hwid in msmids:
-                self.target_name = msmids[hwid]
-            elif hwid in sochw:
-                self.target_name = sochw[hwid].split(",")[0]
+            if sahara.hwid is not None:
+                hwid = sahara.hwid >> 32
+                if hwid in msmids:
+                    self.target_name = msmids[hwid]
+                elif hwid in sochw:
+                    self.target_name = sochw[hwid].split(",")[0]
 
     def check_cmd(self, func):
         if not self.supported_functions:
@@ -677,13 +678,13 @@ class firehose_client:
         elif cmd == "modules":
             if not self.check_param(["<command>", "<options>"]):
                 return False
-            command = options["<command>"]
-            options = options["<options>"]
+            mcommand = options["<command>"]
+            moptions = options["<options>"]
             if self.firehose.modules is None:
                 self.LOGGER.error("Feature is not supported")
                 return False
             else:
-                return self.firehose.modules.run(mainargs=options, command=command)
+                return self.firehose.modules.run(command=mcommand, args=moptions)
         else:
             self.LOGGER.error("Unknown/Missing command, a command is required.")
             return False

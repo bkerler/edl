@@ -40,7 +40,7 @@ or
 ### Generic
 
 - "./edl.py -h" -> to see help with all options
-- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see Examples/tcpclient.py for an example client
+- "./edl.py server --memory=ufs --tcpport=1340" -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
 - "./edl.py xml run.xml" -> To send a xml file run.xml via firehose
 - "./edl.py reset" -> To reboot the phone
 - "./edl.py rawxml <xmlstring>' -> To send own xml string, example : 
@@ -97,6 +97,7 @@ or
 - "./edl.py pbl pbl.bin" -> To dump pbl (only on EL3 loaders)
 - "./edl.py qfp qfp.bin" -> To dump qfprom fuses (only on EL3 loaders)
 
+
 ### For generic unlocking
 - "./edl.py modules oemunlock enable" -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
 
@@ -108,10 +109,15 @@ or
 #### Sierra Wireless Modem 
 - Send AT!BOOTHOLD and AT!QPSTDLOAD to modem port or use ./boottodwnload.py script
 - Send AT!ENTERCND="A710" and then AT!EROPTION=0 for memory dump
-- "./edl.py --vid 1199 --pid 9070 --loader=Loaders/qualcomm/patched/NPRG9x35p.bin printgpt" -> To show the partition table
+- "./edl.py --vid 1199 --pid 9070 --loader=loaders/NPRG9x35p.bin printgpt" -> To show the partition table
+
+#### Netgear MR1100
+- run modem/netgear_boottodownload.py, device will enter download mode (0x900E pid)
+- "./edl.py printgpt --loader=Loaders/qualcomm/patched/mdm9x5x/NPRG9x55p.bin", device will reboot to 0x9008
+- now use ./edl.py regulary such as "./edl.py printgpt" (do not use loader option)
 
 #### ZTE MF920V 
-- Send to at port "AT+ZCDRUN=E", or run "./diag.py -sahara"
+- run modem/zte_enable_adb.sh, or send to at port "AT+ZCDRUN=E", or send via diag.py "4b650100"
 - "adb reboot edl"
 - "./edl.py printgpt" -> To show the partition table
 
@@ -148,12 +154,13 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Issues
 
-- Secure loader with SDM660 on Xiaomi (EDL auth) and Oppo (VIP Programming) not yet supported
-- EFS directory write and file read has to be added
+- Secure loader with SDM660 on Xiaomi not yet supported (EDL authentification)
+- VIP Programming not supported (Contributions are welcome !)
+- EFS directory write and file read has to be added (Contributions are welcome !)
 
 ## Tested with
 
-- Oneplus 3T/5/6T/7T/8/8t/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Quectel EC25
+- Oneplus 3T/5/6T/7T/8/8t/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Netgear MR1100-10EUS, Netgear MR5100
 
 Published under MIT license
 Additional license limitations: No use in commercial products without prior permit.

@@ -4,6 +4,17 @@ from struct import unpack, pack
 
 c_uint8 = ctypes.c_uint8
 
+# nandbase MSM_NAND_BASE
+# qfprom SECURITY_CONTROL_BASE_PHYS
+config_tbl={
+    #           bam nandbase bcraddr    secureboot          pbl                   qfprom                memtbl
+    3:  ["9x25",1,0xf9af0000,0xfc401a40,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0xFC4B8000, 0x6000], [0x200000, 0x24000]],
+    8:  ["9x35",1,0xf9af0000,0xfc401a40,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0xFC4B8000, 0x6000], [0x200000, 0x24000]],
+    10: ["9x45",1,0x79B0000,0x183f000,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0x58000, 0x6000],[0x200000, 0x24000]],
+    16: ["9x55",0,0x79B0000,0x183F000,0x000a01d0,[0x100000, 0x18000],[0x000A0000, 0x6000],[0x200000, 0x24000]], #9x6x as well
+    12: ["9x07",0,0x79B0000,0x183F000,0x000a01d0,[0x100000, 0x18000],[0x000A0000, 0x6000],[0x200000, 0x24000]]
+}
+
 supported_flash = {
     # Flash ID   Density(MB)  Wid Pgsz  Blksz        oobsz onenand   Manuf */
     0x2690ac2c: [(512 << 20), 0, 4096, (4096 << 6), 224, 0],  # QUECTEL_NAND_FM6BD4G2GXA
@@ -220,7 +231,6 @@ samsung_tbl = {
     0xD5: [False, -1, 16384]
 }
 
-
 class SettingsOpt:
     def __init__(self, parent, chipset, logger, verbose=False):
         self.PAGESIZE = 4096
@@ -255,74 +265,17 @@ class SettingsOpt:
         self.BAD_BLOCK_BYTE_NUM = 0
         self.BAD_BLOCK_IN_SPARE_AREA = 0
         self.ECC_MODE = 0
-        if chipset <= 0:
-            self.bad_loader = 1
-        if chipset == 3:
-            self.name = "MDM9x25"
-            self.loader = "NPRG9x25p.bin"
-            self.eloader = "ENPRG9x25p.bin"
-            self.msmid = [0x07f1]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase = 0xf9af0000
-            self.bcraddr = 0xfc401a40
-            self.secureboot = 0xFC4B8000 + 0x6080
-            self.pbl = [0xFC010000, 0x18000]
-            self.qfprom = [0xFC4B8000, 0x6000]  # SECURITY_CONTROL_BASE_PHYS
-            self.memtbl = [0x200000, 0x24000]
-        elif chipset == 8:
-            self.name = "MDM9x3X"
-            self.loader = "NPRG9x35p.bin"
-            self.eloader = "ENPRG9x35p.bin"
-            self.msmid = [0x0922]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase = 0xf9af0000  # MSM_NAND_BASE
-            self.bcraddr = 0xfc401a40
-            self.secureboot = 0xFC4B8000 + 0x6080
-            self.pbl = [0xFC010000, 0x18000]
-            self.qfprom = [0xFC4B8000, 0x6000]
-            self.memtbl = [0x200000, 0x24000]
-        elif chipset == 10:
-            self.name = "MDM9x4X"
-            self.loader = "NPRG9x45p.bin"
-            self.eloader = "ENPRG9x45p.bin"
-            self.msmid = [0x0950, 0x0951]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase = 0x79B0000
-            self.bcraddr = 0x183f000
-            self.secureboot = 0xFC4B8000 + 0x6080
-            self.pbl = [0xFC010000, 0x18000]
-            self.qfprom = [0x58000, 0x6000]
-            self.memtbl = [0x200000, 0x24000]
-        elif chipset == 11:
-            self.name = "MDM9x5X"
-            self.loader = "NPRG9x55p.bin"
-            self.eloader = "ENPRG9x55p.bin"
-            self.msmid = [0x0320, 0x03e0, 0x03a0]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase = 0x79B0000
-            self.bcraddr = 0x183F000
-            self.secureboot = 0x000a01d0
-            self.pbl = [0x100000, 0x18000]
-            self.qfprom = [0x000A0000, 0x6000]
-            self.memtbl = [0x200000, 0x24000]
-        elif chipset == 12:
-            self.name = "MDM9x07"
-            self.loader = "NPRG9x07p.bin"
-            self.eloader = "ENPRG9x07p.bin"
-            self.msmid = [0x0480, 0x4a0]
-            self.ctrl_type = 0
-            self.udflag = 1
-            self.nandbase = 0x79B0000
-            self.bcraddr = 0x183F000
-            self.secureboot = 0x000a01d0
-            self.pbl = [0x100000, 0x18000]
-            self.qfprom = [0x000A0000, 0x6000]
-            self.memtbl = [0x200000, 0x24000]
-
+        self.bad_loader = 1
+        if chipset in config_tbl:
+            self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl=config_tbl[chipset]
+            self.bad_loader = 0
+        else:
+            for chipid in config_tbl:
+                loadername=parent.sahara.loader
+                if config_tbl[chipid][0] in loadername:
+                    self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl = \
+                    config_tbl[chipset]
+                    self.bad_loader = 0
 
 class nand_toshiba_ids(ctypes.LittleEndianStructure):
     _fields_ = [
@@ -429,72 +382,50 @@ class NandDevice:
 
     def __init__(self, settings):
         self.settings = settings
-        if settings.ctrl_type == 0:
-            # device commands
-            self.NAND_CMD_SOFT_RESET = 0x01
-            self.NAND_CMD_PAGE_READ = 0x32
-            self.NAND_CMD_PAGE_READ_ECC = 0x33
-            self.NAND_CMD_PAGE_READ_ALL = 0x34
-            self.NAND_CMD_SEQ_PAGE_READ = 0x15
-            self.NAND_CMD_PRG_PAGE = 0x36
-            self.NAND_CMD_PRG_PAGE_ECC = 0x37
-            self.NAND_CMD_PRG_PAGE_ALL = 0x39
-            self.NAND_CMD_BLOCK_ERASE = 0x3A
-            self.NAND_CMD_FETCH_ID = 0x0B
-            self.NAND_CMD_STATUS = 0x0C
-            self.NAND_CMD_RESET = 0x0D
+        # device commands
+        self.NAND_CMD_SOFT_RESET = 0x01
+        self.NAND_CMD_PAGE_READ = 0x32
+        self.NAND_CMD_PAGE_READ_ECC = 0x33
+        self.NAND_CMD_PAGE_READ_ALL = 0x34
+        self.NAND_CMD_SEQ_PAGE_READ = 0x15
+        self.NAND_CMD_PRG_PAGE = 0x36
+        self.NAND_CMD_PRG_PAGE_ECC = 0x37
+        self.NAND_CMD_PRG_PAGE_ALL = 0x39
+        self.NAND_CMD_BLOCK_ERASE = 0x3A
+        self.NAND_CMD_FETCH_ID = 0x0B
+        self.NAND_CMD_STATUS = 0x0C
+        self.NAND_CMD_RESET = 0x0D
 
-            # addr offsets
-            self.NAND_FLASH_CMD = settings.nandbase + 0
-            self.NAND_ADDR0 = settings.nandbase + 4
-            self.NAND_ADDR1 = settings.nandbase + 8
-            self.NAND_FLASH_CHIP_SELECT = settings.nandbase + 0xc
-            self.NAND_EXEC_CMD = settings.nandbase + 0x10
-            self.NAND_FLASH_STATUS = settings.nandbase + 0x14
-            self.NAND_BUFFER_STATUS = settings.nandbase + 0x18
-            self.NAND_DEV0_CFG0 = settings.nandbase + 0x20
-            self.NAND_DEV0_CFG1 = settings.nandbase + 0x24
-            self.NAND_DEV0_ECC_CFG = settings.nandbase + 0x28
-            self.NAND_DEV1_ECC_CFG = settings.nandbase + 0x2C
-            self.NAND_DEV1_CFG0 = settings.nandbase + 0x30
-            self.NAND_DEV1_CFG1 = settings.nandbase + 0x34
-            self.NAND_SFLASHC_CMD = settings.nandbase + 0x38
-            self.NAND_SFLASHC_EXEC = settings.nandbase + 0x3C
-            self.NAND_READ_ID = settings.nandbase + 0x40
-            self.NAND_READ_STATUS = settings.nandbase + 0x44
-            self.NAND_CONFIG_DATA = settings.nandbase + 0x50
-            self.NAND_CONFIG = settings.nandbase + 0x54
-            self.NAND_CONFIG_MODE = settings.nandbase + 0x58
-            self.NAND_CONFIG_STATUS = settings.nandbase + 0x60
-            self.NAND_DEV_CMD0 = settings.nandbase + 0xA0
-            self.NAND_DEV_CMD1 = settings.nandbase + 0xA4
-            self.NAND_DEV_CMD2 = settings.nandbase + 0xA8
-            self.NAND_DEV_CMD_VLD = settings.nandbase + 0xAC
-            self.SFLASHC_BURST_CFG = settings.nandbase + 0xe0
-            self.NAND_EBI2_ECC_BUF_CFG = settings.nandbase + 0xF0
-            self.NAND_HW_INFO = settings.nandbase + 0xFC
-            self.NAND_FLASH_BUFFER = settings.nandbase + 0x100
-        elif settings.ctrl_type == 1:
-            self.NAND_CMD_SOFT_RESET = 0x07
-            self.NAND_CMD_PAGE_READ = 0x01
-            self.NAND_CMD_PAGE_READ_ALL = 0xffff
-            self.NAND_CMD_PRG_PAGE = 0x03
-            self.NAND_CMD_PRG_PAGE_ALL = 0xffff
-            self.NAND_CMD_BLOCK_ERASE = 0x04
-            self.NAND_CMD_FETCH_ID = 0x05
-
-            self.NAND_FLASH_CMD = settings.nandbase + 0x304
-            self.NAND_ADDR0 = settings.nandbase + 0x300
-            self.NAND_ADDR1 = settings.nandbase + 0xffff
-            self.NAND_FLASH_CHIP_SELECT = settings.nandbase + 0x30c
-            self.NAND_EXEC_CMD = settings.nandbase + 0xffff
-            self.NAND_BUFFER_STATUS = settings.nandbase + 0xffff
-            self.NAND_FLASH_STATUS = settings.nandbase + 0x308
-            self.NAND_DEV0_CFG0 = settings.nandbase + 0xffff
-            self.NAND_DEV0_CFG1 = settings.nandbase + 0x328
-            self.NAND_DEV0_ECC_CFG = settings.nandbase + 0xffff
-            self.NAND_READ_ID = settings.nandbase + 0x320
-            self.NAND_FLASH_BUFFER = settings.nandbase + 0x0
+        # addr offsets
+        self.NAND_FLASH_CMD = settings.nandbase + 0
+        self.NAND_ADDR0 = settings.nandbase + 4
+        self.NAND_ADDR1 = settings.nandbase + 8
+        self.NAND_FLASH_CHIP_SELECT = settings.nandbase + 0xc
+        self.NAND_EXEC_CMD = settings.nandbase + 0x10
+        self.NAND_FLASH_STATUS = settings.nandbase + 0x14
+        self.NAND_BUFFER_STATUS = settings.nandbase + 0x18
+        self.NAND_DEV0_CFG0 = settings.nandbase + 0x20
+        self.NAND_DEV0_CFG1 = settings.nandbase + 0x24
+        self.NAND_DEV0_ECC_CFG = settings.nandbase + 0x28
+        self.NAND_DEV1_ECC_CFG = settings.nandbase + 0x2C
+        self.NAND_DEV1_CFG0 = settings.nandbase + 0x30
+        self.NAND_DEV1_CFG1 = settings.nandbase + 0x34
+        self.NAND_SFLASHC_CMD = settings.nandbase + 0x38
+        self.NAND_SFLASHC_EXEC = settings.nandbase + 0x3C
+        self.NAND_READ_ID = settings.nandbase + 0x40
+        self.NAND_READ_STATUS = settings.nandbase + 0x44
+        self.NAND_CONFIG_DATA = settings.nandbase + 0x50
+        self.NAND_CONFIG = settings.nandbase + 0x54
+        self.NAND_CONFIG_MODE = settings.nandbase + 0x58
+        self.NAND_CONFIG_STATUS = settings.nandbase + 0x60
+        self.NAND_DEV_CMD0 = settings.nandbase + 0xA0
+        self.NAND_DEV_CMD1 = settings.nandbase + 0xA4
+        self.NAND_DEV_CMD2 = settings.nandbase + 0xA8
+        self.NAND_DEV_CMD_VLD = settings.nandbase + 0xAC
+        self.SFLASHC_BURST_CFG = settings.nandbase + 0xE0
+        self.NAND_EBI2_ECC_BUF_CFG = settings.nandbase + 0xF0
+        self.NAND_HW_INFO = settings.nandbase + 0xFC
+        self.NAND_FLASH_BUFFER = settings.nandbase + 0x100
 
         self.PAGE_ACC = 1 << 4
         self.LAST_PAGE = 1 << 5
@@ -645,9 +576,10 @@ class NandDevice:
                 self.settings.ecc_bit = 8
         elif pid == 0xEC:  # Samsung
             self.samsung_config(nandid)
-        elif pid == 0x2C:
+        elif pid == 0x2C: # Micron
             self.generic_config(nandid, chipsize)
-            if nandid == 0x2690AC2C:  # MT29AZ5A3CHHWD
+            # MT29AZ5A3CHHWD
+            if nandid == 0x2690AC2C or nandid == 0x26D0A32C:
                 self.settings.ecc_bit = 8
         elif pid == 0x01:
             self.generic_config(nandid, chipsize)

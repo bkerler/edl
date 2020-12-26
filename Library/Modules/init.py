@@ -2,10 +2,6 @@ try:
     from Library.Modules.generic import generic
 except Exception as e:
     pass
-try:
-    from Library.Modules.oneplus import oneplus
-except Exception as e:
-    pass
 
 
 class modules():
@@ -23,11 +19,6 @@ class modules():
         except Exception as e:
             pass
         self.ops = None
-        try:
-            self.ops = oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial,
-                               supported_functions=self.supported_functions)
-        except Exception as e:
-            pass
 
     def addpatch(self):
         if self.ops is not None:

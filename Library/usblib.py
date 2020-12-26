@@ -254,8 +254,7 @@ class usb_class:
                     return bytearray(tmp)
                 elif e.errno is not None:
                     print(repr(e), type(e), e.errno)
-                    self.connect()
-                    raise e
+                    sys.exit(0)
                 else:
                     break
         self.log.verify_data(bytearray(tmp), "RX:")

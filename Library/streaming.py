@@ -15,7 +15,6 @@ class QualcommStreaming:
         self.flashinfo = None
         self.bbtbl = {}
         self.nanddevice = None
-        self.ctrl_type = 0
         self.nandbase = 0
 
     def get_flash_config(self):
@@ -31,10 +30,12 @@ class QualcommStreaming:
         self.nandwait()
         dev_cfg0 = self.regs.NAND_DEV0_CFG0
         dev_cfg1 = self.regs.NAND_DEV0_CFG1
-        dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
-        dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
         dev_ecc_cfg = self.regs.NAND_DEV0_ECC_CFG
-        dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
+
+        #dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
+        #dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
+        #dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
+
         """
         self.nand_reset()
         self.set_address(1, 0)
@@ -108,10 +109,10 @@ class QualcommStreaming:
             # increase the codeword size by the OOB chunk size per sector˰
             self.settings.cwsize += self.settings.OOBSIZE // self.settings.sectors_per_page
 
-        self.regs.NAND_DEV0_ECC_CFG = (
-                                                  self.regs.NAND_DEV0_ECC_CFG & 0xfffffffe) | self.settings.args_disable_ecc  # ECC on/off
-        self.regs.NAND_DEV0_CFG1 = (
-                                               self.regs.NAND_DEV0_CFG1 & 0xfffffffe) | self.settings.args_disable_ecc  # ECC on/off
+        # ECC on/off
+        self.regs.NAND_DEV0_ECC_CFG = (self.regs.NAND_DEV0_ECC_CFG & 0xfffffffe) | self.settings.args_disable_ecc
+        # ECC on/off
+        self.regs.NAND_DEV0_CFG1 = (self.regs.NAND_DEV0_CFG1 & 0xfffffffe) | self.settings.args_disable_ecc
         self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_SOFT_RESET  # Resetting all controller operations
         self.regs.NAND_EXEC_CMD = 0x1
         self.nandwait()
@@ -257,33 +258,20 @@ class QualcommStreaming:
         return True
 
     def nandwait(self):
-        if self.settings.ctrl_type == 0:
-            while True:
-                if self.regs.NAND_FLASH_STATUS & 0xF == 0:
-                    break
-        else:
-            while True:
-                if self.regs.NAND_FLASH_STATUS & 0x3 == 0:
-                    break
+        while True:
+            if self.regs.NAND_FLASH_STATUS & 0xF == 0:
+                break
 
     def set_address(self, block, page):
         address = (block * self.settings.num_pages_per_blk) + page
-        if self.settings.ctrl_type == 0:  # MDM
-            self.regs.NAND_ADDR0 = address << 16
-            self.regs.NAND_ADDR1 = (address >> 16) & 0xFF
-            # self.regs.NAND_FLASH_CHIP_SELECT = 0 | 4  # flash0 + undoc bit
-        else:  # MSM
-            self.regs.NAND_ADDR0 = address << 8
-            self.regs.NAND_FLASH_CHIP_SELECT = 0 | 4  # flash0 + undoc bit
+        self.regs.NAND_ADDR0 = address << 16
+        self.regs.NAND_ADDR1 = (address >> 16) & 0xFF
+        # self.regs.NAND_FLASH_CHIP_SELECT = 0 | 4  # flash0 + undoc bit
 
     def exec_nand(self, cmd):
-        if self.settings.ctrl_type == 0:  # MDM
-            self.regs.NAND_FLASH_CMD = cmd
-            self.regs.NAND_EXEC_CMD = 1
-            self.nandwait()
-        else:  # MSM
-            self.regs.NAND_FLASH_CMD = cmd
-            self.nandwait()
+        self.regs.NAND_FLASH_CMD = cmd
+        self.regs.NAND_EXEC_CMD = 1
+        self.nandwait()
 
     def nand_reset(self):
         self.exec_nand(1)
@@ -412,36 +400,34 @@ class QualcommStreaming:
                     return buffer, spare
 
             self.nand_reset()
-            if self.settings.ctrl_type == 0:
-                if self.settings.ECC_MODE == 1:
-                    if cwsize >= self.settings.sectorsize + 4:
-                        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
-                    else:
-                        self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ECC
-                else:
+            if self.settings.ECC_MODE == 1:
+                if cwsize >= self.settings.sectorsize + 4:
                     self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
+                else:
+                    self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ECC
+            else:
+                self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
             self.bch_reset()
 
-        if self.settings.ctrl_type == 0:
-            self.set_address(block, page)
-            bad_ecc = False
-            for sector in range(0, sectors):
-                self.regs.NAND_EXEC_CMD = 0x1
-                self.nandwait()
-                ecc_status = self.check_ecc_status()
-                if ecc_status == -1:
-                    bad_ecc = True
-                tmp = self.memread(self.nanddevice.NAND_FLASH_BUFFER, cwsize)
-                size = self.settings.UD_SIZE_BYTES
-                if cursize + size > self.settings.PAGESIZE:
-                    size = cursize + size - self.settings.PAGESIZE
-                    buffer.extend(tmp[:-size])
-                    spare.extend(tmp[-size:])
-                else:
-                    buffer.extend(tmp)
-                cursize += size
-            if bad_ecc:
-                logger.debug("ECC error at : Block %08X Page %08X" % (block, page))
+        self.set_address(block, page)
+        bad_ecc = False
+        for sector in range(0, sectors):
+            self.regs.NAND_EXEC_CMD = 0x1
+            self.nandwait()
+            ecc_status = self.check_ecc_status()
+            if ecc_status == -1:
+                bad_ecc = True
+            tmp = self.memread(self.nanddevice.NAND_FLASH_BUFFER, cwsize)
+            size = self.settings.UD_SIZE_BYTES
+            if cursize + size > self.settings.PAGESIZE:
+                size = cursize + size - self.settings.PAGESIZE
+                buffer.extend(tmp[:-size])
+                spare.extend(tmp[-size:])
+            else:
+                buffer.extend(tmp)
+            cursize += size
+        if bad_ecc:
+            logger.debug("ECC error at : Block %08X Page %08X" % (block, page))
 
         if self.settings.bad_processing_flag == BadFlags.BAD_DISABLE.value:
             self.hardware_bad_off()
@@ -521,13 +507,14 @@ class QualcommStreaming:
         self.regs.NAND_DEV0_CFG0 = oldcfg
 
     def disable_bam(self):
-        nandcstate = []
+        nandcstate = {}
         for i in range(0, 0xec, 4):
-            nandcstate.append(self.mempeek(self.nanddevice.NAND_FLASH_CMD + i))
+            value=self.mempeek(self.nanddevice.NAND_FLASH_CMD + i)
+            nandcstate[i]=value
         self.mempoke(self.settings.bcraddr, 1)
         self.mempoke(self.settings.bcraddr, 0)
-        for i in range(len(nandcstate)):
-            addr = self.nanddevice.NAND_FLASH_CMD + (i * 4)
+        for i in nandcstate:
+            addr = self.nanddevice.NAND_FLASH_CMD + i
             value = nandcstate[i]
             self.mempoke(addr, value)
         self.regs.NAND_EXEC_CMD = 1
@@ -620,6 +607,10 @@ class QualcommStreaming:
 
         info = b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20"
         resp = self.send(info, True)
+        if b"Unrecognized flash device" in resp:
+            logging.error("Unrecognized flash device, patch loader !")
+            self.reset()
+            return False
         resp = bytearray(resp)
         if resp[1] != 2:
             resp = self.send(info, True)
@@ -633,16 +624,28 @@ class QualcommStreaming:
 
             chipset = self.identify_chipset()
             self.settings = SettingsOpt(self, chipset, logger, False)
+            if self.settings.bad_loader:
+                logging.error("Loader id doesn't match device, please fix config and patch loader. Rebooting.")
+                self.reset()
+                return False
             self.nanddevice = NandDevice(self.settings)
             self.setupregs()
-            if self.settings.sahara:
+
+            if self.cdc.pid == 0x900e:
+                print("Boot to 0x9008")
+                self.mempoke(0x193d100, 1)
+                self.mempeek(0x7980000)
+                self.cdc.close()
+                sys.exit(0)
+
+            if self.settings.bam:
                 self.disable_bam()  # only for sahara
             self.get_flash_config()
             cfg0 = self.mempeek(self.nanddevice.NAND_DEV0_CFG0)
             sectorsize = (cfg0 & (0x3ff << 9)) >> 9
             sparebytes = (cfg0 >> 23) & 0xf
             logging.info("HELLO protocol version: %i" % resp[0x22])
-            logging.info("Chipset: %s" % self.settings.name)
+            logging.info("Chipset: %s" % self.settings.chipname)
             logging.info("Base address of the NAND controller: %08x" % self.settings.nandbase)
             val = resp[0x2d:0x2d + infolen].decode('utf-8') if resp[0x2d] != 0x65 else ""
             logging.info("Flash memory: %s %s, %s" % (self.settings.flash_mfr, val, self.settings.flash_descr))
@@ -779,7 +782,6 @@ class QualcommStreaming:
 def test_nand_config():
     class sahara:
         mode = None
-
     qs = QualcommStreaming(None, sahara())
     qs.settings = SettingsOpt(qs, 8, logger)
     qs.nanddevice = NandDevice(qs.settings)
@@ -802,7 +804,9 @@ def test_nand_config():
         [0x9580f1c2, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x9580f1c2, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x9590dac2, 8, 256, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
-        [0x1590ac01, 8, 512, 2048, 128, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1]
+        [0x1590ac01, 8, 512, 2048, 128, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        # Netgear MR5100
+        [0x26d0a32c, 8, 1024, 4096, 262144, 256, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
     ]
     errorids = []
     for test in testconfig:
@@ -810,15 +814,19 @@ def test_nand_config():
         res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
         if cfg0 != res_cfg0 or cfg1 != res_cfg1 or eccbufcfg != res_ecc_buf_cfg or res_ecc_bch_cfg != bccbchcfg:
             errorids.append(nandid)
+            res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
+
     if len(errorids) > 0:
         st = ""
         for id in errorids:
             st += hex(id) + ","
         st = st[:-1]
+        print("Error at: "+st)
         assert ("Error at : " + st)
     else:
         print("Yay, all nand_config tests are ok !!!!")
 
 
 if __name__ == "__main__":
+    print("Running nand config tests...")
     test_nand_config()

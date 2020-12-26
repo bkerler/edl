@@ -271,6 +271,7 @@ class qualcomm_sahara:
     def __init__(self, cdc):
         self.cdc = cdc
         self.init_loader_db()
+        self.version=2.1
         self.programmer = None
         self.mode = ""
         self.serial = None
@@ -289,8 +290,10 @@ class qualcomm_sahara:
 
     def get_rsp(self):
         v = self.cdc.read()
-        if b"<?xml" in v:
+        if v==b'':
             return [-1, -1]
+        if b"<?xml" in v:
+            return ["firehose", None]
         pkt = read_object(v[0:0x2 * 0x4], self.pkt_cmd_hdr)
         if pkt['cmd'] == self.cmd.SAHARA_HELLO_REQ:
             data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
@@ -341,10 +344,10 @@ class qualcomm_sahara:
                     if cmd['cmd'] == self.cmd.SAHARA_HELLO_REQ:
                         data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
                         self.pktsize = data['max_cmd_len']
-                        self.version_min = data['version_min']
+                        self.version = float(str(data['version'])+"."+str(data['version_min']))
                         return ["sahara", data]
-                elif v[0] == 0x04:
-                    return ["sahara", v]
+                elif v[0] == self.cmd.SAHARA_END_TRANSFER:
+                    return ["sahara", None]
                 elif b"<?xml" in v:
                     return ["firehose", None]
             else:
@@ -355,6 +358,9 @@ class qualcomm_sahara:
                     return ["nandprg", None]
                 elif b"<?xml" in res:
                     return ["firehose", None]
+                elif res[0] == self.cmd.SAHARA_END_TRANSFER:
+                    print("Device is in Sahara error state, please reboot the device.")
+                    return ["sahara", None]
                 else:
                     self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                     data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
@@ -377,6 +383,8 @@ class qualcomm_sahara:
                 return ["", None]
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
         cmd, pkt = self.get_rsp()
+        if cmd==-1 and pkt==-1:
+            return ["",None]
         return ["sahara", pkt]
 
     def enter_command_mode(self):
@@ -433,9 +441,10 @@ class qualcomm_sahara:
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
             self.serials = "{:08x}".format(self.serial)
-            self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             self.hwid = self.cmdexec_get_msm_hwid()
             self.pkhash = self.cmdexec_get_pkhash()
+            if self.version>=2.4:
+                self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             if self.hwid is not None:
                 self.hwidstr = "{:016x}".format(self.hwid)
                 self.msm_id = int(self.hwidstr[0:8], 16)
@@ -444,14 +453,21 @@ class qualcomm_sahara:
                 self.oem_str = "{:04x}".format(self.oem_id)
                 self.model_id = "{:04x}".format(self.model_id)
                 self.msm_str = "{:08x}".format(self.msm_id)
-
-                logger.info(f"\n------------------------\n" +
-                            f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
-                            f"OEM_ID:0x{self.oem_str}," +
-                            f"MODEL_ID:0x{self.model_id})\n" +
-                            f"PK_HASH:           0x{self.pkhash}\n" +
-                            f"Serial:            0x{self.serials}\n" +
-                            f"SBL Version:       0x{self.sblversion}\n")
+                if self.version >= 2.4:
+                    logger.info(f"\n------------------------\n" +
+                                f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                                f"OEM_ID:0x{self.oem_str}," +
+                                f"MODEL_ID:0x{self.model_id})\n" +
+                                f"PK_HASH:           0x{self.pkhash}\n" +
+                                f"Serial:            0x{self.serials}\n" +
+                                f"SBL Version:       0x{self.sblversion}\n")
+                else:
+                    logger.info(f"\n------------------------\n" +
+                                f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                                f"OEM_ID:0x{self.oem_str}," +
+                                f"MODEL_ID:0x{self.model_id})\n" +
+                                f"PK_HASH:           0x{self.pkhash}\n" +
+                                f"Serial:            0x{self.serials}\n")
             if self.programmer == "":
                 fname = ""
                 if self.hwidstr in self.loaderdb:
@@ -479,11 +495,14 @@ class qualcomm_sahara:
                             break
                         # print("Couldn't find a loader for given hwid and pkhash :(")
                         # exit(0)
-                else:
+                elif self.hwidstr!=None and self.pkhash!=None:
                     logger.error(
                         f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
                         "_[FHPRG/ENPRG].bin) :(")
-                    exit(0)
+                    return False
+                else:
+                    logger.error(f"Couldn't find a suitable loader :(")
+                    return False
 
                 self.programmer = fname
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
@@ -499,16 +518,17 @@ class qualcomm_sahara:
         return False
 
     def cmd_done(self):
-        self.cdc.write(struct.pack("<II", self.cmd.SAHARA_DONE_REQ, 0x8))
-        cmd, pkt = self.get_rsp()
-        time.sleep(0.3)
-        if cmd["cmd"] == self.cmd.SAHARA_DONE_RSP:
+        if self.cdc.write(struct.pack("<II", self.cmd.SAHARA_DONE_REQ, 0x8)):
+            cmd, pkt = self.get_rsp()
+            time.sleep(0.3)
+            if cmd["cmd"] == self.cmd.SAHARA_DONE_RSP:
+                return True
+            elif cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
+                if pkt["status"] == self.status.SAHARA_NAK_INVALID_CMD:
+                    logger.error("Invalid Transfer command received.")
+                    return False
             return True
-        elif cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
-            if pkt["status"] == self.status.SAHARA_NAK_INVALID_CMD:
-                logger.error("Invalid Transfer command received.")
-                return False
-        return True
+        return False
 
     def cmd_reset(self):
         self.cdc.write(struct.pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))

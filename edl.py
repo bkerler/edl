@@ -233,6 +233,8 @@ def parse_cmd(args):
         cmd = "reset"
     elif args["nop"]:
         cmd = "nop"
+    elif args["modules"]:
+        cmd = "modules"
     return cmd
 
 def main():
@@ -241,7 +243,7 @@ def main():
     loop = 0
     vid = int(args["--vid"], 16)
     pid = int(args["--pid"], 16)
-    usbids = [[vid, pid], [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0]]
+    usbids = [[vid, pid], [0x05c6,0x9008], [0x05c6,0x900e] , [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0]]
     filename = "log.txt"
     if args["--debugmode"]:
         LOGGER = log_class(logging.DEBUG, filename)
@@ -273,7 +275,12 @@ def main():
             sys.exit()
     # print((mode, resp))
     if mode == "sahara":
-        if "mode" in resp:
+        if resp==None:
+            if mode=="sahara":
+                print("Sahara in error state, resetting ...")
+                sahara.cmd_reset()
+                exit(cdc)
+        elif "mode" in resp:
             mode = resp["mode"]
             if mode == sahara.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
                 if args["memorydump"]:
@@ -293,9 +300,9 @@ def main():
                                 mode = "load_enandprg"
                             elif "nprg" in sahara.programmer.lower():
                                 mode = "load_nandprg"
-                            else:
+                            elif mode!="":
                                 mode = "load_" + mode
-                            if mode != "load_":
+                            if "load_" in mode:
                                 time.sleep(0.3)
                             else:
                                 print("Error, couldn't find suitable enprg/nprg loader :(")
