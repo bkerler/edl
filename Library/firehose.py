@@ -138,7 +138,6 @@ class qualcomm_firehose:
         else:
             status = True
             resp = {"value":"ACK"}
-            time.sleep(0.02)
         return [status, resp, rdata]
 
     def cmd_reset(self):
@@ -286,7 +285,7 @@ class qualcomm_firehose:
                     data += self.modules.addprogram()
                 data += f"/>\n</data>"
                 rsp = self.xmlsend(data)
-
+                time.sleep(0.01)
                 if display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 if rsp[0]:
@@ -358,7 +357,7 @@ class qualcomm_firehose:
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
-
+            time.sleep(0.01)
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             if rsp[0]:
@@ -428,6 +427,7 @@ class qualcomm_firehose:
                     data += self.modules.addprogram()
                 data += f"/>\n</data>"
                 rsp = self.xmlsend(data)
+                time.sleep(0.01)
                 if display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 if rsp[0]:
@@ -485,6 +485,7 @@ class qualcomm_firehose:
                        f" start_sector=\"{cursector}\"/>\n</data>"
 
                 rsp = self.xmlsend(data, self.skipresponse)
+                time.sleep(0.01)
                 if rsp[0]:
                     if "value" in rsp[1]:
                         if rsp[1]["value"] == "NAK":
