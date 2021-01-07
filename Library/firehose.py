@@ -138,6 +138,7 @@ class qualcomm_firehose:
         else:
             status = True
             resp = {"value":"ACK"}
+            time.sleep(0.01)
         return [status, resp, rdata]
 
     def cmd_reset(self):
