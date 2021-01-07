@@ -22,13 +22,15 @@ Linux/Windows:
 
 Windows:
 - Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows,
-  then install libusb-win32-devel-filter-1.2.6.0.exe.
+  then install libusb-win32-devel-filter-1.2.7.1.exe.
   Run Filter Wizard, "Install a device filter",  select "Qualcomm HS-USB QDLoader 9008"
   and press "Install" to install libusb filter driver otherwise we won't detect the device.
   Then use the edl tool.
+- Get latest libusb devel filter [here](https://sourceforge.net/projects/libusb-win32/files/)
 or
-- Use Zadig 2.4 or higher, list all devices, select QUSB_BULK device and replace
-  driver with libusb 1.2.6 one (will replace original driver)
+- Use Zadig 2.5 or higher, list all devices, select QUSB_BULK device and replace
+  driver with libusb 1.2.7.1 one (will replace original driver)
+- Get latest Zadig release [here] (https://zadig.akeo.ie/)
 
 ## Convert EDL loaders for automatic usage
 
@@ -99,23 +101,24 @@ or
 ### For generic unlocking
 - ```./edl.py modules oemunlock enable``` -> Unlocks OEM if partition "config" exists, fastboot oem unlock is still needed afterwards
 
-### Streaming mode (credits to forth32)
 
 #### Dump memory (0x900E mode)
-- ```./edl.py dumpmemory```
+- ```./edl.py memorydump```
+
+### Streaming mode (credits to forth32)
 
 #### Sierra Wireless Modem 
-- Send AT!BOOTHOLD and AT!QPSTDLOAD to modem port or use ```modem/sierra_boottodwnload.py``` script
+- Send AT!BOOTHOLD and AT!QPSTDLOAD to modem port or use ```modem/boottodwnload.py``` script
 - Send AT!ENTERCND="A710" and then AT!EROPTION=0 for memory dump
 - ```./edl.py --vid 1199 --pid 9070 --loader=loaders/NPRG9x35p.bin printgpt``` -> To show the partition table
 
 #### Netgear MR1100
-- run ```modem/netgear_boottodownload.py```, device will enter download mode (0x900E pid)
+- run ```modem/boottodownload.py```, device will enter download mode (0x900E pid)
 - ```./edl.py printgpt --loader=Loaders/qualcomm/patched/mdm9x5x/NPRG9x55p.bin```, device will reboot to 0x9008
 - now use ./edl.py regulary such as ```./edl.py printgpt``` (do not use loader option)
 
-#### ZTE MF920V 
-- run ```modem/zte_enable_adb.sh```, or send to at port "AT+ZCDRUN=E", or send via ```./diag.py -sahara```
+#### ZTE MF920V, Quectel, Telit, etc.. Modem
+- run ```modem/enableadb.sh```, or send to at port "AT+ZCDRUN=E", or send via ```./diag.py -sahara```
 - ```adb reboot edl```
 - ```./edl.py printgpt``` -> To show the partition table
 

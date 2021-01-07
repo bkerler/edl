@@ -117,7 +117,7 @@ from Library.streaming_client import streaming_client
 from Library.firehose_client import firehose_client
 from Library.streaming import QualcommStreaming
 
-print("Qualcomm Sahara / Firehose Client V3 (c) B.Kerler 2018-2020.")
+print("Qualcomm Sahara / Firehose Client V3.1 (c) B.Kerler 2018-2021.")
 
 LOGGER = None
 
@@ -235,6 +235,8 @@ def parse_cmd(args):
         cmd = "nop"
     elif args["modules"]:
         cmd = "modules"
+    elif args["memorydump"]:
+        cmd = "memorydump"
     return cmd
 
 def main():
@@ -243,7 +245,7 @@ def main():
     loop = 0
     vid = int(args["--vid"], 16)
     pid = int(args["--pid"], 16)
-    usbids = [[vid, pid], [0x05c6,0x9008], [0x05c6,0x900e] , [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0]]
+    usbids = [[vid, pid], [0x05c6,0x9008], [0x05c6,0x900e] , [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0], [0x19d2, 0x0076]]
     filename = "log.txt"
     if args["--debugmode"]:
         LOGGER = log_class(logging.DEBUG, filename)

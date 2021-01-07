@@ -152,15 +152,18 @@ class usb_class:
         #    pass
         self.configuration = self.device.get_active_configuration()
         if self.interface == -1:
-            for interfacenum in range(0, self.configuration.bNumInterfaces):
-                itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
-                if self.devclass != -1:
-                    if itf.bInterfaceClass == self.devclass:  # MassStorage
+            if vid==0x413c and pid==0x81d7:  #Telit LN940
+                self.interface=5
+            else:
+                for interfacenum in range(0, self.configuration.bNumInterfaces):
+                    itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
+                    if self.devclass != -1:
+                        if itf.bInterfaceClass == self.devclass:  # MassStorage
+                            self.interface = interfacenum
+                            break
+                    else:
                         self.interface = interfacenum
                         break
-                else:
-                    self.interface = interfacenum
-                    break
 
         self.log.debug(self.configuration)
         if self.interface > self.configuration.bNumInterfaces:

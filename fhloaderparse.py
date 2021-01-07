@@ -3,9 +3,8 @@ import os
 import sys
 from os import walk
 import hashlib
-import struct
+from struct import unpack, pack
 from shutil import copyfile
-from Config.qualcomm_config import sochw, msmids
 from Library.utils import elf
 from Library.sahara import convertmsmid
 
@@ -68,9 +67,9 @@ def grabtext(data):
 def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
     try:
         md_size = \
-        struct.unpack("<I", mem_section[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
+        unpack("<I", mem_section[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
         md_offset = memsection.file_start_addr + 0x2C + 0x4
-        major, minor, sw_id, hw_id, oem_id, model_id, app_id = struct.unpack("<IIIIIII",
+        major, minor, sw_id, hw_id, oem_id, model_id, app_id = unpack("<IIIIIII",
                                                                              mem_section[md_offset:md_offset + (7 * 4)])
         sign_info.hw_id = "%08X" % hw_id
         sign_info.sw_id = "%08X" % sw_id
@@ -79,7 +78,7 @@ def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
         sign_info.hw_id += sign_info.oem_id + sign_info.model_id
         sign_info.app_id = "%08X" % app_id
         md_offset += (7 * 4)
-        # v=struct.unpack("<I", mem_section[md_offset:md_offset + 4])[0]
+        # v=unpack("<I", mem_section[md_offset:md_offset + 4])[0]
         '''
         rot_en=(v >> 0) & 1
         in_use_soc_hw_version=(v >> 1) & 1
@@ -93,9 +92,9 @@ def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
         md_offset+=12*4
         multi_serial_numbers=hexlify(mm[md_offset:md_offset + (8*4)])
         md_offset += 8 * 4
-        mrc_index=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        mrc_index=unpack("<I", mm[md_offset:md_offset + 4])[0]
         md_offset+=4
-        anti_rollback_version=struct.unpack("<I", mm[md_offset:md_offset + 4])[0]
+        anti_rollback_version=unpack("<I", mm[md_offset:md_offset + 4])[0]
         '''
 
         signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
@@ -108,11 +107,11 @@ def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
         if len(mem_section) < signatureoffset + 4:
             print("Signature error on " + sign_info.filename)
             return None
-        len1 = struct.unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
+        len1 = unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
         casignature2offset = signatureoffset + len1
-        len2 = struct.unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
+        len2 = unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
         rootsignature3offset = casignature2offset + len2
-        len3 = struct.unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
+        len3 = unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
         sign_info.pk_hash = hashlib.sha384(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     except:
         return None
@@ -129,11 +128,11 @@ def extract_old_hdr(memsection, sign_info, mem_section, code_size, signature_siz
         if len(mem_section) < signatureoffset + 4:
             print("Signature error on " + sign_info.filename)
             return None
-        len1 = struct.unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
+        len1 = unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
         casignature2offset = signatureoffset + len1
-        len2 = struct.unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
+        len2 = unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
         rootsignature3offset = casignature2offset + len2
-        len3 = struct.unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
+        len3 = unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
         sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
         idx = signatureoffset
 
@@ -195,14 +194,15 @@ def init_loader_db():
                 msmid = hwid[:8]
                 devid = hwid[8:]
                 pkhash = filename.split("_")[1].lower()
-                msmid = convertmsmid(msmid)
-                mhwid = convertmsmid(msmid) + devid
-                if mhwid not in loaderdb:
-                    loaderdb[mhwid] = {}
-                if pkhash not in loaderdb[mhwid]:
-                    loaderdb[mhwid][pkhash] = file_name
-                else:
-                    loaderdb[mhwid][pkhash].append(file_name)
+                msmdb = convertmsmid(msmid)
+                for msmid in msmdb:
+                    mhwid = (msmid + devid).lower()
+                    if mhwid not in loaderdb:
+                        loaderdb[mhwid] = {}
+                    if pkhash not in loaderdb[mhwid]:
+                        loaderdb[mhwid][pkhash] = file_name
+                    else:
+                        loaderdb[mhwid][pkhash].append(file_name)
             except:
                 continue
     return loaderdb
@@ -213,15 +213,16 @@ def is_duplicate(loaderdb, sign_info):
     msmid = sign_info.hw_id[:8].lower()
     devid = sign_info.hw_id[8:].lower()
     hwid = sign_info.hw_id.lower()
-    rid = (convertmsmid(msmid) + devid).lower()
-    if hwid in loaderdb:
-        loader = loaderdb[hwid]
-        if lhash in loader:
-            return True
-    if rid in loaderdb:
-        loader = loaderdb[rid]
-        if lhash in loader:
-            return True
+    for msmid in convertmsmid(msmid):
+        rid = (msmid + devid).lower()
+        if hwid in loaderdb:
+            loader = loaderdb[hwid]
+            if lhash in loader:
+                return True
+        if rid in loaderdb:
+            loader = loaderdb[rid]
+            if lhash in loader:
+                return True
     return False
 
 
@@ -276,12 +277,12 @@ def main(argv):
             signinfo.filesize = os.stat(filename).st_size
             if len(mem_section) < 4:
                 continue
-            hdr = struct.unpack("<I", mem_section[0:4])[0]
+            hdr = unpack("<I", mem_section[0:4])[0]
             '''
             if  hdr == 0x844BDCD1:  # mbn
-                signatureoffset = struct.unpack("<I", mem_section[0x14:0x18])[0] + struct.unpack("<I", mem_section[0x20:0x24])[0] + \
-                                  struct.unpack("<I", mem_section[0x28:0x2C])[0]
-                if struct.unpack("<I", mem_section[0x28:0x2C])[0] == 0:
+                signatureoffset = unpack("<I", mem_section[0x14:0x18])[0] + unpack("<I", mem_section[0x20:0x24])[0] + \
+                                  unpack("<I", mem_section[0x28:0x2C])[0]
+                if unpack("<I", mem_section[0x28:0x2C])[0] == 0:
                     signatureoffset = -1
             '''
             if hdr == 0x464C457F:
@@ -289,18 +290,18 @@ def main(argv):
                 if 'memorylayout' in dir(elfheader):
                     memsection = elfheader.memorylayout[1]
                     try:
-                        version = struct.unpack("<I", mem_section[
+                        version = unpack("<I", mem_section[
                                                       memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04 + 0x4])[
                             0]
                         code_size = \
-                            struct.unpack("<I", mem_section[
+                            unpack("<I", mem_section[
                                                 memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
                                 0]
                         signature_size = \
-                            struct.unpack("<I", mem_section[
+                            unpack("<I", mem_section[
                                                 memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
                                 0]
-                        # cert_chain_size=struct.unpack("<I", mem_section[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[0]
+                        # cert_chain_size=unpack("<I", mem_section[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[0]
                     except:
                         continue
                     if signature_size == 0:
@@ -347,9 +348,10 @@ def main(argv):
                         print(info)
                         msmid = loader_info.hw_id[:8]
                         devid = loader_info.hw_id[8:]
-                        hwid = convertmsmid(msmid) + devid
-                        copyfile(item.filename,
-                                 os.path.join(outputdir, hwid + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
+                        for msmid in convertmsmid(msmid):
+                            hwid = (msmid + devid).lower()
+                            copyfile(item.filename,
+                                     os.path.join(outputdir, hwid + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
                     else:
                         print("Duplicate: " + info)
                         copyfile(item.filename, os.path.join(outputdir, "Duplicate",

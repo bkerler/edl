@@ -1,21 +1,29 @@
 import binascii
 import time
-from Library.utils import *
-from Config.qualcomm_config import *
+import os
+import sys
+from struct import unpack, pack
+from Library.utils import logging, read_object, print_progress, rmrf
+from Config.qualcomm_config import sochw, msmids
 
 logger = logging.getLogger(__name__)
 
 
 def convertmsmid(msmid):
-    if int(msmid, 16) in sochw:
-        names = sochw[int(msmid, 16)].split(",")
+    msmiddb=[]
+    if int(msmid,16)&0xFF==0xe1:
+        return [msmid]
+    socid=(int(msmid, 16)>>16)
+    if socid in sochw:
+        names = sochw[socid].split(",")
         for name in names:
             for ids in msmids:
                 if msmids[ids] == name:
-                    msmid = hex(ids)[2:].lower()
-                    while len(msmid) < 8:
-                        msmid = '0' + msmid
-    return msmid
+                    rmsmid = hex(ids)[2:].lower()
+                    while len(rmsmid) < 8:
+                        rmsmid = '0' + rmsmid
+                    msmiddb.append(rmsmid)
+    return msmiddb
 
 
 class qualcomm_sahara:
@@ -160,14 +168,14 @@ class qualcomm_sahara:
                     msmid = hwid[:8]
                     devid = hwid[8:]
                     pkhash = filename.split("_")[1].lower()
-                    msmid = convertmsmid(msmid)
-                    mhwid = convertmsmid(msmid) + devid
-                    if mhwid not in loaderdb:
-                        loaderdb[mhwid] = {}
-                    if pkhash not in loaderdb[mhwid]:
-                        loaderdb[mhwid][pkhash] = fn
-                    else:
-                        loaderdb[mhwid][pkhash].append(fn)
+                    for msmid in convertmsmid(msmid):
+                        mhwid = (msmid + devid).lower()
+                        if mhwid not in loaderdb:
+                            loaderdb[mhwid] = {}
+                        if pkhash not in loaderdb[mhwid]:
+                            loaderdb[mhwid][pkhash] = fn
+                        else:
+                            loaderdb[mhwid][pkhash].append(fn)
                 except:
                     continue
         self.loaderdb = loaderdb
@@ -285,7 +293,6 @@ class qualcomm_sahara:
         self.oem_id = None
         self.model_id = None
         self.oem_str = None
-        self.model_id = None
         self.msm_str = None
 
     def get_rsp(self):
@@ -327,7 +334,7 @@ class qualcomm_sahara:
         cmd = self.cmd.SAHARA_HELLO_RSP
         length = 0x30
         version = self.SAHARA_VERSION
-        responsedata = struct.pack("<IIIIIIIIIIII", cmd, length, version, version_min, max_cmd_len, mode, 0, 0, 0, 0, 0, 0)
+        responsedata = pack("<IIIIIIIIIIII", cmd, length, version, version_min, max_cmd_len, mode, 0, 0, 0, 0, 0, 0)
         try:
             self.cdc.write(responsedata)
             return True
@@ -404,12 +411,12 @@ class qualcomm_sahara:
 
     def cmdexec_get_serial_num(self):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_SERIAL_NUM_READ)
-        return struct.unpack("<I", res)[0]
+        return unpack("<I", res)[0]
 
     def cmdexec_get_msm_hwid(self):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
         try:
-            return struct.unpack("<Q", res[0:0x8])[0]
+            return unpack("<Q", res[0:0x8])[0]
         except Exception as e:
             return None
 
@@ -423,7 +430,7 @@ class qualcomm_sahara:
 
     def cmdexec_get_sbl_version(self):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
-        return struct.unpack("<I", res)[0]
+        return unpack("<I", res)[0]
 
     def cmdexec_switch_to_dmss_dload(self):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_SWITCH_TO_DMSS_DLOAD)
@@ -447,7 +454,7 @@ class qualcomm_sahara:
                 self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             if self.hwid is not None:
                 self.hwidstr = "{:016x}".format(self.hwid)
-                self.msm_id = int(self.hwidstr[0:8], 16)
+                self.msm_id = int(self.hwidstr[2:8], 16)
                 self.oem_id = int(self.hwidstr[-8:-4], 16)
                 self.model_id = int(self.hwidstr[-4:], 16)
                 self.oem_str = "{:04x}".format(self.oem_id)
@@ -518,7 +525,7 @@ class qualcomm_sahara:
         return False
 
     def cmd_done(self):
-        if self.cdc.write(struct.pack("<II", self.cmd.SAHARA_DONE_REQ, 0x8)):
+        if self.cdc.write(pack("<II", self.cmd.SAHARA_DONE_REQ, 0x8)):
             cmd, pkt = self.get_rsp()
             time.sleep(0.3)
             if cmd["cmd"] == self.cmd.SAHARA_DONE_RSP:
@@ -531,7 +538,7 @@ class qualcomm_sahara:
         return False
 
     def cmd_reset(self):
-        self.cdc.write(struct.pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))
+        self.cdc.write(pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))
         cmd, pkt = self.get_rsp()
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
@@ -558,12 +565,12 @@ class qualcomm_sahara:
             except Exception as e:
                 pass
             if self.bit64:
-                if not self.cdc.write(struct.pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
+                if not self.cdc.write(pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
                                                   length)):
                     return None
             else:
                 if not self.cdc.write(
-                        struct.pack("<IIII", self.cmd.SAHARA_MEMORY_READ, 0x8 + 4 + 4, addr + pos, length)):
+                        pack("<IIII", self.cmd.SAHARA_MEMORY_READ, 0x8 + 4 + 4, addr + pos, length)):
                     return None
             while length > 0:
                 try:
@@ -677,7 +684,6 @@ class qualcomm_sahara:
         return False
 
     def upload_loader(self):
-        programmer = None
         if self.programmer == "":
             return ""
         try:
@@ -722,10 +728,13 @@ class qualcomm_sahara:
 
                 data_offset = pkt["data_offset"]
                 data_len = pkt["data_len"]
+                if data_offset+data_len>len(programmer):
+                    while len(programmer)<data_offset+data_len:
+                        programmer+=b"\xFF"
                 data_to_send = programmer[data_offset:data_offset + data_len]
                 self.cdc.write(data_to_send, self.pktsize)
                 datalen -= data_len
-            print("Ended")
+            logger.info("Loader uploaded.")
             cmd, pkt = self.get_rsp()
             if cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
                 if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:
@@ -734,21 +743,21 @@ class qualcomm_sahara:
             return ""
         except Exception as e:
             logger.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
-            return False
+            return ""
 
     def cmd_modeswitch(self, mode):
-        data = struct.pack("<III", self.cmd.SAHARA_SWITCH_MODE, 0xC, mode)
+        data = pack("<III", self.cmd.SAHARA_SWITCH_MODE, 0xC, mode)
         self.cdc.write(data)
 
     def cmd_exec(self, mcmd):  # CMD 0xD, RSP 0xE, CMD2 0xF
         # Send request
-        data = struct.pack("<III", self.cmd.SAHARA_EXECUTE_REQ, 0xC, mcmd)
+        data = pack("<III", self.cmd.SAHARA_EXECUTE_REQ, 0xC, mcmd)
         self.cdc.write(data)
         # Get info about request
         cmd, pkt = self.get_rsp()
         if cmd["cmd"] == self.cmd.SAHARA_EXECUTE_RSP:
             # Ack
-            data = struct.pack("<III", self.cmd.SAHARA_EXECUTE_DATA, 0xC, mcmd)
+            data = pack("<III", self.cmd.SAHARA_EXECUTE_DATA, 0xC, mcmd)
             self.cdc.write(data)
             payload = self.cdc.read(pkt["data_len"])
             return payload

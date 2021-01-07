@@ -364,6 +364,7 @@ class qcdiag():
         self.hdlc = None
         if self.cdc.connect(self.ep_in, self.ep_out):
             self.hdlc = hdlc(self.cdc)
+            data=self.hdlc.receive_reply(1)
             return True
         return False
 
@@ -379,7 +380,9 @@ class qcdiag():
         return self.prettyprint(reply)
 
     def enforce_crash(self):
-        res = self.send(b"\x75\x37\x03\x00")
+        #./diag.py -nvwrite 1027,01 enable adsp log
+        #./diag.py -nvwrite 4399,01 enable download on reboot
+        res = self.send(b"\x4B\x25\x03\x00")
         print(self.decodestatus(res))
 
     def enter_downloadmode(self):
@@ -529,22 +532,25 @@ class qcdiag():
 
     def write_nvitem(self, item, data):
         rawdata = bytes(data)
-        if len(data) < 128:
+        while len(rawdata) < 128:
             rawdata += b"\x00"
         status = 0x0000
-        nvrequest = b"\x27" + write_object(nvitem_type, item, rawdata, status)
+        nvrequest = b"\x27" + write_object(nvitem_type, item, rawdata, status)['raw_data']
         res = self.send(nvrequest)
-        # verify res status result here... todo
-
-        res, nvitem = self.read_nvitem(item)
-        if res == False:
-            print(f"Error while writing nvitem {hex(item)} data, %s" % nvitem)
-        else:
-            if nvitem.data != data:
-                print(f"Error while writing nvitem {hex(item)} data, verified data doesn't match")
+        if len(res) > 0:
+            if res[0] == 0x27:
+                res, nvitem = self.read_nvitem(item)
+                if res == False:
+                    print(f"Error while writing nvitem {hex(item)} data, %s" % data)
+                else:
+                    if nvitem.data != data:
+                        print(f"Error while writing nvitem {hex(item)} data, verified data doesn't match")
+                    else:
+                        print(f"Successfully wrote nvitem {hex(item)}.")
+                        return True
+                return False
             else:
-                return True
-        return False
+                print(f"Error while writing nvitem {hex(item)} data, %s" % data)
 
     def efsread(self, filename):
         alternateefs = b"\x4B\x3E\x19\x00"
@@ -1027,6 +1033,7 @@ def main():
     parser.add_argument('-spc', metavar=("<SPC>"), help='[Option] Security code to send, default: 303030303030',
                         default="", const='303030303030', nargs="?")
     parser.add_argument('-nvread', metavar=("<nvitem>"), help='[Option] Read nvitem', default="")
+    parser.add_argument('-nvwrite', metavar=("<nvitem,data>"), help='[Option] Write nvitem', default="")
     parser.add_argument('-nvbackup', metavar=("<filename>"), help='[Option] Make nvitem backup as json', default="")
     parser.add_argument('-efsread', metavar=("<filename>"), help='[Option] Read efs', default="")
     parser.add_argument('-efslistdir', metavar=("<path>"), help='[Option] List efs directory', default="")
@@ -1054,7 +1061,16 @@ def main():
 
     connected=False
     diag=None
-    default_vid_pid=[[0x19d2,0x0016],[0x2c7c,0x0125],[0x1199, 0x9071], [0x1199, 0x9091],[0x05C6, 0x9008], [0x19d2, 0x16], [0x19d2, 0x0076],[0x12d1,0x1506]]
+    default_vid_pid=[
+                        [0x2c7c,0x0125], #Quectel EC25
+                        [0x1199,0x9071], #Sierra Wireless
+                        [0x1199,0x9091], #Sierra Wireless
+                        [0x05C6,0x9008], #QC EDL
+                        [0x19d2,0x0016], #ZTE Diag
+                        [0x19d2,0x0076], #ZTE Download
+                        [0x12d1,0x1506],
+                        [0x413c,0x81d7]  #Telit LN940
+                    ]
     if vid==None or pid==None:
         diag = qcdiag(LOGGER,default_vid_pid, interface)
         connected = diag.connect()
@@ -1084,6 +1100,17 @@ def main():
             else:
                 nvitem = int(args.nvread)
             diag.print_nvitem(nvitem)
+        elif args.nvwrite:
+            if not "," in args.nvwrite:
+                print("NvWrite requires data to write")
+                sys.exit()
+            nv=args.nvwrite.split(",")
+            if "0x" in args.nvwrite:
+                nvitem = int(nv[0], 16)
+            else:
+                nvitem = int(nv[0])
+            data=unhexlify(nv[1])
+            diag.write_nvitem(nvitem,data)
         elif args.nvbackup:
             diag.backup_nvitems(args.nvbackup, "error.log")
         elif args.efsread:

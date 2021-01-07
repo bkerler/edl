@@ -42,11 +42,13 @@ class firehose_client:
         self.target_name = self.firehose.cfg.TargetName
         if "hwid" in dir(sahara):
             if sahara.hwid is not None:
-                hwid = sahara.hwid >> 32
+                hwid = (sahara.hwid >> 32) & 0xFFFFFF
+                socid = ((sahara.hwid >> 32)>>16)
                 if hwid in msmids:
                     self.target_name = msmids[hwid]
-                elif hwid in sochw:
-                    self.target_name = sochw[hwid].split(",")[0]
+                    self.LOGGER.info(f"Target detected: {self.target_name}")
+                elif socid in sochw:
+                    self.target_name = sochw[socid].split(",")[0]
 
     def check_cmd(self, func):
         if not self.supported_functions:

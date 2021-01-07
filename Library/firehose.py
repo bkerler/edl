@@ -127,10 +127,17 @@ class qualcomm_firehose:
             except Exception as e:
                 status = True
                 self.log.debug(str(e))
-                self.log.debug("Error on getting xml response:" + rdata.decode('utf-8'))
+                if isinstance(rdata,bytes) or isinstance(rdata,bytearray):
+                    try:
+                        self.log.debug("Error on getting xml response:" + rdata.decode('utf-8'))
+                    except:
+                        self.log.debug("Error on getting xml response:" + hexlify(rdata).decode('utf-8'))
+                elif isinstance(rdata,str):
+                    self.log.debug("Error on getting xml response:" + rdata)
                 return [status, {"value": "NAK"}, rdata]
         else:
             status = True
+            resp = {"value":"ACK"}
         return [status, resp, rdata]
 
     def cmd_reset(self):
@@ -506,63 +513,68 @@ class qualcomm_firehose:
                 return b""
 
     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
+        total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
+        dataread = 0
+        old = 0
+        prog = 0
         if display:
             self.log.info(
                 f"\nReading from physical partition {str(physical_partition_number)}, " + \
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-        data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
-               f" physical_partition_number=\"{physical_partition_number}\"" + \
-               f" start_sector=\"{start_sector}\"/>\n</data>"
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-        rsp = self.xmlsend(data, self.skipresponse)
-        resData = bytearray()
-        if rsp[0]:
-            if "value" in rsp[1]:
-                if rsp[1]["value"] == "NAK":
-                    if display:
-                        self.log.error(rsp[2].decode('utf-8'))
-                    return b""
-            bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-            total = bytesToRead
-            dataread = 0
-            old = 0
-            prog = 0
-            if display:
-                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            while bytesToRead > 0:
-                tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
-                bytesToRead -= len(tmp)
-                dataread += len(tmp)
-                resData += tmp
-                prog = int(float(dataread) / float(total) * float(100))
-                if prog > old:
-                    if display:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    old = prog
-            if display and prog != 100:
-                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            # time.sleep(0.2)
-            info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-            rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-            if "value" in rsp:
-                if rsp["value"] == "ACK":
-                    return resData
-                else:
-                    self.log.error(f"Error:")
-                    for line in info:
-                        self.log.error(line)
-                    return b""
+        if num_partition_sectors<maxsectors:
+            maxsectors=num_partition_sectors
+
+        resData=bytearray()
+        for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
+            bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+
+            data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                   f" num_partition_sectors=\"{maxsectors}\"" + \
+                   f" physical_partition_number=\"{physical_partition_number}\"" + \
+                   f" start_sector=\"{cursector}\"/>\n</data>"
+
+            rsp = self.xmlsend(data, self.skipresponse)
+            if rsp[0]:
+                if "value" in rsp[1]:
+                    if rsp[1]["value"] == "NAK":
+                        if display:
+                            self.log.error(rsp[2].decode('utf-8'))
+                        return resData
+                while bytesToRead > 0:
+                    tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                    resData += tmp
+                    bytesToRead -= len(tmp)
+                    dataread += len(tmp)
+                    prog = int(float(dataread) / float(total) * float(100))
+                    if prog > old:
+                        if display:
+                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                        old = prog
+                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                if "value" in rsp:
+                    if rsp["value"] != "ACK":
+                        self.log.error(f"Error:")
+                        for line in info:
+                            self.log.error(line)
+                        return resData
             else:
-                return resData
-        else:
-            if display:
-                self.log.error(f"Error:{rsp[2]}")
-            return b""
+                if display:
+                    self.log.error(f"Error:{rsp[2]}")
+        if display and prog != 100:
+            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         return resData  # Do not remove, needed for oneplus
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
-        data = self.cmd_read_buffer(lun, 0, 2, False)
+        try:
+            data = self.cmd_read_buffer(lun, 0, 2, False)
+        except:
+            self.skipresponse=True
+            data = self.cmd_read_buffer(lun, 0, 2, False)
+
         if data == b"":
             return None, None
         guid_gpt = gpt(
@@ -575,6 +587,8 @@ class qualcomm_firehose:
             sectors = header["first_usable_lba"]
             if sectors == 0:
                 return None, None
+            if sectors>34:
+                sectors=34
             data = self.cmd_read_buffer(lun, 0, sectors, False)
             if data == b"":
                 return None, None

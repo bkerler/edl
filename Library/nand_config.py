@@ -270,11 +270,11 @@ class SettingsOpt:
             self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl=config_tbl[chipset]
             self.bad_loader = 0
         else:
+            loadername = parent.sahara.programmer.lower()
             for chipid in config_tbl:
-                loadername=parent.sahara.loader
                 if config_tbl[chipid][0] in loadername:
                     self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl = \
-                    config_tbl[chipset]
+                    config_tbl[chipid]
                     self.bad_loader = 0
 
 class nand_toshiba_ids(ctypes.LittleEndianStructure):

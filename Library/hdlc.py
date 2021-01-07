@@ -118,17 +118,19 @@ class hdlc:
             return None
         return out
 
-    def receive_reply(self):
+    def receive_reply(self,timeout=None):
         replybuf = bytearray()
-        tmp = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+        if timeout==None:
+            timeout=self.timeout
+        tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
         if tmp == b"":
             return 0
         retry = 0
         while tmp[-1] != 0x7E:
-            time.sleep(0.05)
-            tmp += self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            time.sleep(0.01)
+            tmp += self.cdc.read(MAX_PACKET_LEN, timeout)
             retry += 1
             if retry > 5:
                 break
@@ -141,8 +143,8 @@ class hdlc:
             if crc16val != reccrc:
                 return -1
         else:
-            time.sleep(0.5)
-            data = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            time.sleep(0.01)
+            data = self.cdc.read(MAX_PACKET_LEN, timeout)
             if len(data) > 3:
                 crc16val = self.crc16(0xFFFF, data[:-3])
                 reccrc = int(data[-3]) + (int(data[-2]) << 8)
@@ -151,9 +153,11 @@ class hdlc:
                 return data
         return data[:-3]
 
-    def receive_reply_nocrc(self):
+    def receive_reply_nocrc(self,timeout=None):
         replybuf = bytearray()
-        tmp = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+        if timeout==None:
+            timeout=self.timeout
+        tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
         if tmp == b"":
@@ -161,7 +165,7 @@ class hdlc:
         retry = 0
         while tmp[-1] != 0x7E:
             # time.sleep(0.05)
-            tmp += self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            tmp += self.cdc.read(MAX_PACKET_LEN, timeout)
             retry += 1
             if retry > 5:
                 break
@@ -174,7 +178,7 @@ class hdlc:
             return data[:-3]
         else:
             time.sleep(0.5)
-            data = self.cdc.read(MAX_PACKET_LEN, self.timeout)
+            data = self.cdc.read(MAX_PACKET_LEN, timeout)
             if len(data) > 3:
                 # crc16val = self.crc16(0xFFFF, data[:-3])
                 # reccrc = int(data[-3]) + (int(data[-2]) << 8)

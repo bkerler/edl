@@ -11,6 +11,7 @@ class QualcommStreaming:
         self.cdc = cdc
         self.hdlc = hdlc(self.cdc)
         self.mode = sahara.mode
+        self.sahara=sahara
         self.settings = None
         self.flashinfo = None
         self.bbtbl = {}
@@ -631,9 +632,12 @@ class QualcommStreaming:
             self.nanddevice = NandDevice(self.settings)
             self.setupregs()
 
-            if self.cdc.pid == 0x900e:
+            if self.cdc.pid == 0x900e or self.cdc.pid==0x0076:
                 print("Boot to 0x9008")
                 self.mempoke(0x193d100, 1)
+                # dload-mode-addr, TCSR_BOOT_MISC_DETECT, iomap.h
+                # msm8916,8939,8953 0x193d100
+                # msm8996 0x7b3000
                 self.mempeek(0x7980000)
                 self.cdc.close()
                 sys.exit(0)
@@ -796,7 +800,13 @@ def test_nand_config():
         [0x1590acc8, 8, 512, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x1d00f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x1d80f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+
+        #Sierra 9x15
+        [0x1900aaec, 8, 256, 2048, 131072, 64, 8, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
+        #[0x1590aa98, 8, 256, 2048, 131072, 64, 8, 0xa8d408c0, 0x0004745c, 0x00000203, 0x42040d10, 0x000001d1],
+        [0x1590aa98, 8, 256, 2048, 131072, 64, 8, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x2690ac2c, 8, 512, 4096, 262144, 224, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
+        #End
         [0x2690dc98, 8, 512, 4096, 262144, 128, 4, 0x2a0409c0, 0x0804645c, 0x00000203, 0x42040700, 0x00000191],
         # Sierra Wireless EM7455, MDM9x35, Quectel EC25, Toshiba KSLCMBL2VA2M2A
         [0x2690ac98, 8, 512, 4096, 262144, 256, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
@@ -813,13 +823,13 @@ def test_nand_config():
         nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, cfg1, eccbufcfg, bccbchcfg, badblockbyte = test
         res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
         if cfg0 != res_cfg0 or cfg1 != res_cfg1 or eccbufcfg != res_ecc_buf_cfg or res_ecc_bch_cfg != bccbchcfg:
-            errorids.append(nandid)
+            errorids.append([nandid,res_cfg0,res_cfg1,res_ecc_buf_cfg,res_ecc_bch_cfg])
             res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
 
     if len(errorids) > 0:
         st = ""
         for id in errorids:
-            st += hex(id) + ","
+            st += hex(id[0]) + f" {hex(id[1]),hex(id[2]),hex(id[3]),hex(id[4])},"
         st = st[:-1]
         print("Error at: "+st)
         assert ("Error at : " + st)
