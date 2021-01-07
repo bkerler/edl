@@ -144,10 +144,10 @@ class firehose_client:
                 if res[0]:
                     lun = res[1]
                     rpartition = res[2]
-                    self.firehose.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename)
-                    self.printer(
-                        f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} " + \
-                        f"as {partfilename}.")
+                    if self.firehose.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename):
+                        self.printer(
+                            f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} " + \
+                            f"as {partfilename}.")
                 else:
                     fpartitions = res[1]
                     self.LOGGER.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
@@ -207,7 +207,9 @@ class firehose_client:
                     self.LOGGER.info(
                         f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} " +
                         f"as {filename}.")
-                    self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename)
+                    if self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename):
+                        self.LOGGER.info(f"Dumped partition {str(partition.name)} with sector count " +
+                        f"{str(partition.sectors)} as {filename}.")
             return True
         elif cmd == "rf":
             if not self.check_param(["<filename>"]):
@@ -225,8 +227,8 @@ class firehose_client:
                 else:
                     sfilename = filename
                 self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
-                self.firehose.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename)
-                self.printer(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+                if self.firehose.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename):
+                    self.printer(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
             return True
         elif cmd == "pbl":
             if not self.check_param(["<filename>"]):

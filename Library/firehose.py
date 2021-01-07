@@ -263,76 +263,73 @@ class qualcomm_firehose:
             if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
                 num_partition_sectors += 1
             if display:
-                self.log.info(
-                    f"\nWriting {fname} to physical partition {str(physical_partition_number)}, " + \
-                    f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-            data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                   f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
-                   f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{start_sector}\" "
+                self.log.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
+                              f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
-            if self.modules is not None:
-                data += self.modules.addprogram()
-
-            data += f"/>\n</data>"
-            rsp = self.xmlsend(data)
-            pos = 0
+            maxsectors = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES
+            total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
+            pos=0
+            fpos = 0
             prog = 0
-            if display:
-                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            if rsp[0]:
-                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                old = 0
-                while fsize > 0:
-                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * \
-                           self.cfg.SECTOR_SIZE_IN_BYTES
-                    if fsize < wlen:
-                        wlen = fsize
-                    wdata = rf.read(wlen)
-                    bytesToWrite -= wlen
-                    fsize -= wlen
-                    pos += wlen
-                    if wlen % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
-                        filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
-                                  self.cfg.SECTOR_SIZE_IN_BYTES
-                        wdata += b"\x00" * (filllen - wlen)
-                        wlen = len(wdata)
+            old = 0
+            if num_partition_sectors<maxsectors:
+                maxsectors=num_partition_sectors
 
-                    self.cdc.write(wdata, wlen)
+            for cursector in range(start_sector, start_sector + num_partition_sectors, maxsectors):
+                data = f"<?xml version=\"1.0\" ?><data>\n" + \
+                       f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                       f" num_partition_sectors=\"{maxsectors}\"" + \
+                       f" physical_partition_number=\"{physical_partition_number}\"" + \
+                       f" start_sector=\"{start_sector}\" "
+                if self.modules is not None:
+                    data += self.modules.addprogram()
+                data += f"/>\n</data>"
+                rsp = self.xmlsend(data)
 
-                    prog = int(float(pos) / float(total) * float(100))
-                    if prog > old:
-                        if display:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                if display:
+                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                if rsp[0]:
+                    bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+                    while bytesToWrite > 0:
+                        wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                        if fsize < wlen:
+                            wlen = fsize
+                        wdata = rf.read(wlen)
+                        wlen=len(wdata)
+                        bytesToWrite -= wlen
+                        fsize -= wlen
+                        pos += wlen
+                        fpos += wlen
+                        if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+                            filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
+                                      self.cfg.SECTOR_SIZE_IN_BYTES
+                            wdata += b"\x00" * (filllen - wlen)
+                            wlen = len(wdata)
+                        self.cdc.write(wdata, wlen)
+                        prog = int(float(pos) / float(total) * float(100))
+                        if prog > old:
+                            if display:
+                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-                if display and prog != 100:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                time.sleep(0.2)
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                if not self.skipresponse:
+                    self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+                    time.sleep(0.2)
+                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                     rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                     if "value" in rsp:
-                        if rsp["value"] == "ACK":
-                            return True
-                        else:
+                        if rsp["value"] != "ACK":
                             self.log.error(f"Error:")
                             for line in info:
                                 self.log.error(line)
                             return False
-                    else:
-                        return True
                 else:
-                    return True
-            else:
-                self.log.error(f"Error:{rsp}")
-                return False
+                    self.log.error(f"Error:{rsp}")
+                    return False
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            return True
 
     def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
         size = len(wfdata)
-
         # Make sure we fill data up to the sector size
         num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
         if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
@@ -340,177 +337,183 @@ class qualcomm_firehose:
         if display:
             self.log.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
                           f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-        data = f"<?xml version=\"1.0\" ?><data>\n" + \
-               f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
-               f" physical_partition_number=\"{physical_partition_number}\"" + \
-               f" start_sector=\"{start_sector}\" "
 
-        if self.modules is not None:
-            data += self.modules.addprogram()
-
-        data += f"/>\n</data>"
-        rsp = self.xmlsend(data)
-        pos = 0
+        maxsectors = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES
+        total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
+        pos=0
+        fpos = 0
         prog = 0
-        if display:
-            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-        if rsp[0]:
-            bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-            total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-            old = 0
-            fpos = 0
-            fsize = len(wfdata)
-            while fsize > 0:
-                wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * \
-                       self.cfg.SECTOR_SIZE_IN_BYTES
-                if fsize < wlen:
-                    wlen = fsize
-                wdata = wfdata[fpos:fpos + wlen]
-                bytesToWrite -= wlen
-                fsize -= wlen
-                pos += wlen
-                fpos += wlen
-                if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
-                    filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
-                              self.cfg.SECTOR_SIZE_IN_BYTES
-                    wdata += b"\x00" * (filllen - wlen)
-                    wlen = len(wdata)
-                self.cdc.write(wdata, wlen)
-                prog = int(float(pos) / float(total) * float(100))
-                if prog > old:
-                    if display:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        old = 0
+        if num_partition_sectors<maxsectors:
+            maxsectors=num_partition_sectors
 
-            if display and prog != 100:
-                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-            time.sleep(0.2)
-            info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-            rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-            if "value" in rsp:
-                if rsp["value"] == "ACK":
-                    return True
-                else:
-                    self.log.error(f"Error:")
-                    for line in info:
-                        self.log.error(line)
-                    return False
-            else:
-                return True
-        else:
-            self.log.error(f"Error:{rsp}")
-            return False
-
-    def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
-        if display:
-            self.log.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
-                          f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+        for cursector in range(start_sector, start_sector + num_partition_sectors, maxsectors):
             data = f"<?xml version=\"1.0\" ?><data>\n" + \
                    f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+                   f" num_partition_sectors=\"{maxsectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\" "
-
             if self.modules is not None:
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
-
             rsp = self.xmlsend(data)
-            empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
-            pos = 0
-            prog = 0
+
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             if rsp[0]:
-                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                old = 0
+                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+                fsize = len(wfdata)
+                if fsize < bytesToWrite:
+                    bytesToWrite = fsize
                 while bytesToWrite > 0:
                     wlen = self.cfg.MaxPayloadSizeToTargetInBytes
-                    if bytesToWrite < wlen:
-                        wlen = bytesToWrite
-                    self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
+                    if fsize < wlen:
+                        wlen = fsize
+                    wdata = wfdata[fpos:fpos + wlen]
+                    bytesToWrite -= wlen
+                    fsize -= wlen
+                    pos += wlen
+                    fpos += wlen
+                    if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+                        filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
+                                  self.cfg.SECTOR_SIZE_IN_BYTES
+                        wdata += b"\x00" * (filllen - wlen)
+                        wlen = len(wdata)
+                    self.cdc.write(wdata, wlen)
                     prog = int(float(pos) / float(total) * float(100))
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    bytesToWrite -= wlen
-                    pos += wlen
-                if display and prog != 100:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 if "value" in rsp:
-                    if rsp["value"] == "ACK":
-                        return True
-                    else:
+                    if rsp["value"] != "ACK":
                         self.log.error(f"Error:")
                         for line in info:
                             self.log.error(line)
-                else:
-                    return True
+                        return False
             else:
                 self.log.error(f"Error:{rsp}")
                 return False
-        return False
+        if display and prog != 100:
+            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        return True
 
-    def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
+    def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         if display:
-            self.log.info(
-                f"\nReading from physical partition {str(physical_partition_number)}, sector {str(start_sector)}" + \
-                f", sectors {str(num_partition_sectors)}")
-        with open(filename, "wb") as wr:
-            # wr = asyncwriter(wf)
-            data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
-                   f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{start_sector}\"/>\n</data>"
-            rsp = self.xmlsend(data, self.skipresponse)
-            if rsp[0]:
-                if "value" in rsp[1]:
-                    if rsp[1]["value"] == "NAK":
-                        if display:
-                            self.log.error(rsp[2].decode('utf-8'))
-                        return b""
-                bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                total = bytesToRead
-                dataread = 0
-                old = 0
-                prog = 0
+            self.log.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
+                          f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+
+        empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
+        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
+        total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
+        pos = 0
+        prog = 0
+        old = 0
+        if num_partition_sectors<maxsectors:
+            maxsectors=num_partition_sectors
+
+            for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
+                data = f"<?xml version=\"1.0\" ?><data>\n" + \
+                       f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                       f" num_partition_sectors=\"{maxsectors}\"" + \
+                       f" physical_partition_number=\"{physical_partition_number}\"" + \
+                       f" start_sector=\"{cursector}\" "
+
+                if self.modules is not None:
+                    data += self.modules.addprogram()
+                data += f"/>\n</data>"
+                rsp = self.xmlsend(data)
                 if display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                while bytesToRead > 0:
-                    tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
-                    bytesToRead -= len(tmp)
-                    dataread += len(tmp)
-                    wr.write(tmp)
-                    if display:
+                if rsp[0]:
+                    bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+                    while bytesToWrite > 0:
+                        wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                        if bytesToWrite < wlen:
+                            wlen = bytesToWrite
+                        self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
+                        prog = int(float(pos) / float(total) * float(100))
+                        if prog > old:
+                            if display:
+                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                        bytesToWrite -= wlen
+                        pos += wlen
+                    self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+                    time.sleep(0.2)
+                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    if "value" in rsp:
+                        if rsp["value"] != "ACK":
+                            self.log.error(f"Error:")
+                            for line in info:
+                                self.log.error(line)
+                                return False
+                else:
+                    self.log.error(f"Error:{rsp}")
+                    return False
+        if display and prog != 100:
+            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        return True
+
+    def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
+        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
+        total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
+        dataread = 0
+        old = 0
+        prog = 0
+        if display:
+            self.log.info(
+                f"\nReading from physical partition {str(physical_partition_number)}, " + \
+                f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+
+        if num_partition_sectors<maxsectors:
+            maxsectors=num_partition_sectors
+
+        with open(filename, "wb") as wr:
+            for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
+                bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+
+                data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                       f" num_partition_sectors=\"{maxsectors}\"" + \
+                       f" physical_partition_number=\"{physical_partition_number}\"" + \
+                       f" start_sector=\"{cursector}\"/>\n</data>"
+
+                rsp = self.xmlsend(data, self.skipresponse)
+                if rsp[0]:
+                    if "value" in rsp[1]:
+                        if rsp[1]["value"] == "NAK":
+                            if display:
+                                self.log.error(rsp[2].decode('utf-8'))
+                            return False
+                    while bytesToRead > 0:
+                        tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                        wr.write(tmp)
+                        bytesToRead -= len(tmp)
+                        dataread += len(tmp)
                         prog = int(float(dataread) / float(total) * float(100))
                         if prog > old:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                            if display:
+                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                             old = prog
-                if display and prog != 100:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                # time.sleep(0.2)
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                # wr.stop()
-                if "value" in rsp:
-                    if rsp["value"] == "ACK":
-                        return tmp
-                    else:
-                        self.log.error(f"Error:")
-                        for line in info:
-                            self.log.error(line)
-                        return b""
+                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    if "value" in rsp:
+                        if rsp["value"] != "ACK":
+                            self.log.error(f"Error:")
+                            for line in info:
+                                self.log.error(line)
+                            return False
                 else:
-                    return tmp
-            else:
-                self.log.error(f"Error:{rsp[1]}")
-                return b""
+                    if display:
+                        self.log.error(f"Error:{rsp[2]}")
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            return True
 
     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
