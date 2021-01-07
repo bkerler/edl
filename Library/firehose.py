@@ -280,7 +280,7 @@ class qualcomm_firehose:
                        f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                        f" num_partition_sectors=\"{maxsectors}\"" + \
                        f" physical_partition_number=\"{physical_partition_number}\"" + \
-                       f" start_sector=\"{start_sector}\" "
+                       f" start_sector=\"{cursector}\" "
                 if self.modules is not None:
                     data += self.modules.addprogram()
                 data += f"/>\n</data>"
@@ -352,7 +352,7 @@ class qualcomm_firehose:
                    f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{maxsectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{start_sector}\" "
+                   f" start_sector=\"{cursector}\" "
             if self.modules is not None:
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
