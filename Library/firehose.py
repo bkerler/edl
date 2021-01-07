@@ -491,7 +491,7 @@ class qualcomm_firehose:
                                 self.log.error(rsp[2].decode('utf-8'))
                             return False
                     while bytesToRead > 0:
-                        tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                        tmp = self.cdc.read(bytesToRead)
                         wr.write(tmp)
                         bytesToRead -= len(tmp)
                         dataread += len(tmp)
@@ -547,7 +547,7 @@ class qualcomm_firehose:
                             self.log.error(rsp[2].decode('utf-8'))
                         return resData
                 while bytesToRead > 0:
-                    tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                    tmp = self.cdc.read(bytesToRead)
                     resData += tmp
                     bytesToRead -= len(tmp)
                     dataread += len(tmp)
