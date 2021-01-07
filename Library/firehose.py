@@ -416,46 +416,46 @@ class qualcomm_firehose:
         if num_partition_sectors<maxsectors:
             maxsectors=num_partition_sectors
 
-            for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
-                data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                       f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                       f" num_partition_sectors=\"{maxsectors}\"" + \
-                       f" physical_partition_number=\"{physical_partition_number}\"" + \
-                       f" start_sector=\"{cursector}\" "
+        for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
+            data = f"<?xml version=\"1.0\" ?><data>\n" + \
+                   f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                   f" num_partition_sectors=\"{maxsectors}\"" + \
+                   f" physical_partition_number=\"{physical_partition_number}\"" + \
+                   f" start_sector=\"{cursector}\" "
 
-                if self.modules is not None:
-                    data += self.modules.addprogram()
-                data += f"/>\n</data>"
-                rsp = self.xmlsend(data)
-                time.sleep(0.01)
-                if display:
-                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                if rsp[0]:
-                    bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
-                    while bytesToWrite > 0:
-                        wlen = self.cfg.MaxPayloadSizeToTargetInBytes
-                        if bytesToWrite < wlen:
-                            wlen = bytesToWrite
-                        self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
-                        prog = int(float(pos) / float(total) * float(100))
-                        if prog > old:
-                            if display:
-                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                        bytesToWrite -= wlen
-                        pos += wlen
-                    self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                    time.sleep(0.2)
-                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                    if "value" in rsp:
-                        if rsp["value"] != "ACK":
-                            self.log.error(f"Error:")
-                            for line in info:
-                                self.log.error(line)
-                                return False
-                else:
-                    self.log.error(f"Error:{rsp}")
-                    return False
+            if self.modules is not None:
+                data += self.modules.addprogram()
+            data += f"/>\n</data>"
+            rsp = self.xmlsend(data)
+            time.sleep(0.01)
+            if display:
+                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            if rsp[0]:
+                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
+                while bytesToWrite > 0:
+                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                    if bytesToWrite < wlen:
+                        wlen = bytesToWrite
+                    self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
+                    prog = int(float(pos) / float(total) * float(100))
+                    if prog > old:
+                        if display:
+                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                    bytesToWrite -= wlen
+                    pos += wlen
+                self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+                time.sleep(0.2)
+                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                if "value" in rsp:
+                    if rsp["value"] != "ACK":
+                        self.log.error(f"Error:")
+                        for line in info:
+                            self.log.error(line)
+                            return False
+            else:
+                self.log.error(f"Error:{rsp}")
+                return False
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         return True
