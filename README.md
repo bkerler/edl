@@ -10,26 +10,25 @@
 ## Installation
 
 - Get python >= 3.7 64-Bit
-- Copy Drivers/51-edl.rules to /etc/udev/rules.d
-- Copy Drivers/50-android.rules to /etc/udev/rules.d
-- sudo apt install adb
-- sudo apt install fastboot
-- sudo sudo apt install liblzma-dev
-- sudo apt purge ModemManager
 
 Linux/Windows: 
+- ```cp Drivers/51-edl.rules /etc/udev/rules.d```
+- ```cp Drivers/50-android.rules /etc/udev/rules.d```
+- ```sudo apt install adb```
+- ```sudo apt install fastboot```
+- ```sudo apt install python3-dev```
+- ```sudo sudo apt install liblzma-dev```
+- ```sudo apt purge ModemManager```
+- ```python -m pip install -r requirements.txt```
+
+Mac: 
+- ```brew install libusb```
 - ```python -m pip install -r requirements.txt```
 
 Windows:
-- Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows,
-  then install libusb-win32-devel-filter-1.2.7.1.exe.
-  Run Filter Wizard, "Install a device filter",  select "Qualcomm HS-USB QDLoader 9008"
-  and press "Install" to install libusb filter driver otherwise we won't detect the device.
-  Then use the edl tool.
-- Get latest libusb devel filter [here](https://sourceforge.net/projects/libusb-win32/files/)
-or
+- Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows
 - Use Zadig 2.5 or higher, list all devices, select QUSB_BULK device and replace
-  driver with libusb 1.2.7.1 one (will replace original driver)
+  driver with libusb >= 1.2.6.0 one (will replace original driver)
 - Get latest Zadig release [here] (https://zadig.akeo.ie/)
 
 ## Convert EDL loaders for automatic usage
