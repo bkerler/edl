@@ -34,6 +34,10 @@ vendor["143A"] = "Asus         "
 vendor["1978"] = "Blackphone   "
 vendor["2A70"] = "Oxygen       "
 
+class MBN:
+    def __init__(self,memory):
+        self.imageid,self.flashpartitionversion,self.imagesrc,self.loadaddr,self.imagesz,self.codesz,\
+        self.sigptr,self.sigsz,self.certptr,self.certsz=unpack("<IIIIIIIIII",memory[0xC:0xC+40])
 
 class Signed:
     filename = ''
@@ -118,8 +122,7 @@ def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
     return sign_info
 
 
-def extract_old_hdr(memsection, sign_info, mem_section, code_size, signature_size):
-    signatureoffset = memsection.file_start_addr + 0x28 + code_size + signature_size
+def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signature_size):
     signature = {}
     if mem_section[signatureoffset] != 0x30:
         print("Error on " + sign_info.filename + ", unknown signaturelength")
@@ -308,7 +311,8 @@ def main(argv):
                         print("%s has no signature." % filename)
                         continue
                     if version < 6:  # MSM,MDM
-                        signinfo = extract_old_hdr(memsection, signinfo, mem_section, code_size, signature_size)
+                        signatureoffset = memsection.file_start_addr + 0x28 + code_size + signature_size
+                        signinfo = extract_old_hdr(signatureoffset, signinfo, mem_section, code_size, signature_size)
                         if signinfo is None:
                             continue
                         filelist.append(signinfo)
@@ -320,6 +324,16 @@ def main(argv):
                     else:
                         print("Unknown version for " + filename)
                         continue
+            elif hdr == 0x844BDCD1:
+                mbn=MBN(mem_section)
+                if mbn.sigsz == 0:
+                    print("%s has no signature." % filename)
+                    continue
+                signatureoffset=mbn.imagesrc+mbn.codesz+mbn.sigsz
+                signinfo = extract_old_hdr(signatureoffset, signinfo, mem_section, mbn.codesz, mbn.sigsz)
+                if signinfo is None:
+                    continue
+                filelist.append(signinfo)
             else:
                 print("Error on " + filename)
                 continue
