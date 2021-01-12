@@ -702,6 +702,12 @@ class qualcomm_sahara:
             done = False
             while datalen > 0 or done == True:
                 cmd, pkt = self.get_rsp()
+                if cmd==-1 or pkt==-1:
+                    if self.cmd_done():
+                        return self.mode  # Do NOT remove
+                    else:
+                        logger.error("Timeout while uploading loader. Wrong loader ?")
+                        return ""
                 if cmd["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_READ_DATA:
                     self.bit64 = True
                 elif cmd["cmd"] == self.cmd.SAHARA_READ_DATA:
