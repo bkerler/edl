@@ -1,291 +1,370 @@
 msmids = {
-    0x009440E1: "QDF2432",  #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x006220E1: "MSM7227A",
-    0x009780E1: "IPQ4018", #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x009790E1: "IPQ4019", #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x001260E1: "IPQ6018", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000160E1: "QCA4020", #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x000AB0E1: "QCA6290", #0x40040100 soc_hw_version #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000D90E1: "QCA6390", #0x400A0000 soc_hw_version #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000D70E1: "QCA6595", #0x400B0000 soc_hw_version #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000D30E1: "QCN7605", #0x400B0000 soc_hw_version #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000D50E1: "QCN7606", #0x400B0000 soc_hw_version #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x009680E1: "APQ8009",
-    0x007060E1: "APQ8016",
-    0x008040E1: "APQ8026",
-    0x000550E1: "APQ8017",
-    0x0090C0E1: "APQ8036",
-    0x0090F0E1: "APQ8037",
-    0x0090D0E1: "APQ8039",
-    0x009770E1: "APQ8052",
-    0x000660E1: "APQ8053",
-    0x009F00E1: "APQ8056",
-    0x007190E1: "APQ8064",
-    0x009D00E1: "APQ8076",
-    0x009000E1: "APQ8084",
-    0x009300E1: "APQ8092",
-    0x000620E1: "APQ8098",
-    0x008110E1: "MSM8210",
-    0x008140E1: "MSM8212",
-    0x008120E1: "MSM8610",
-    0x008150E1: "MSM8612",
-    0x008010E1: "MSM8626",
-    0x000940E1: "MSM8905",
-    0x009600E1: "MSM8909", # SnapDragon 210
-    0x007050E1: "MSM8916", # SnapDragon 410
-    0x000560E1: "MSM8917",
-    0x000860E1: "MSM8920",
-    0x008050E1: "MSM8926", # SnapDragon 400
-    0x009180E1: "MSM8928", # SnapDragon 400
-    0x0091B0E1: "MSM8929", # SnapDragon 415
-    0x007210E1: "MSM8930",
-    0x0072C0E1: "MSM8960",
-    # 0x000000E1: "MSM8936",
-    0x0004F0E1: "MSM8937",
-    0x0090B0E1: "MSM8939",  # SnapDragon 610 #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x0006B0E1: "MSM8940",
-    0x009720E1: "MSM8952",  # SnapDragon 652
-    0x000460E1: "MSM8953",
-    0x009B00E1: "MSM8956", # SnapDragon 652
-    0x009100E1: "MSM8962",
-    0x007B00E1: "MSM8974", # Snapdragon 800
-    0x007B30E1: "MSM8974A",
-    0x007B40E1: "MSM8974AB",
-    0x007B80E1: "MSM8974Pro",
-    0x007BC0E1: "MSM8974ABv3",
-    0x006B10E1: "MSM8974AC",
-    0x009900E1: "MSM8976", # SnapDragon 652
-    0x009690E1: "MSM8992", # SnapDragon 82x
-    0x009400E1: "MSM8994", # SnapDragon 808
-    0x009470E1: "MSM8996", # SnapDragon 820
-    0x0006F0E1: "MSM8996AU",
-    0x1006F0E1: "MSM8996AU",
-    0x4006F0E1: "MSM8996AU",
-    0x0005F0E1: "MSM8996Pro", # SnapDragon 821
-    0x0005E0E1: "MSM8998_SDM835",
-    0x0094B0E1: "MSM9055",
-    0x009730E1: "MDM9206_MDM9607tx",
-    0x000480E1: "MDM9207",
-    0x0004A0E1: "MDM9607",
-    0x007F50E1: "MDM9x25",
-    0x009500E1: "MDM9x40",
-    0x009540E1: "MDM9x45",
-    0x009210E1: "MDM9x35",
-    0x000320E1: "MDM9250",
-    0x000340E1: "MDM9255",
-    0x000390E1: "MDM9350",
-    0x0003A0E1: "MDM9650",
-    0x0003B0E1: "MDM9655",
-    0x0007D0E1: "MDM9x60", #SDX20
-    0x0007F0E1: "MDM9x65",
-    0x008090E1: "MDM9916",
-    0x0080B0E1: "MDM9955",
-    0x000BE0E1: "SDM429",
-    0x000BF0E1: "SDM439",
-    0x0009A0E1: "SDM450",
-    0x000AC0E1: "SDM630",  # 0x30070x00 #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000BA0E1: "SDM632",
-    0x000BB0E1: "SDA632",
-    0x000CC0E1: "SDM636",
-    0x0008C0E1: "SDM660",  # 0x30060000 soc_hw_version
-    0x000910E1: "SDM670",  # 0x60040100 soc_hw_version
-    0x000930E1: "SDA670",  # 0x60040100 soc_hw_version
-    # 0x000930E1: "SDA835", # 0x30020000 => HW_ID1 3002000000290022
-    0x0008B0E1: "SDM845",  # 0x60000100 => HW_ID1 6000000000010000
-    0x000960E1: "SDX24",  # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000970E1: "SDX24M", # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x0007B0E1: "SDX50M",  # 0x soc_hw_version, #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x000E50E1: "SDX55:CD90-PG591",  # 0x600b0100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x000CF0E1: "SDX55:CD90-PH809",  # 0x600b0100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x000950E1: "SM6150",
-    # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000EC0E1: "SM6150p",
-    # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000E60E1: "SM7150",
-    # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000E70E1: "SM7150p",
-    # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000A50E1: "SDM855_SM8150",
-    # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000A60E1: "SDM855p_SM8150p",
-    # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x200E80E1: "SA8155",
-    # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x300E90E1: "SA8155p",
-    # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000C30E1: "SM8250:CD90-PH805-1A",
-    # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000CE0E1: "SM8250:CD90-PH806-1A",
-    # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x0011E0E1: "Saipan",
-    # 0x600D0100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000B80E1: "Sc8180x",
-    # 0x60060100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit #afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
-    0x000AF0E1: "qcs405",
-    # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000E40E1: "qcs403",
-    # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x0010A0E1: "Nicobar",
-    # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x0013F0E1: "Bitra_SDM", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x001410E1: "Bitra_SDA", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x001360E1: "Kamorta", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x001370E1: "KamortaP", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x001350E1: "Lahaina", #0x600F0100 soc_hw_version #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x000400E1: "Rennell", #d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
-    0x001060E1: "qm215", #7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
-    0x200cf0E1: "SDX55M"  # Netgear MR5100, sdxprairie
+    # 7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09
+    0x9440E1: "QDF2432",
+    0x9780E1: "IPQ4018",
+    0x9790E1: "IPQ4019",
+    0x0160E1: "QCA4020",
+    0x9680E1: "APQ8009",
+    0x7060E1: "APQ8016",
+    0x8100E1: "APQ806x",
+    0x9D00E1: "APQ8076",
+    0x08A0E1: "APQ807x",
+    0x9000E1: "APQ8084",
+    0x9630E1: "APQ8092",
+    0x0940E1: "MSM8905",
+    0x9600E1: "MSM8909", # SnapDragon 210
+    0x0510E1: "MSM8909W",
+    0x7050E1: "MSM8916", # SnapDragon 410
+    0x0560E1: "MSM8917",
+    0x0860E1: "MSM8920",
+    0x91B0E1: "MSM8929",  # SnapDragon 415
+    0x04F0E1: "MSM8937",
+    0x90B0E1: "MSM8939",  # SnapDragon 610
+    0x90C0E1: "APQ8036",
+    0x90D0E1: "APQ8039",
+    0x06B0E1: "MSM8940",
+    0x9720E1: "MSM8952",  # SnapDragon 652
+    0x0460E1: "MSM8953", #8053lat
+    0x0660E1: "APQ8053",
+    0x9900E1: "MSM8976",  # SnapDragon 652
+    0x9690E1: "MSM8992",  # SnapDragon 82x
+    0x9400E1: "MSM8994",  # SnapDragon 808
+    0x9470E1: "MSM8996",  # SnapDragon 820
+    0x06F0E1: "MSM8996AU",
+    0x05E0E1: "MSM8998_SDM835",
+    0x94B0E1: "MSM9055",
+    0x9730E1: "MDM9206_MDM9607tx",
+    0x04A0E1: "MDM9607",
+    0x8090E1: "MDM9916",
+    0x80B0E1: "MDM9955",
+    0x9210E1: "MDM9x35",
+    0x9500E1: "MDM9x40",
+    0x9540E1: "MDM9x45",
+    0x03A0E1: "MDM9x50",
+    0x7F50E1: "MDM9x25",
+    0x0320E1: "MDM9250",  # MDM9x50
+    0x0340E1: "MDM9255",  # MDM9x55
+    0x0390E1: "MDM9350",  # MDM9x50
+    0x03B0E1: "MDM9x55",
+    0x07D0E1: "MDM9x60",  # SDX20
+    0x07F0E1: "MDM9x65",
+    0x1280E1: "fsm100xx",
+    0x1650E1: "FSM10000",
+    0x1680E1: "FSM10005",
+    0x1690E1: "FSM10010",
+    0x16A0E1: "FSM10051",
+    0x16B0E1: "FSM10056",
+    0x1530E1: "ipq5018",
+    0x1610E1: "olympic_manar", # d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
+    0x1060E1: "qm215",
+    0x0BE0E1: "SDM429",
+    0x0BF0E1: "SDM439",
+    0x09A0E1: "SDM450",
+    0x0AC0E1: "SDM630",  #0x30070x00
+    0x0BA0E1: "SDM632",
+    0x0BB0E1: "SDA632",
+    0x08C0E1: "SDM660",  # 0x30060000 soc_hw_version
+    0x07B0E1: "SDX50M",  # 0x soc_hw_version,
+    0x0E50E1: "SDX55:CD90-PG591", # 0x600b0100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit
+    0x0CF0E1: "SDX55M:CD90-PH809", # 0x600b0100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit, # Netgear MR5100, sdxprairie
+    0x1250E1: "SA515M",
+
+    # afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581
+    0x0AB0E1: "QCA6290",  # 0x40040100 soc_hw_version
+    0x0D90E1: "QCA6390",  # 0x400A0000 soc_hw_version
+    0x1310E1: "QCA6480",
+    0x12E0E1: "QCA6481",
+    0x12D0E1: "QCA6491",
+    0x0D70E1: "QCA6595",  # 0x400B0000 soc_hw_version
+    0x0D30E1: "QCN7605",  # 0x400B0000 soc_hw_version
+    0x0D50E1: "QCN7606",  # 0x400B0000 soc_hw_version
+    0x0910E1: "SDM670",  # 0x60040100 soc_hw_version
+    0x0DB0E1: "SDM710",
+    0x0AA0E1: "QCS605",
+    0x0ED0E1: "SXR1120",
+    0x0EA0E1: "SXR1130",
+
+    # d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87
+    0x1260E1: "IPQ6018",
+    0x1070E1: "MDM9205", # 0x20130100
+    0x1450E1: "agatti", # soc_vers 0x9003
+    0x13F0E1: "bitra_SDM", # soc_vers 0x6012
+    0x1410E1: "bitra_SDA",
+    0x1590E1: "cedros", # soc_vers 0x6017
+    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 662
+    0x1350E1: "lahaina", # soc_vers 0x600F
+    0x1420E1: "lahaina_premier",
+    0x14A0E1: "makena", # soc_vers 0x6014
+    0x14B0E1: "SA8295P",
+    0x14C0E1: "SA8540P",
+    #0x1610E1: "mannar", # soc_vers 0x9004
+    0x1470E1: "moselle", # soc_vers 0x4014
+    0x10A0E1: "nicobar",  # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit
+    0x10B0E1: "qcn90xx", # soc_vers 0x400D
+    0x10C0E1: "QCN9001",
+    0x1150E1: "QCN9002",
+    0x10D0E1: "QCN9003",
+    0x10E0E1: "QCN9010",
+    0x10F0E1: "QCN9011",
+    0x1110E1: "QCN9012",
+    0x1140E1: "QCN9013",
+    0x0AF0E1: "qcs405",  # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
+    0x0400E1: "rennell", # soc_vers 0x600E7T A11 CB
+    0x12A0E1: "rennell",
+    0x12B0E1: "rennell_premier",
+    0x1490E1: "rennell_v1.1",
+    0x11E0E1: "saipan", # 0x600D0100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit, SM7250 Snapdragon 765G
+    0x0950E1: "SM6150",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0EC0E1: "SM6150p",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0E60E1: "SM7150",  # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0A50E1: "SDM855_SM8150", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0A60E1: "SDM855p_SM8150p", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0C30E1: "SM8250:CD90-PH805-1A", # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
+    0x0CE0E1: "SM8250:CD90-PH806-1A", # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
+
+    # Unknown root hash
+    0x0B70E1: "SDM850",
+    0x0960E1: "SDX24",  # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit
+    0x0970E1: "SDX24M", # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit
+    0x0E70E1: "SM7150p", # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0E80E1: "SA8155", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0E90E1: "SA8155p", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0E40E1: "qcs403", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
+    0x1440E1: "chitwan", # soc_vers 0x6013
+    0x1370E1: "kamortap",
+    0x6220E1: "MSM7227A",
+    0x8040E1: "APQ8026",
+    0x0550E1: "APQ8017",
+    0x90F0E1: "APQ8037",
+    0x9770E1: "APQ8052",
+    0x9F00E1: "APQ8056",
+    0x7190E1: "APQ8064",
+    0x9300E1: "APQ8092",
+    0x0620E1: "APQ8098",
+    0x8110E1: "MSM8210",
+    0x8140E1: "MSM8212",
+    0x8120E1: "MSM8610",
+    0x8150E1: "MSM8612",
+    0x8010E1: "MSM8626",
+    0x8050E1: "MSM8926", # SnapDragon 400
+    0x9180E1: "MSM8928", # SnapDragon 400
+    0x7210E1: "MSM8930",
+    0x72C0E1: "MSM8960",
+    0x9B00E1: "MSM8956", # SnapDragon 652
+    0x9100E1: "MSM8962",
+    0x7B00E1: "MSM8974", # Snapdragon 800
+    0x7B30E1: "MSM8974A",
+    0x7B40E1: "MSM8974AB",
+    0x7B80E1: "MSM8974Pro",
+    0x7BC0E1: "MSM8974ABv3",
+    0x6B10E1: "MSM8974AC",
+    0x05F0E1: "MSM8996Pro", # SnapDragon 821
+    0x0480E1: "MDM9207",
+    0x0CC0E1: "SDM636",
+    0x0930E1: "SDA670",  # 0x60040100 soc_hw_version
+    0x0930E1: "SDA835", # 0x30020000 => HW_ID1 3002000000290022
+    0x08B0E1: "SDM845",  # 0x60000100 => HW_ID1 6000000000010000
+    0x0B80E1: "sc8180x",
 }
 
-
 sochw = {
-    0x20130100: "MDM9205",
-    0x20140000: "qcs403,qcs405",
-    0x20140100: "qcs403,qcs405",
-    0x20170100: "IPQ6018",
-    0x30020000: "MSM8998_SDM835,SDA835",
-    0x30060000: "SDM660",
-    0x30070000: "SDM630",
-    0x40030000: "QCA4020",
-    0x40040100: "IPQ8074,QCA6290",
-    0x400A0000: "QCA6390",
-    0x400B0000: "QCN7605,QCA6595,QCN7606",
+    0x2013: "MDM9205",
+    0x2014: "qcs405",
+    0x2017: "IPQ6018",
+    0x3002: "MSM8998_SDM835,SDA835",
+    0x3006: "SDM660",
+    0x3007: "SDM630",
+    0x4003: "QCA4020",
+    0x4004: "IPQ8074,QCA6290",
+    0x400A: "QCA6390",
+    0x400B: "QCN7605,QCA6595,QCN7606",
+    0x400D: "qcn90xx",
+    0x4014: "moselle",
+
     #: "SDM632",
     #: "SDA632",
     #: "SDM636",
-    0x60000000: "SDM845",
-    0x60000100: "SDM845",
-    0x60020100: "SDX24,SDX24M",
-    0x60030100: "SDM855_SM8150,SDM855p_SM8150p",
-    0x60040000: "SDA670,SDM670,SDM710",
-    0x60040100: "SDA670,SDM670,SDM710",
+    0x6000: "SDM845",
+    0x6002: "SDX24,SDX24M",
+    0x6003: "SDM855_SM8150,SDM855p_SM8150p",
+    0x6004: "SDA670,SDM670,SDM710",
+    0x6005: "SDM670",
     #: "SDX50M",
-    0x60060100: "Sc8180x",
-    0x60070100: "SM6150,SM6150p",
-    0x60080100: "SM8250:CD90-PH805-1A,SM8250:CD90-PH806-1A",
-    0x600B0100: "SDX55:CD90-PG591,SDX55:CD90-PH809",
-    0x600C0100: "SM7150,SM7150p",
-    0x600D0100: "Saipan",
-    0x60120100: "Bitra_SDM",
-    0x90010100: "Nicobar",
-    0x90020100: "Kamorta",
-    0x600F0100: "Lahaina",
-    0x600E0100: "Rennell"
+    0x6006: "sc8180x",
+    0x6007: "SM6150,SM6150p",
+    0x6008: "SM8250:CD90-PH805-1A,SM8250:CD90-PH806-1A",
+    0x6009: "SDM670",
+    0x600B: "SDX55:CD90-PG591,SDX55:CD90-PH809",
+    0x600C: "SM7150,SM7150p",
+    0x600D: "saipan",
+    0x600E: "rennell",
+    0x600F: "lahaina",
+    0x6012: "bitra_SDM",
+    0x6013: "chitwan",
+    0x6014: "makena",
+    0x6016: "olympic",
+    0x6017: "cedros",
+    0x9001: "nicobar",
+    0x9002: "kamorta",
+    0x9003: "agatti",
+    0x9004: "mannar"
 }
 
+secgen=[
+    # BOOT_ROM_BASE_PHYS, SECURITY_CONTROL_BASE_PHYS, MEMORY_MAP
+    [[], [0x01900000, 0x100000], []],
+    [[],[0x01e20000,0x1000],[]],
+    [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
+    [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
+    [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
+    [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
+    [[0x100000, 0x18000], [0x00700000, 0x6158], [0x200000, 0x24000]],
+    [[0x300000, 0x3c000], [0x00780000, 0x10000], [0x14009003, 0x24000]],
+    [[0x300000, 0x3c000], [0x01B40000, 0x10000], []],
+]
+
 infotbl = {
-    #BOOT_ROM_BASE_PHYS ,SECURITY_CONTROL_BASE_PHYS,
-    "QDF2432": [[], [0x01900000, 0x100000], []],
-    "QCA6290": [[],[0x01e20000,0x1000],[]],
-    "QCA6390": [[],[0x01e20000,0x1000],[]],
-    "IPQ4018": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "IPQ4019": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8009": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8016": [[0x100000, 0x18000], [0x0005C000, 0x1000], [0x200000, 0x24000]],
-    "APQ8017": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8036": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8037": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8039": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "APQ8053": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8056": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8076": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "APQ8084": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "APQ8092": [[0xFC010000, 0x18000], [0xE0DB8000, 0x60F0], [0x200000, 0x24000]],
-    "APQ8098": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "MSM7227A": [[], [], []],
-    "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
-    "MSM8212": [[], [], []],
-    "MSM8610": [[], [0xFC4B8000,0x6FFF], []],
-    "MSM8905": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8909": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8916": [[0x100000, 0x18000], [0x0005C000, 0x1000], [0x200000, 0x24000]],
-    "MSM8917": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8920": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8226": [[], [0xFC4B8000,0x6FFF], []],
-    "MSM8926": [[], [0xFC4B8000,0x6FFF], []],
-    "MSM8928": [[], [], []],
-    "MSM8929": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8930": [[0x100000, 0x18000], [0x700000, 0x1000], []],
-    "MSM8936": [[0x100000, 0x18000], [0x700000, 0x1000], []],
-    "MSM8937": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8939": [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    "MSM8940": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8952": [[0x100000, 0x18000], [0x00058000, 0x6000], [0x200000, 0x24000]],
-    "MSM8953": [[0x100000, 0x18000], [0xA0000, 0x1000], [0x200000, 0x24000]],
-    "MSM8956": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8962": [[0x100000, 0x18000], [0xFC4B8000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8974": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974Pro": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974AB": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974ABv3": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8974AC": [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    "MSM8976": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM8992": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6FFF], [0xFE800000, 0x24000]],
-    "MSM8994": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6FFF], [0xFE800000, 0x24000]],
-    "MSM8996": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8996AU": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8996Pro": [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    "MSM8998": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "MSM9206": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM9207": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x25": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6000], [0x200000, 0x24000]],
-    "MDM9x35": [[0xFC010000, 0x18000], [0xFC4B8000, 0x6000], [0x200000, 0x24000]],
-    "MDM9x40": [[0x100000, 0x18000], [0x00058000, 0x6000], [0x200000, 0x24000]],
-    "MDM9x45": [[0x100000, 0x18000], [0x00058000, 0x6000], [0x200000, 0x24000]],
-    "MDM9x50": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x55": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x60": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x65": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9250": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9350": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MSM9607": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9650": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "MDM9x50": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM429": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM439": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM450": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM632": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDA632": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "SDM630": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM636": [[0x300000, 0x3c000], [0x780000, 0x10000], [0x14009003, 0x24000]],
-    "SDM660": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM670": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDA670": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM845": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX24": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX24M": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX55:CD90-PG591": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX55:CD90-PH809": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX50M": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDX55M": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM6150": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM6150p": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM7150": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM7150p": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM855_SM8150": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SDM855p_SM8150p": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM8250": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM8250p": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM8250:CD90-PH805-1A": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "SM8250:CD90-PH806-1A": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "Saipan": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "Sc8180x": [[0x300000, 0x3c000], [0x780000, 0x10000], []],
-    "qcs403": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "qcs405": [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    "Nicobar": [[0x300000, 0x3c000], [0x01B40000, 0x10000], []],
+    "QDF2432": secgen[0],
+    "QCA6290": secgen[1],
+    "QCA6390": secgen[1],
+    "QCA6480": secgen[1],
+    "QCA6481": secgen[1],
+    "QCA6490": secgen[1],
+    "QCA6491": secgen[1],
+
+    "APQ8084": secgen[2],
+    "APQ8092": secgen[2],
+    "MSM8962": secgen[2],
+    "MSM8974": secgen[2],
+    "MSM8974Pro": secgen[2],
+    "MSM8974AB": secgen[2],
+    "MSM8974ABv3": secgen[2],
+    "MSM8974AC": secgen[2],
+    "MSM8992": secgen[2],
+    "MSM8994": secgen[2],
+    "MDM9x25": secgen[2],
+    "MDM9x35": secgen[2],
+
+    "MSM8996": secgen[3],
+    "MSM8996AU": secgen[3],
+    "MSM8996Pro": secgen[3],
+
+    "IPQ4018": secgen[4],
+    "IPQ4019": secgen[4],
+    "APQ8009": secgen[4],
+    "APQ8016": secgen[4],
+    "APQ8036": secgen[4],
+    "APQ8039": secgen[4],
+    "MSM8905": secgen[4],
+    "MSM8909": secgen[4],
+    "MSM8909W": secgen[4],
+    "MSM8916": secgen[4],
+    "MSM8929": secgen[4],
+    "MSM8939": secgen[4],
+    "MSM8952": secgen[4],
+    "MDM9x40": secgen[4],
+    "MDM9x45": secgen[4],
+
+    "APQ8017": secgen[5],
+    "APQ8037": secgen[5],
+    "APQ8053": secgen[5],
+    "APQ8056": secgen[5],
+    "APQ8076": secgen[5],
+    "MSM8917": secgen[5],
+    "MSM8920": secgen[5],
+    "MSM8937": secgen[5],
+    "MSM8940": secgen[5],
+    "MSM8953": secgen[5],
+    "MSM8956": secgen[5],
+    "MSM8976": secgen[5],
+    "MSM9206": secgen[5],
+    "MSM9207": secgen[5],
+    "MSM9607": secgen[5],
+    "MDM9x50": secgen[5],
+    "MDM9x55": secgen[5],
+    "MDM9x60": secgen[5],
+    "MDM9x65": secgen[5],
+    "MDM9250": secgen[5],
+    "MDM9350": secgen[5],
+    "MDM9650": secgen[5],
+    "SDM429": secgen[5],
+    "SDM439": secgen[5],
+    "SDM450": secgen[5],
+    "SDM632": secgen[5],
+    "SDA632": secgen[5],
+    "SDX50M": secgen[5],
+    "qcs403": secgen[5],
+    "qcs405": secgen[5],
+    "ipq5018": secgen[5],
+    "ipq6018": secgen[5],
+    "qm215": secgen[5],
+
+    "APQ806x": secgen[6],
+    "MSM8930": secgen[6],
+    "MSM8936": secgen[6],
+
+    "APQ8098": secgen[7],
+    "MSM8998": secgen[7],
+    "SDM630": secgen[7],
+    "SDM636": secgen[7],
+    "SDM660": secgen[7],
+    "SDM670": secgen[7],
+    "SDA670": secgen[7],
+    "SDM710": secgen[7],
+    "QCS605": secgen[7],
+    "SXR1120": secgen[7],
+    "SXR1130": secgen[7],
+    "SDM845": secgen[7],
+    "SDM850": secgen[7],
+    "SDX24": secgen[7],
+    "SDX24M": secgen[7],
+    "SDX55M": secgen[7],
+    "SDX55:CD90-PG591": secgen[7],
+    "SDX55:CD90-PH809": secgen[7],
+    "SA515M": secgen[7],
+    "SM6150": secgen[7],
+    "SM6150p": secgen[7],
+    "SM7150": secgen[7],
+    "SM7150p": secgen[7],
+    "SDM855_SM8150": secgen[7],
+    "SDM855p_SM8150p": secgen[7],
+    "SM8250": secgen[7],
+    "SM8250p": secgen[7],
+    "SM8250:CD90-PH805-1A": secgen[7],
+    "SM8250:CD90-PH806-1A": secgen[7],
+    "saipan": secgen[7],
+    "sc8180x": secgen[7],
+    "bitra": secgen[7],
+    "cedros": secgen[7],
+    "chitwan": secgen[7],
+    "lahaina": secgen[7],
+    "lahaina_premier": secgen[7],
+    "mannar": secgen[7],
+    "rennell": secgen[7],
+
+    "nicobar": secgen[8],
+    "agatti": secgen[8],
+    "kamorta": secgen[8],
+    "kamortap": secgen[8],
+
+
+    # "MSM7227A": [[], [], []],
+    # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
+    # "MSM8212": [[], [], []],
+    # "MSM8610": [[], [0xFC4B8000,0x6FFF], []],
+    # "MSM8226": [[], [0xFC4B8000,0x6FFF], []],
+    # "MSM8926": [[], [0xFC4B8000,0x6FFF], []],
+    # "MSM8928": [[], [], []],
 }
 
 secureboottbl = {
     "QDF2432": 0x019018c8,
-    # "MSM7227A":[[], [], []],
-    # "MSM8210": [[], [], []],
-    # "MSM8212":
     "QCA6290": 0x01e20030,
     "QCA6390": 0x01e20010,
     "IPQ4018": 0x00058098,
     "IPQ4019": 0x00058098,
     "APQ8009": 0x00058098,
-    "APQ8016": 0x0005C098,
+    "APQ8016": 0x00058098,
     "APQ8036": 0x00058098,
     "APQ8039": 0x00058098,
     "APQ8037": 0x000a01d0,
@@ -293,17 +372,17 @@ secureboottbl = {
     "APQ8052": 0x00058098,
     "APQ8056": 0x000a01d0,
     "APQ8076": 0x000a01d0,
-    "APQ8084": 0xFC4B83E8,
-    "APQ8092": 0xFC4B83E8,
+    "APQ8084": 0xFC4B83F8,
+    "APQ8092": 0xFC4B83F8,
     "APQ8098": 0x00780350,
     "MSM8226": 0xFC4B83E8,
     "MSM8610": 0xFC4B83E8,
+    "MSM8905": 0x00058098,
     "MSM8909": 0x00058098,
-    "MSM8916": 0x0005C098,
+    "MSM8909W": 0x00058098,
+    "MSM8916": 0x00058098,
     "MSM8917": 0x000A01D0,
     "MSM8920": 0x000A01D0,
-    # "MSM8926": [[], [], []],
-    # "MSM8928": [[], [], []],
     "MSM8929": 0x00058098,
     "MSM8930": 0x700310,
     "MSM8936": 0x700310,
@@ -324,6 +403,7 @@ secureboottbl = {
     "MSM8996AU": 0x00070378,
     "MSM8996Pro": 0x00070378,
     "MSM8998_SDM835": 0x00780350,
+    "MDM9205": 0x000a0320,
     "MDM9206_MDM9207tx": 0x000a01d0,
     "MDM9207": 0x000a01d0,
     "MDM9250": 0x000a01d0,
@@ -342,7 +422,6 @@ secureboottbl = {
     "SDM429": 0x000a01d0,
     "SDM439": 0x000a01d0,
     "SDM450": 0x000a01d0,
-    # "SDM636": 0x70378,
     "SDM630": 0x00780350,
     "SDM632": 0x000a01d0,
     "SDA632": 0x000a01d0,
@@ -350,13 +429,18 @@ secureboottbl = {
     "SDM660": 0x00780350,
     "SDM670": 0x00780350,
     "SDA670": 0x00780350,
+    "SDM710": 0x00780350,
+    "QCS605": 0x00780350,
+    "SXR1120": 0x00780350,
+    "SXR1130": 0x00780350,
     "SDM845": 0x00780350,
     "SDX24" : 0x00780390,
     "SDX24M": 0x00780390,
-    "SDX50M": 0x007804D0,
+    "SDX50M": 0x000a01e0,
     "SDX55:CD90-PG591":  0x007805E8,
     "SDX55:CD90-PH809":  0x007805E8,
     "SDX55M" : 0x007804D0,
+    "SA515M" : 0x007804D0,
     "SM6150": 0x00780360,
     "SM6150p": 0x00780360,
     "SM7150": 0x00780460,
@@ -365,9 +449,29 @@ secureboottbl = {
     "SDM855p_SM8150p": 0x007804D0,
     "SM8250:CD90-PH805-1A": 0x007805E8,
     "SM8250:CD90-PH806-1A": 0x007805E8,
-    "Saipan": 0x007805E8,
-    "Sc8180x": 0x007805E8,
+    "agatti": 0x01B40458,
+    "bitra": 0x007804D8,
+    "bitra_SDM": 0x007804D8,
+    "bitra_SDA": 0x007804D8,
+    "cedros": 0x00780728,
+    "chitwan": 0x00780668,
+    "ipq5018": 0x000A01D0,
+    "ipq6018": 0x000A01D0,
+    "saipan": 0x007805E8,
+    "sc8180x": 0x007805E8,
     "qcs403": 0x000a0310,
     "qcs405": 0x000a0310,
-    "Nicobar": 0x01B40458,
+    "nicobar": 0x01B40458,
+    "kamorta": 0x01B40458,
+    "kamorta_p": 0x01B40458,
+    "lahaina": 0x780668,
+    "lahaina_premier": 0x780668,
+    "mannar": 0x01B40458,
+    "qm215": 0x000a01d0,
+    "rennell":0x000780498
+    # "MSM7227A":[[], [], []],
+    # "MSM8210": [[], [], []],
+    # "MSM8212":
+    # "MSM8926": [[], [], []],
+    # "MSM8928": [[], [], []],
 }

@@ -268,7 +268,6 @@ def main():
     LOGGER.info("Waiting for the device")
     resp = None
     cdc.timeout = 100
-    LOGGER.debug("Ohuh")
     mode, resp = doconnect(cdc, loop, mode, resp, sahara)
     if resp == -1:
         mode, resp = doconnect(cdc, loop, mode, resp, sahara)

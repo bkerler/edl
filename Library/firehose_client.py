@@ -33,31 +33,33 @@ class firehose_client:
                 devicemodel = arguments["--devicemodel"]
         self.firehose = qualcomm_firehose(cdc, xmlparser(), self.cfg, LOGGER, devicemodel, sahara.serial, skipresponse,
                                           self.getluns(arguments), arguments)
-        self.supported_functions = self.firehose.connect(0)
-        funcs = "Supported functions:\n-----------------\n"
-        for function in self.supported_functions:
-            funcs += function + ","
-        funcs = funcs[:-1]
-        LOGGER.info(funcs)
-        self.target_name = self.firehose.cfg.TargetName
-        if "hwid" in dir(sahara):
-            if sahara.hwid is not None:
-                hwid = (sahara.hwid >> 32) & 0xFFFFFF
-                socid = ((sahara.hwid >> 32)>>16)
-                if hwid in msmids:
-                    self.target_name = msmids[hwid]
-                    self.LOGGER.info(f"Target detected: {self.target_name}")
-                elif socid in sochw:
-                    self.target_name = sochw[socid].split(",")[0]
+        self.connected = False
+        self.firehose.connect()
+        if self.firehose.configure(0):
+            funcs = "Supported functions:\n-----------------\n"
+            for function in self.firehose.supported_functions:
+                funcs += function + ","
+            funcs = funcs[:-1]
+            LOGGER.info(funcs)
+            self.target_name = self.firehose.cfg.TargetName
+            if "hwid" in dir(sahara):
+                if sahara.hwid is not None:
+                    hwid = (sahara.hwid >> 32) & 0xFFFFFF
+                    socid = ((sahara.hwid >> 32)>>16)
+                    if hwid in msmids:
+                        self.target_name = msmids[hwid]
+                        self.LOGGER.info(f"Target detected: {self.target_name}")
+                    elif socid in sochw:
+                        self.target_name = sochw[socid].split(",")[0]
+            self.connected=True
 
     def check_cmd(self, func):
-        if not self.supported_functions:
+        if not self.firehose.supported_functions:
             return True
-        for sfunc in self.supported_functions:
+        for sfunc in self.firehose.supported_functions:
             if func.lower() == sfunc.lower():
                 return True
         return False
-
 
 
     def getluns(self, argument):
@@ -516,7 +518,7 @@ class firehose_client:
                         f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                     return False
                 if self.firehose.modules is not None:
-                    self.firehose.modules.prerun()
+                    self.firehose.modules.writeprepare()
                 if self.firehose.cmd_program(lun, partition.sector, filename):
                     self.printer(f"Wrote {filename} to sector {str(partition.sector)}.")
                     return True
@@ -548,7 +550,7 @@ class firehose_client:
                 sys.exit()
             filenames = []
             if self.firehose.modules is not None:
-                self.firehose.modules.prerun()
+                self.firehose.modules.writeprepare()
             for dirName, subdirList, fileList in os.walk(directory):
                 for fname in fileList:
                     filenames.append(os.path.join(dirName, fname))
@@ -593,7 +595,7 @@ class firehose_client:
                 self.LOGGER.error(f"Error: Couldn't find file: {filename}")
                 return False
             if self.firehose.modules is not None:
-                self.firehose.modules.prerun()
+                self.firehose.modules.writeprepare()
             if self.firehose.cmd_program(lun, start, filename):
                 self.printer(f"Wrote {filename} to sector {str(start)}.")
                 return True
@@ -613,7 +615,7 @@ class firehose_client:
                 self.LOGGER.error(f"Error: Couldn't find file: {filename}")
                 return False
             if self.firehose.modules is not None:
-                self.firehose.modules.prerun()
+                self.firehose.modules.writeprepare()
             if self.firehose.cmd_program(lun, start, filename):
                 self.printer(f"Wrote {filename} to sector {str(start)}.")
                 return True
@@ -632,7 +634,7 @@ class firehose_client:
                 if guid_gpt is None:
                     break
                 if self.firehose.modules is not None:
-                    self.firehose.modules.prerun()
+                    self.firehose.modules.writeprepare()
                 if "partentries" in dir(guid_gpt):
                     for partition in guid_gpt.partentries:
                         if partition.name == partitionname:
@@ -656,7 +658,7 @@ class firehose_client:
             start = int(options["<start_sector>"])
             sectors = int(options["<sectors>"])
             if self.firehose.modules is not None:
-                self.firehose.modules.prerun()
+                self.firehose.modules.writeprepare()
             if self.firehose.cmd_erase(lun, start, sectors):
                 self.printer(f"Erased sector {str(start)} with sector count {str(sectors)}.")
                 return True

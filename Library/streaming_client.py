@@ -318,7 +318,7 @@ class streaming_client:
                                 f"Error: {filename} has {sectors} sectors but partition only has {length}.")
                             return False
                         if self.streaming.modules is not None:
-                            self.streaming.modules.prerun()
+                            self.streaming.modules.writeprepare()
                         if self.streaming.write_flash(partitionname, filename):
                             self.printer(f"Wrote {filename} to sector {str(offset)}.")
                             return True
@@ -343,7 +343,7 @@ class streaming_client:
                 filenames = []
                 if self.streaming.enter_flash_mode():
                     if self.streaming.modules is not None:
-                        self.streaming.modules.prerun()
+                        self.streaming.modules.writeprepare()
                     rpartitions = self.streaming.get_partitions()
                     for dirName, subdirList, fileList in os.walk(directory):
                         for fname in fileList:

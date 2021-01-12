@@ -474,6 +474,20 @@ class scsi:
             print("Sent FIH adb enable command")
             self.usb.close()
 
+    def send_alcatel_adbenable(self):  # Alcatel MW41
+        if self.usb.connect():
+            print("Sending alcatel adb enable command")
+            datasize = 0x24
+            common_cmnd = b"\x16\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            lun=0
+            timeout = 5000
+            ret_tag = self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
+            if datasize > 0:
+                data = self.usb.read(datasize, timeout)
+                print("DATA: " + hexlify(data).decode('utf-8'))
+            print("Sent alcatel adb enable command")
+            self.usb.close()
+
     def send_fih_root(
             self):  # motorola xt560, nokia 3.1, huawei u8850, huawei Ideos X6, lenovo s2109, triumph M410, viewpad 7, #f_mass_storage.c
         if self.usb.connect():

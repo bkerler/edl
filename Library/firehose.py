@@ -96,7 +96,10 @@ class qualcomm_firehose:
         return True
 
     def xmlsend(self, data, skipresponse=False):
-        self.cdc.write(bytes(data, 'utf-8'), self.cfg.MaxXMLSizeInBytes)
+        if isinstance(data,bytes) or isinstance(data,bytearray):
+            self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
+        else:
+            self.cdc.write(bytes(data, 'utf-8'), self.cfg.MaxXMLSizeInBytes)
         rdata = bytearray()
         counter = 0
         timeout = 3
@@ -567,8 +570,8 @@ class qualcomm_firehose:
                             self.log.error(line)
                         return resData
             else:
-                if display:
-                    self.log.error(f"Error:{rsp[2]}")
+                self.log.error(f"Error:{rsp[2]}")
+                return -1
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         return resData  # Do not remove, needed for oneplus
@@ -587,19 +590,22 @@ class qualcomm_firehose:
             part_entry_size=gpt_part_entry_size,
             part_entry_start_lba=gpt_part_entry_start_lba,
         )
-        header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-        if "first_usable_lba" in header:
-            sectors = header["first_usable_lba"]
-            if sectors == 0:
+        try:
+            header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+            if "first_usable_lba" in header:
+                sectors = header["first_usable_lba"]
+                if sectors == 0:
+                    return None, None
+                if sectors>34:
+                    sectors=34
+                data = self.cmd_read_buffer(lun, 0, sectors, False)
+                if data == b"":
+                    return None, None
+                guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                return data, guid_gpt
+            else:
                 return None, None
-            if sectors>34:
-                sectors=34
-            data = self.cmd_read_buffer(lun, 0, sectors, False)
-            if data == b"":
-                return None, None
-            guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-            return data, guid_gpt
-        else:
+        except:
             return None, None
 
     def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
@@ -626,80 +632,7 @@ class qualcomm_firehose:
         offset = offset % self.cfg.SECTOR_SIZE_IN_BYTES
         return sector, offset
 
-    def connect(self, lvl):
-        v = b'-1'
-        if lvl != 1:
-            if platform.system() == 'Windows':
-                self.cdc.timeout = 10
-            else:
-                self.cdc.timeout = 10
-            info = []
-            while v != b'':
-                try:
-                    v = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                    if v == b'':
-                        break
-                    data = self.xml.getlog(v)
-                    if len(data) > 0:
-                        info.append(data[0])
-                    if not info:
-                        break
-                except:
-                    break
-            supfunc = False
-            if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
-                info = self.cmd_nop()
-            if not info:
-                self.log.info("No supported functions detected, configuring qc generic commands")
-                self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
-                                            'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
-                                            'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
-            else:
-                self.supported_functions = []
-                for line in info:
-                    if "chip serial num" in line.lower():
-                        self.log.info(line)
-                        try:
-                            serial = line.split("0x")[1][:-1]
-                            self.serial = int(serial, 16)
-                        except:
-                            serial = line.split(": ")[2]
-                            self.serial = int(serial.split(" ")[0])
-                    if supfunc and "end of supported functions" not in line.lower():
-                        rs = line.replace("\n", "")
-                        if rs != "":
-                            self.supported_functions.append(rs)
-                    if "supported functions" in line.lower():
-                        supfunc = True
-
-            '''
-            self.supported_functions = []
-            for line in info:
-                if "chip serial num" in line.lower():
-                    self.log.info(line)
-                    try:
-                        serial=line.split(": ")[1]
-                        self.serial=int(serial.split(" ")[0])
-                    except:
-                        serial=line.split(": ")[2]
-                        self.serial=int(serial.split(" ")[0])
-                if supfunc and "end of supported functions" not in line.lower():
-                    rs=line.replace("\n", "")
-                    if rs!="":
-                        self.supported_functions.append(rs)
-                if "supported functions" in line.lower():
-                    supfunc = True
-            '''
-        try:
-            self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
-                                   log=self.log, devicemodel=self.devicemodel, args=self.args)
-        except Exception as e:
-            self.modules = None
-        data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
-        try:
-            self.log.info(data.decode('utf-8'))
-        except:
-            pass
+    def configure(self,lvl):
         connectcmd = f"<?xml version =\"1.0\" ?><data>" + \
                      f"<configure MemoryName=\"{self.cfg.MemoryName}\" " + \
                      f"ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
@@ -715,60 +648,68 @@ class qualcomm_firehose:
         "</data>"
         '''
         rsp = self.xmlsend(connectcmd)
-
-        if rsp[0]:
-            data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if not "MemoryName" in rsp[1]:
-                # print(rsp[1])
-                rsp[1]["MemoryName"] = "eMMC"
-            if not "MaxXMLSizeInBytes" in rsp[1]:
-                rsp[1]["MaxXMLSizeInBytes"] = "4096"
-                self.log.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
-            if not "MaxPayloadSizeToTargetInBytes" in rsp[1]:
-                rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
-            if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
-                rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
-            self.cfg.MemoryName = rsp[1]["MemoryName"]
-            self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
-            self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
-            self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
-            if "MaxPayloadSizeFromTargetInBytes" in rsp[1]:
-                self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
-            else:
-                self.cfg.MaxPayloadSizeFromTargetInBytes = self.cfg.MaxXMLSizeInBytes
-                self.log.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
-            if "TargetName" in rsp[1]:
-                self.cfg.TargetName = rsp[1]["TargetName"]
-                if "MSM" not in self.cfg.TargetName:
-                    self.cfg.TargetName = "MSM" + self.cfg.TargetName
-            else:
-                self.cfg.TargetName = "Unknown"
-                self.log.warning("Couldn't detect TargetName")
-            if "Version" in rsp[1]:
-                self.cfg.Version = rsp[1]["Version"]
-            else:
-                self.cfg.Version = 0
-                self.log.warning("Couldn't detect Version")
-        else:
-            if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
-                try:
-                    self.cfg.MemoryName = rsp[1]["MemoryName"]
-                    self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
-                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(
-                        rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
-                    self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
+        if len(rsp)>1:
+            if rsp[0]==False:
+                if b"Only nop and sig tag can be" in rsp[2]:
+                    if self.modules.edlauth():
+                        rsp = self.xmlsend(connectcmd)
+        if len(rsp)>1:
+            if rsp[0]: #On Ack
+                data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                if not "MemoryName" in rsp[1]:
+                    # print(rsp[1])
+                    rsp[1]["MemoryName"] = "eMMC"
+                if not "MaxXMLSizeInBytes" in rsp[1]:
+                    rsp[1]["MaxXMLSizeInBytes"] = "4096"
+                    self.log.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+                if not "MaxPayloadSizeToTargetInBytes" in rsp[1]:
+                    rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
+                if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
+                    rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
+                self.cfg.MemoryName = rsp[1]["MemoryName"]
+                self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
+                self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
+                self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
+                if "MaxPayloadSizeFromTargetInBytes" in rsp[1]:
                     self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+                else:
+                    self.cfg.MaxPayloadSizeFromTargetInBytes = self.cfg.MaxXMLSizeInBytes
+                    self.log.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+                if "TargetName" in rsp[1]:
                     self.cfg.TargetName = rsp[1]["TargetName"]
                     if "MSM" not in self.cfg.TargetName:
                         self.cfg.TargetName = "MSM" + self.cfg.TargetName
+                else:
+                    self.cfg.TargetName = "Unknown"
+                    self.log.warning("Couldn't detect TargetName")
+                if "Version" in rsp[1]:
                     self.cfg.Version = rsp[1]["Version"]
-                    if lvl == 0:
-                        return self.connect(lvl + 1)
-                    else:
-                        self.log.error(f"Error:{rsp}")
-                        exit(0)
-                except:
-                    pass
+                else:
+                    self.cfg.Version = 0
+                    self.log.warning("Couldn't detect Version")
+            else: #on NAK
+                if b"ERROR" in rsp[2]:
+                    self.log.error(rsp[2].decode('utf-8'))
+                    sys.exit()
+                if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
+                    try:
+                        self.cfg.MemoryName = rsp[1]["MemoryName"]
+                        self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
+                        self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(
+                            rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
+                        self.cfg.MaxXMLSizeInBytes = int(rsp[1]["MaxXMLSizeInBytes"])
+                        self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
+                        self.cfg.TargetName = rsp[1]["TargetName"]
+                        if "MSM" not in self.cfg.TargetName:
+                            self.cfg.TargetName = "MSM" + self.cfg.TargetName
+                        self.cfg.Version = rsp[1]["Version"]
+                        if lvl == 0:
+                            return self.configure(lvl + 1)
+                        else:
+                            self.log.error(f"Error:{rsp}")
+                            sys.exit()
+                    except:
+                        pass
         self.log.info(f"TargetName={self.cfg.TargetName}")
         self.log.info(f"MemoryName={self.cfg.MemoryName}")
         self.log.info(f"Version={self.cfg.Version}")
@@ -776,6 +717,68 @@ class qualcomm_firehose:
             self.cfg.SECTOR_SIZE_IN_BYTES = 512
         elif self.cfg.MemoryName.lower() == "ufs":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+
+    def connect(self):
+        v = b'-1'
+        if platform.system() == 'Windows':
+            self.cdc.timeout = 10
+        else:
+            self.cdc.timeout = 10
+        info = []
+        while v != b'':
+            try:
+                v = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                if v == b'':
+                    break
+                data = self.xml.getlog(v)
+                if len(data) > 0:
+                    info.append(data[0])
+                if not info:
+                    break
+            except:
+                pass
+        supfunc = False
+        if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
+            info = self.cmd_nop()
+        if not info:
+            self.log.info("No supported functions detected, configuring qc generic commands")
+            self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
+                                        'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
+                                        'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
+        else:
+            self.supported_functions = []
+            for line in info:
+                if "chip serial num" in line.lower():
+                    self.log.info(line)
+                    try:
+                        serial = line.split("0x")[1][:-1]
+                        self.serial = int(serial, 16)
+                    except:
+                        serial = line.split(": ")[2]
+                        self.serial = int(serial.split(" ")[0])
+                if supfunc and "end of supported functions" not in line.lower():
+                    rs = line.replace("\n", "")
+                    if rs != "":
+                        rs=rs.replace("INFO: ","")
+                        self.supported_functions.append(rs)
+                if "supported functions" in line.lower():
+                    supfunc = True
+
+            if len(self.supported_functions)>1:
+                info="Supported Functions: "
+                for line in self.supported_functions:
+                    info+=line+","
+                self.log.info(info[:-1])
+        try:
+            self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
+                                   log=self.log, devicemodel=self.devicemodel, args=self.args)
+        except Exception as e:
+            self.modules = None
+        data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
+        try:
+            self.log.info(data.decode('utf-8'))
+        except:
+            pass
         return self.supported_functions
 
     # OEM Stuff here below --------------------------------------------------
