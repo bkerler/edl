@@ -5,8 +5,17 @@ from os import walk
 import hashlib
 from struct import unpack, pack
 from shutil import copyfile
-from Library.utils import elf
-from Library.sahara import convertmsmid
+try:
+    from Library.utils import elf
+    from Library.sahara import convertmsmid
+    parent_dir="Loaders"
+except Exception as e:
+    import os,sys,inspect
+    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = os.path.dirname(current_dir)
+    sys.path.insert(0, parent_dir) 
+    from Library.utils import elf
+    from Library.sahara import convertmsmid
 
 vendor = {}
 vendor["0000"] = "Qualcomm     "
@@ -182,11 +191,11 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
 
 def init_loader_db():
     loaderdb = {}
-    for (dirpath, dirnames, filenames) in os.walk("Loaders"):
+    for (dirpath, dirnames, filenames) in os.walk(parent_dir):
         for filename in filenames:
             file_name = os.path.join(dirpath, filename)
             found = False
-            for ext in [".bin", ".mbn", ".elf"]:
+            for ext in [".bin", ".mbn", ".elf", ""]:
                 if ext in filename[-4:]:
                     found = True
                     break
@@ -256,11 +265,20 @@ def main(argv):
                 sha256.update(data)
                 hashes[sha256.digest()] = fname
 
+    for mhwid in loaderdb:
+        for pkhash in loaderdb[mhwid]:
+            fname=loaderdb[mhwid][pkhash]
+            with open(fname, 'rb') as rhandle:
+                data = rhandle.read()
+                sha256 = hashlib.sha256()
+                sha256.update(data)
+                hashes[sha256.digest()] = fname
+
     filelist = []
     rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
-    extensions = ["elf", "mbn", "bin"]
-    if not os.path.exists(os.path.join(outputdir, "unknown")):
-        os.makedirs(os.path.join(outputdir, "unknown"))
+    extensions = ["elf", "mbn", "bin", ""]
+    if not os.path.exists(os.path.join(outputdir, "Unknown")):
+        os.makedirs(os.path.join(outputdir, "Unknown"))
     for filename in file_list:
         found = False
         for ext in extensions:
@@ -372,14 +390,18 @@ def main(argv):
                                                              loader_info.hw_id + "_" + loader_info.pk_hash[
                                                                                        0:16] + "_FHPRG.bin"))
                 else:
-                    copyfile(item.filename, os.path.join(outputdir, "unknown", item.filename[item.filename.rfind(
+                    copyfile(item.filename, os.path.join(outputdir, "Unknown", item.filename[item.filename.rfind(
                         "\\") + 1:] + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
             else:
+                copyfile(item.filename,
+                         os.path.join(outputdir,"Duplicate", loader_info.hw_id + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
                 print(item.filename + " does already exist. Skipping")
             try:
                 rt.write(info + "\n")
             except:
                 continue
+        else:
+            copyfile(item.filename,os.path.join(outputdir, "Unknown",item.filename))
 
     for item in filelist:
         if item.oem_id == '' and (".bin" in item.filename or ".mbn" in item.filename or ".hex" in item.filename):
@@ -388,7 +410,8 @@ def main(argv):
                 info += "\tOEMVER:" + item.oem_version + "\tQCVER:" + item.qc_version + "\tVAR:" + item.image_variant
             print(info)
             rt.write(info + "\n")
-            copyfile(item.filename, os.path.join(outputdir, "unknown", item.filename[item.filename.rfind("\\") + 1:]))
+            if not os.path.exists(os.path.join(outputdir,"Unknown",item.filename)):
+                copyfile(item.filename, os.path.join(outputdir, "Unknown", item.filename[item.filename.rfind("\\") + 1:]))
 
     rt.close()
 

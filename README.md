@@ -34,7 +34,9 @@ Windows:
 ## Convert EDL loaders for automatic usage
 
 - Make a subdirectory "newstuff", copy your edl loaders to this subdirectory
-- ```./fhloaderparse.py newstuff Loaders```
+- ```./Loaders/fhloaderparse.py newstuff Loaders```
+
+- or sniff existing edl tools using Totalphase Beagle 480, set filter to ```filter({'inputs': False, 'usb3': False, 'chirps': False, 'dev': 26, 'usb2resets': False, 'sofs': False, 'ep': 1})```, export to binary file as "sniffeddata.bin" and then use ```beagle_to_loader.py sniffeddata.bin```
 
 ## Run EDL (examples)
 
