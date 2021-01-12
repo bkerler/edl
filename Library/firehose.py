@@ -570,7 +570,9 @@ class qualcomm_firehose:
                             self.log.error(line)
                         return resData
             else:
-                self.log.error(f"Error:{rsp[2]}")
+                if len(rsp)>1:
+                    if not b"Failed to open the UFS Device" in rsp[2]:
+                        self.log.error(f"Error:{rsp[2]}")
                 return -1
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -583,7 +585,7 @@ class qualcomm_firehose:
             self.skipresponse=True
             data = self.cmd_read_buffer(lun, 0, 2, False)
 
-        if data == b"":
+        if data == b"" or data == -1:
             return None, None
         guid_gpt = gpt(
             num_part_entries=gpt_num_part_entries,
@@ -651,6 +653,7 @@ class qualcomm_firehose:
         if len(rsp)>1:
             if rsp[0]==False:
                 if b"Only nop and sig tag can be" in rsp[2]:
+                    self.log.info("Xiaomi EDL Auth detected.")
                     if self.modules.edlauth():
                         rsp = self.xmlsend(connectcmd)
         if len(rsp)>1:

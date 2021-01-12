@@ -358,23 +358,24 @@ class qualcomm_sahara:
                 elif b"<?xml" in v:
                     return ["firehose", None]
             else:
-                data = b"\x7E\x11\x00\x12\x00\xA0\xE3\x00\x00\xC1\xE5\x01\x40\xA0\xE3\x1E\xFF\x2F\xE1\x4B\xD9\x7E"
-                self.cdc.write(data, 0x80)
+                data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
+                self.cdc.write(data, 4096)
                 res = self.cdc.read()
-                if len(res) > 0 and res[1] == 0x12:
-                    return ["nandprg", None]
-                elif b"<?xml" in res:
+                if (b"<?xml" in res):
                     return ["firehose", None]
-                elif res[0] == self.cmd.SAHARA_END_TRANSFER:
+                elif len(res)>0 and res[0] == self.cmd.SAHARA_END_TRANSFER:
                     print("Device is in Sahara error state, please reboot the device.")
                     return ["sahara", None]
                 else:
-                    self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
-                    data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
-                    self.cdc.write(data, 4096)
+                    data = b"\x7E\x11\x00\x12\x00\xA0\xE3\x00\x00\xC1\xE5\x01\x40\xA0\xE3\x1E\xFF\x2F\xE1\x4B\xD9\x7E"
+                    self.cdc.write(data, 0x80)
                     res = self.cdc.read()
-                    if (b"<?xml" in res):
-                        return ["firehose", None]
+                    if len(res) > 0 and res[1] == 0x12:
+                        return ["nandprg", None]
+                    else:
+                        self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
+                        return ["sahara", None]
+
         except Exception as e:
             logger.error(str(e))
             try:
