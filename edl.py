@@ -90,7 +90,7 @@ Options:
     --lun=lun                          Set lun to read/write from (UFS memory only) [default: None]
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
     --sectorsize=bytes                 Set default sector size [default: 0x200]
-    --memory=memtype                   Set memory type (EMMC or UFS) [default: eMMC]
+    --memory=memtype                   Set memory type (EMMC or UFS)
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
@@ -110,6 +110,17 @@ from docopt import docopt
 
 args = docopt(__doc__, version='3')
 
+default_ids = [
+    [0x05c6,0x9008,-1],
+    [0x05c6,0x900e,-1] ,
+    [0x05c6,0x9025,-1],
+    [0x1199,0x9062,-1],
+    [0x1199,0x9070,-1],
+    [0x1199,0x9090,-1],
+    [0x0846,0x68e0,-1],
+    [0x19d2,0x0076,-1]
+]
+
 from Library.utils import log_class
 from Library.usblib import usb_class
 from Library.sahara import qualcomm_sahara
@@ -117,7 +128,7 @@ from Library.streaming_client import streaming_client
 from Library.firehose_client import firehose_client
 from Library.streaming import QualcommStreaming
 
-print("Qualcomm Sahara / Firehose Client V3.1 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.2 (c) B.Kerler 2018-2021.")
 
 LOGGER = None
 
@@ -245,7 +256,11 @@ def main():
     loop = 0
     vid = int(args["--vid"], 16)
     pid = int(args["--pid"], 16)
-    usbids = [[vid, pid], [0x05c6,0x9008], [0x05c6,0x900e] , [0x05c6, 0x9025], [0x1199, 0x9062], [0x1199, 0x9070], [0x1199, 0x9090], [0x0846, 0x68e0], [0x19d2, 0x0076]]
+    interface = -1
+    if vid!="":
+        portconfig = [[vid, pid, interface]]
+    else:
+        portconfig = default_ids
     filename = "log.txt"
     if args["--debugmode"]:
         LOGGER = log_class(logging.DEBUG, filename)
@@ -254,7 +269,7 @@ def main():
     else:
         LOGGER = log_class(logging.INFO, filename)
 
-    cdc = usb_class(usbids, log=LOGGER, interface=-1)
+    cdc = usb_class(portconfig, log=LOGGER)
     sahara = qualcomm_sahara(cdc)
 
     if args["--loader"] == 'None':

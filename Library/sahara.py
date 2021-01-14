@@ -4,14 +4,14 @@ import os
 import sys
 from struct import unpack, pack
 from Library.utils import logging, read_object, print_progress, rmrf
-from Config.qualcomm_config import sochw, msmids
+from Config.qualcomm_config import sochw, msmids, root_cert_hash
 
 logger = logging.getLogger(__name__)
 
 
 def convertmsmid(msmid):
     msmiddb=[]
-    if int(msmid,16)&0xFF==0xe1:
+    if int(msmid,16)&0xFF==0xe1 or msmid=='00000000':
         return [msmid]
     socid=(int(msmid, 16)>>16)
     if socid in sochw:
@@ -296,39 +296,45 @@ class qualcomm_sahara:
         self.msm_str = None
 
     def get_rsp(self):
-        v = self.cdc.read()
-        if v==b'':
-            return [-1, -1]
-        if b"<?xml" in v:
-            return ["firehose", None]
-        pkt = read_object(v[0:0x2 * 0x4], self.pkt_cmd_hdr)
-        if pkt['cmd'] == self.cmd.SAHARA_HELLO_REQ:
-            data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
-        elif pkt["cmd"] == self.cmd.SAHARA_DONE_RSP:
-            data = read_object(v[0x0:0x3 * 4], self.pkt_done)
-        elif pkt["cmd"] == self.cmd.SAHARA_END_TRANSFER:
-            data = read_object(v[0x8:0x8 + 0x2 * 0x4], self.pkt_image_end)
-        elif pkt["cmd"] == self.cmd.SAHARA_RESET_RSP:
-            data = []
-        elif pkt["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_READ_DATA:
-            self.bit64 = True
-            data = read_object(v[0x8:0x8 + 0x3 * 0x8], self.pkt_read_data_64)
-        elif pkt["cmd"] == self.cmd.SAHARA_READ_DATA:
-            self.bit64 = False
-            data = read_object(v[0x8:0x8 + 0x3 * 0x4], self.pkt_read_data)
-        elif pkt["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_DEBUG:
-            self.bit64 = True
-            data = read_object(v[0x8:0x8 + 0x2 * 0x8], self.pkt_memory_debug_64)
-        elif pkt["cmd"] == self.cmd.SAHARA_MEMORY_DEBUG:
-            self.bit64 = False
-            data = read_object(v[0x8:0x8 + 0x2 * 0x4], self.pkt_memory_debug)
-        elif pkt["cmd"] == self.cmd.SAHARA_EXECUTE_RSP:
-            data = read_object(v[0:0x4 * 0x4], self.pkt_execute_rsp_cmd)
-        elif pkt["cmd"] == self.cmd.SAHARA_CMD_READY:
-            data = []
-        else:
+        data = []
+        try:
+            v = self.cdc.read()
+            if v==b'':
+                return [-1, -1]
+            if b"<?xml" in v:
+                return ["firehose", None]
+            pkt = read_object(v[0:0x2 * 0x4], self.pkt_cmd_hdr)
+            if "cmd" in pkt:
+                cmd = pkt["cmd"]
+                if cmd == self.cmd.SAHARA_HELLO_REQ:
+                    data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
+                elif cmd == self.cmd.SAHARA_DONE_RSP:
+                    data = read_object(v[0x0:0x3 * 4], self.pkt_done)
+                elif cmd == self.cmd.SAHARA_END_TRANSFER:
+                    data = read_object(v[0x8:0x8 + 0x2 * 0x4], self.pkt_image_end)
+                elif cmd == self.cmd.SAHARA_64BIT_MEMORY_READ_DATA:
+                    self.bit64 = True
+                    data = read_object(v[0x8:0x8 + 0x3 * 0x8], self.pkt_read_data_64)
+                elif cmd == self.cmd.SAHARA_READ_DATA:
+                    self.bit64 = False
+                    data = read_object(v[0x8:0x8 + 0x3 * 0x4], self.pkt_read_data)
+                elif cmd == self.cmd.SAHARA_64BIT_MEMORY_DEBUG:
+                    self.bit64 = True
+                    data = read_object(v[0x8:0x8 + 0x2 * 0x8], self.pkt_memory_debug_64)
+                elif cmd == self.cmd.SAHARA_MEMORY_DEBUG:
+                    self.bit64 = False
+                    data = read_object(v[0x8:0x8 + 0x2 * 0x4], self.pkt_memory_debug)
+                elif cmd == self.cmd.SAHARA_EXECUTE_RSP:
+                    data = read_object(v[0:0x4 * 0x4], self.pkt_execute_rsp_cmd)
+                elif cmd == self.cmd.SAHARA_CMD_READY or cmd == self.cmd.SAHARA_RESET_RSP:
+                    data = []
+                else:
+                    return None
+            return [pkt, data]
+        except Exception as e:
+            logger.error(str(e))
             return None
-        return [pkt, data]
+
 
     def cmd_hello(self, mode, version_min=1, max_cmd_len=0):  # CMD 0x1, RSP 0x2
         cmd = self.cmd.SAHARA_HELLO_RSP
@@ -480,8 +486,12 @@ class qualcomm_sahara:
                 fname = ""
                 if self.hwidstr in self.loaderdb:
                     mt = self.loaderdb[self.hwidstr]
-                    if self.pkhash[0:16] == "cc3153a80293939b":
-                        logger.info("Unfused device detected, so any loader should be fine...")
+                    unfused=False
+                    for rootcert in root_cert_hash:
+                        if self.pkhash[0:16] in root_cert_hash[rootcert]:
+                            unfused=True
+                    if unfused:
+                        logger.info("Possibly unfused device detected, so any loader should be fine...")
                         if self.pkhash[0:16] in mt:
                             fname = mt[self.pkhash[0:16]]
                             logger.info(f"Trying loader: {fname}")

@@ -8,45 +8,23 @@ from shutil import copyfile
 try:
     from Library.utils import elf
     from Library.sahara import convertmsmid
-    parent_dir="Loaders"
+    from Config.qualcomm_config import vendor
+    parent_dir = "Loaders"
 except Exception as e:
-    import os,sys,inspect
+    import os, sys, inspect
+
     current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = os.path.dirname(current_dir)
-    sys.path.insert(0, parent_dir) 
+    sys.path.insert(0, parent_dir)
     from Library.utils import elf
     from Library.sahara import convertmsmid
-
-vendor = {}
-vendor["0000"] = "Qualcomm     "
-vendor["0001"] = "Sony/Wingtech"
-vendor["0004"] = "ZTE          "
-vendor["0015"] = "Huawei       "
-vendor["0017"] = "Lenovo       "
-vendor["0029"] = "Asus         "
-vendor["0030"] = "Haier        "
-vendor["0031"] = "LG           "
-vendor["0042"] = "Alcatel      "
-vendor["0045"] = "Nokia        "
-vendor["0048"] = "YuLong       "
-vendor["0168"] = "Motorola     "
-vendor["01B0"] = "Motorola     "
-vendor["0208"] = "Motorola     "
-vendor["0228"] = "Motorola     "
-vendor["0328"] = "Motorola     "
-vendor["0368"] = "Motorola     "
-vendor["03C8"] = "Motorola     "
-vendor["00C8"] = "Motorola     "
-vendor["0348"] = "Motorola     "
-vendor["1111"] = "Asus         "
-vendor["143A"] = "Asus         "
-vendor["1978"] = "Blackphone   "
-vendor["2A70"] = "Oxygen       "
+    from Config.qualcomm_config import vendor
 
 class MBN:
-    def __init__(self,memory):
-        self.imageid,self.flashpartitionversion,self.imagesrc,self.loadaddr,self.imagesz,self.codesz,\
-        self.sigptr,self.sigsz,self.certptr,self.certsz=unpack("<IIIIIIIIII",memory[0xC:0xC+40])
+    def __init__(self, memory):
+        self.imageid, self.flashpartitionversion, self.imagesrc, self.loadaddr, self.imagesz, self.codesz, \
+        self.sigptr, self.sigsz, self.certptr, self.certsz = unpack("<IIIIIIIIII", memory[0xC:0xC + 40])
+
 
 class Signed:
     filename = ''
@@ -80,17 +58,19 @@ def grabtext(data):
 def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
     try:
         md_size = \
-        unpack("<I", mem_section[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
+            unpack("<I", mem_section[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
         md_offset = memsection.file_start_addr + 0x2C + 0x4
         major, minor, sw_id, hw_id, oem_id, model_id, app_id = unpack("<IIIIIII",
-                                                                             mem_section[md_offset:md_offset + (7 * 4)])
+                                                                      mem_section[md_offset:md_offset + (7 * 4)])
         sign_info.hw_id = "%08X" % hw_id
         sign_info.sw_id = "%08X" % sw_id
         sign_info.oem_id = "%04X" % oem_id
+
         sign_info.model_id = "%04X" % model_id
         sign_info.hw_id += sign_info.oem_id + sign_info.model_id
         sign_info.app_id = "%08X" % app_id
         md_offset += (7 * 4)
+
         # v=unpack("<I", mem_section[md_offset:md_offset + 4])[0]
         '''
         rot_en=(v >> 0) & 1
@@ -173,13 +153,10 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
         idx = mem_section.find('IMAGE_VARIANT_STRING='.encode(), 0)
         if idx != -1:
             sign_info.image_variant = grabtext(mem_section[idx + len("IMAGE_VARIANT_STRING="):])
-        if "OEM_ID" in signature:
-            if signature["OEM_ID"] in vendor:
-                sign_info.oem_id = vendor[signature["OEM_ID"]]
-            else:
-                sign_info.oem_id = signature["OEM_ID"]
         if "MODEL_ID" in signature:
             sign_info.model_id = signature["MODEL_ID"]
+        if "OEM_ID" in signature:
+            sign_info.oem_id = signature["OEM_ID"]
         if "HW_ID" in signature:
             sign_info.hw_id = signature["HW_ID"]
         if "SW_ID" in signature:
@@ -250,12 +227,19 @@ def main(argv):
         if not os.path.exists(outputdir):
             os.mkdir(outputdir)
 
-    loaderdb = init_loader_db()
-    for (dirpath, dirnames, filenames) in walk(path):
-        for filename in filenames:
-            file_list.append(os.path.join(dirpath, filename))
-
+    # First hash all loaders in Loader directory
     hashes = {}
+    loaderdb = init_loader_db()
+    for mhwid in loaderdb:
+        for pkhash in loaderdb[mhwid]:
+            fname = loaderdb[mhwid][pkhash]
+            with open(fname, 'rb') as rhandle:
+                data = rhandle.read()
+                sha256 = hashlib.sha256()
+                sha256.update(data)
+                hashes[sha256.digest()] = fname
+
+    # Now lets hash all files in the output directory
     for (dirpath, dirnames, filenames) in walk(outputdir):
         for filename in filenames:
             fname = os.path.join(dirpath, filename)
@@ -265,28 +249,24 @@ def main(argv):
                 sha256.update(data)
                 hashes[sha256.digest()] = fname
 
-    for mhwid in loaderdb:
-        for pkhash in loaderdb[mhwid]:
-            fname=loaderdb[mhwid][pkhash]
-            with open(fname, 'rb') as rhandle:
-                data = rhandle.read()
-                sha256 = hashlib.sha256()
-                sha256.update(data)
-                hashes[sha256.digest()] = fname
+    # Now lets search the input path for loaders
+    extensions = ["elf", "mbn", "bin", "hex"]
+    for (dirpath, dirnames, filenames) in walk(path):
+        for filename in filenames:
+            basename = os.path.basename(filename).lower()
+            ext = basename[basename.rfind(".") + 1:]
+            if ext in extensions:
+                file_list.append(os.path.join(dirpath, filename))
 
-    filelist = []
-    rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
-    extensions = ["elf", "mbn", "bin", ""]
     if not os.path.exists(os.path.join(outputdir, "Unknown")):
         os.makedirs(os.path.join(outputdir, "Unknown"))
+    if not os.path.exists(os.path.join(outputdir, "Duplicate")):
+        os.mkdir(os.path.join(outputdir, "Duplicate"))
+
+    # Lets hash all the input files and extract the signature
+    filelist = []
+    rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
     for filename in file_list:
-        found = False
-        for ext in extensions:
-            if "." + ext in filename:
-                found = True
-                break
-        if found != True:
-            continue
         with open(filename, 'rb') as rhandle:
             mem_section = rhandle.read()
             sha256 = hashlib.sha256()
@@ -299,34 +279,30 @@ def main(argv):
             if len(mem_section) < 4:
                 continue
             hdr = unpack("<I", mem_section[0:4])[0]
-            '''
-            if  hdr == 0x844BDCD1:  # mbn
-                signatureoffset = unpack("<I", mem_section[0x14:0x18])[0] + unpack("<I", mem_section[0x20:0x24])[0] + \
-                                  unpack("<I", mem_section[0x28:0x2C])[0]
-                if unpack("<I", mem_section[0x28:0x2C])[0] == 0:
-                    signatureoffset = -1
-            '''
+
             if hdr == 0x464C457F:
                 elfheader = elf(mem_section, signinfo.filename)
                 if 'memorylayout' in dir(elfheader):
                     memsection = elfheader.memorylayout[1]
                     try:
                         version = unpack("<I", mem_section[
-                                                      memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04 + 0x4])[
+                                               memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04 + 0x4])[
                             0]
                         code_size = \
                             unpack("<I", mem_section[
-                                                memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
+                                         memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
                                 0]
                         signature_size = \
                             unpack("<I", mem_section[
-                                                memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
+                                         memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
                                 0]
                         # cert_chain_size=unpack("<I", mem_section[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[0]
                     except:
                         continue
                     if signature_size == 0:
                         print("%s has no signature." % filename)
+                        copyfile(filename,
+                                 os.path.join(outputdir, "Unknown", filename[filename.rfind("/") + 1:].lower()))
                         continue
                     if version < 6:  # MSM,MDM
                         signatureoffset = memsection.file_start_addr + 0x28 + code_size + signature_size
@@ -343,11 +319,12 @@ def main(argv):
                         print("Unknown version for " + filename)
                         continue
             elif hdr == 0x844BDCD1:
-                mbn=MBN(mem_section)
+                mbn = MBN(mem_section)
                 if mbn.sigsz == 0:
                     print("%s has no signature." % filename)
+                    copyfile(filename, os.path.join(outputdir, "Unknown", filename[filename.rfind("/") + 1:].lower()))
                     continue
-                signatureoffset=mbn.imagesrc+mbn.codesz+mbn.sigsz
+                signatureoffset = mbn.imagesrc + mbn.codesz + mbn.sigsz
                 signinfo = extract_old_hdr(signatureoffset, signinfo, mem_section, mbn.codesz, mbn.sigsz)
                 if signinfo is None:
                     continue
@@ -362,12 +339,17 @@ def main(argv):
         hw_id = ''
         item = ''
 
-    if not os.path.exists(os.path.join(outputdir, "Duplicate")):
-        os.mkdir(os.path.join(outputdir, "Duplicate"))
     loaderlists = {}
     for item in sorted_x:
         if item.oem_id != '':
-            info = f"OEM:{item.oem_id}\tMODEL:{item.model_id}\tHWID:{item.hw_id}\tSWID:{item.sw_id}\tSWSIZE:{item.sw_size}\tPK_HASH:{item.pk_hash}\t{item.filename}\t{str(item.filesize)}"
+            oemid=int(item.oem_id,16)
+            if oemid in vendor:
+                oeminfo = vendor[oemid]
+            else:
+                oeminfo=item.oem_id
+            if len(item.sw_id)<16:
+                item.sw_id="0"*(16-len(item.sw_id))+item.sw_id
+            info = f"OEM:{oeminfo}\tMODEL:{item.model_id}\tHWID:{item.hw_id}\tSWID:{item.sw_id}\tSWSIZE:{item.sw_size}\tPK_HASH:{item.pk_hash}\t{item.filename}\t{str(item.filesize)}"
             if item.oem_version != '':
                 info += "\tOEMVER:" + item.oem_version + "\tQCVER:" + item.qc_version + "\tVAR:" + item.image_variant
             loader_info = loaderinfo()
@@ -382,26 +364,42 @@ def main(argv):
                         devid = loader_info.hw_id[8:]
                         for msmid in convertmsmid(msmid):
                             hwid = (msmid + devid).lower()
-                            copyfile(item.filename,
-                                     os.path.join(outputdir, hwid + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
+                            auth = ""
+                            with open(item.filename, "rb") as rf:
+                                data = rf.read()
+                                if b"EDL Auth" in data:
+                                    auth = "_EDLAuth"
+                                if b"peek\x00" in data:
+                                    auth += "_peek"
+                            fna = os.path.join(outputdir, (
+                                        hwid + "_" + loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower())
+                            if not os.path.exists(fna):
+                                copyfile(item.filename,
+                                         os.path.join(outputdir, hwid + "_" + (
+                                                     loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower()))
+                            elif item.filesize > os.stat(fna).st_size:
+                                copyfile(item.filename, os.path.join(outputdir,
+                                                                     (hwid + "_" + loader_info.pk_hash[
+                                                                                   0:16] + "_FHPRG" + auth + ".bin").lower()))
                     else:
                         print("Duplicate: " + info)
                         copyfile(item.filename, os.path.join(outputdir, "Duplicate",
-                                                             loader_info.hw_id + "_" + loader_info.pk_hash[
-                                                                                       0:16] + "_FHPRG.bin"))
+                                                             (loader_info.hw_id + "_" + loader_info.pk_hash[
+                                                                                        0:16] + "_FHPRG.bin").lower()))
                 else:
-                    copyfile(item.filename, os.path.join(outputdir, "Unknown", item.filename[item.filename.rfind(
-                        "\\") + 1:] + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
+                    copyfile(item.filename, os.path.join(outputdir, "Unknown", os.path.basename(item.filename).lower()))
             else:
                 copyfile(item.filename,
-                         os.path.join(outputdir,"Duplicate", loader_info.hw_id + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin"))
+                         os.path.join(outputdir, "Duplicate",
+                                      (loader_info.hw_id + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin").lower()))
                 print(item.filename + " does already exist. Skipping")
             try:
                 rt.write(info + "\n")
             except:
                 continue
         else:
-            copyfile(item.filename,os.path.join(outputdir, "Unknown",item.filename))
+            print("Unknown :"+item.filename)
+            copyfile(item.filename, os.path.join(outputdir, "Unknown", os.path.basename(item.filename).lower()))
 
     for item in filelist:
         if item.oem_id == '' and (".bin" in item.filename or ".mbn" in item.filename or ".hex" in item.filename):
@@ -410,8 +408,9 @@ def main(argv):
                 info += "\tOEMVER:" + item.oem_version + "\tQCVER:" + item.qc_version + "\tVAR:" + item.image_variant
             print(info)
             rt.write(info + "\n")
-            if not os.path.exists(os.path.join(outputdir,"Unknown",item.filename)):
-                copyfile(item.filename, os.path.join(outputdir, "Unknown", item.filename[item.filename.rfind("\\") + 1:]))
+            if not os.path.exists(os.path.join(outputdir, "Unknown", item.filename)):
+                copyfile(item.filename,
+                         os.path.join(outputdir, "Unknown", os.path.basename(item.filename).lower()))
 
     rt.close()
 

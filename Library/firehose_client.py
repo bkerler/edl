@@ -6,6 +6,7 @@ from Library.firehose import qualcomm_firehose
 from Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
 from Library.xmlparser import xmlparser
 from Library.utils import do_tcp_server
+from Config.qualcomm_config import memory_type
 
 class firehose_client:
     def __init__(self, arguments, cdc, sahara, LOGGER, printer):
@@ -16,7 +17,10 @@ class firehose_client:
         self.printer = printer
 
         self.cfg = qualcomm_firehose.cfg()
-        self.cfg.MemoryName = arguments["--memory"]
+        if not arguments["--memory"] is None:
+            self.cfg.MemoryName = arguments["--memory"].lower()
+        else:
+            self.cfg.MemoryName = ""
         self.cfg.ZLPAwareHost = 1
         self.cfg.SkipStorageInit = arguments["--skipstorageinit"]
         self.cfg.SkipWrite = arguments["--skipwrite"]
@@ -35,6 +39,31 @@ class firehose_client:
                                           self.getluns(arguments), arguments)
         self.connected = False
         self.firehose.connect()
+        if "hwid" in dir(sahara):
+            if sahara.hwid is not None:
+                hwid = (sahara.hwid >> 32) & 0xFFFFFF
+                socid = ((sahara.hwid >> 32) >> 16)
+                if hwid in msmids:
+                    self.target_name = msmids[hwid]
+                    self.LOGGER.info(f"Target detected: {self.target_name}")
+                    if self.cfg.MemoryName=="":
+                        if self.target_name in memory_type.preferred_memory:
+                            type=memory_type.preferred_memory[self.target_name]
+                            if type==memory_type.nand:
+                                self.cfg.MemoryName = "nand"
+                            elif type==memory_type.emmc:
+                                self.cfg.MemoryName = "eMMC"
+                            elif type==memory_type.ufs:
+                                self.cfg.MemoryName = "UFS"
+                            self.LOGGER.info("Based on the chipset, we assume "+self.cfg.MemoryName+" as default memory type...")
+                elif socid in sochw:
+                    self.target_name = sochw[socid].split(",")[0]
+
+        # We assume ufs is fine (hopefully), set it as default
+        if self.cfg.MemoryName=="":
+            self.LOGGER.info("No --memory option set, we assume \"UFS\" as default ...")
+            self.cfg.MemoryName="UFS"
+
         if self.firehose.configure(0):
             funcs = "Supported functions:\n-----------------\n"
             for function in self.firehose.supported_functions:
@@ -42,15 +71,6 @@ class firehose_client:
             funcs = funcs[:-1]
             LOGGER.info(funcs)
             self.target_name = self.firehose.cfg.TargetName
-            if "hwid" in dir(sahara):
-                if sahara.hwid is not None:
-                    hwid = (sahara.hwid >> 32) & 0xFFFFFF
-                    socid = ((sahara.hwid >> 32)>>16)
-                    if hwid in msmids:
-                        self.target_name = msmids[hwid]
-                        self.LOGGER.info(f"Target detected: {self.target_name}")
-                    elif socid in sochw:
-                        self.target_name = sochw[socid].split(",")[0]
             self.connected=True
 
     def check_cmd(self, func):
@@ -67,7 +87,7 @@ class firehose_client:
             return [int(argument["--lun"])]
 
         luns = []
-        if not argument["--memory"].lower() == "emmc":
+        if not self.cfg.MemoryName == "emmc":
             for i in range(0, 99):
                 luns.append(i)
         else:
@@ -155,7 +175,7 @@ class firehose_client:
                     self.LOGGER.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                     for lun in fpartitions:
                         for rpartition in fpartitions[lun]:
-                            if options["--memory"].lower() == "emmc":
+                            if self.cfg.MemoryName == "emmc":
                                 self.LOGGER.error("\t" + rpartition)
                             else:
                                 self.LOGGER.error(lun + ":\t" + rpartition)
@@ -530,7 +550,7 @@ class firehose_client:
                 self.LOGGER.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
                 for lun in fpartitions:
                     for partition in fpartitions[lun]:
-                        if options["--memory"].lower() == "emmc":
+                        if self.cfg.MemoryName == "emmc":
                             self.LOGGER.error("\t" + partition)
                         else:
                             self.LOGGER.error(lun + ":\t" + partition)

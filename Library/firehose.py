@@ -4,6 +4,7 @@ import time
 from Library.utils import *
 from Library.gpt import gpt
 
+
 try:
     from Library.Modules.init import modules
 except Exception as e:
@@ -669,6 +670,8 @@ class qualcomm_firehose:
                     rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
                 if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
                     rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
+                if rsp[1]["MemoryName"] != self.cfg.MemoryName:
+                    self.log.warning("Memory type was set as "+self.cfg.MemoryName+" but device reported it is "+rsp[1]["MemoryName"]+" instead.")
                 self.cfg.MemoryName = rsp[1]["MemoryName"]
                 self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
                 self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])

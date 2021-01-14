@@ -44,9 +44,8 @@ CDC_CMDS = {
 
 class usb_class:
 
-    def __init__(self, vidpid=None, interface=-1, devclass=-1, log=None):
-        self.vidpid = vidpid
-        self.interface = interface
+    def __init__(self, portconfig=None, devclass=-1, log=None):
+        self.portconfig = portconfig
         self.connected = False
         self.devclass = devclass
         self.timeout = None
@@ -134,13 +133,15 @@ class usb_class:
         if self.connected:
             self.close()
             self.connected = False
-        for usbid in self.vidpid:
+        for usbid in self.portconfig:
             vid = usbid[0]
             pid = usbid[1]
+            interface = usbid[2]
             self.device = usb.core.find(idVendor=vid, idProduct=pid)
             if self.device is not None:
                 self.vid = vid
                 self.pid = pid
+                self.interface = interface
                 break
 
         if self.device is None:
@@ -152,18 +153,15 @@ class usb_class:
         #    pass
         self.configuration = self.device.get_active_configuration()
         if self.interface == -1:
-            if vid==0x413c and pid==0x81d7:  #Telit LN940
-                self.interface=5
-            else:
-                for interfacenum in range(0, self.configuration.bNumInterfaces):
-                    itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
-                    if self.devclass != -1:
-                        if itf.bInterfaceClass == self.devclass:  # MassStorage
-                            self.interface = interfacenum
-                            break
-                    else:
+            for interfacenum in range(0, self.configuration.bNumInterfaces):
+                itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
+                if self.devclass != -1:
+                    if itf.bInterfaceClass == self.devclass:  # MassStorage
                         self.interface = interfacenum
                         break
+                else:
+                    self.interface = interfacenum
+                    break
 
         self.log.debug(self.configuration)
         if self.interface > self.configuration.bNumInterfaces:
@@ -353,7 +351,7 @@ class scsi:
         self.usb = None
 
     def connect(self):
-        self.usb = usb_class(vidpid=[self.vid, self.pid], interface=self.interface, devclass=8)
+        self.usb = usb_class(portconfig=[self.vid, self.pid,self.interface], devclass=8)
         if self.usb.connect():
             return True
         return False

@@ -2,6 +2,17 @@
 '''
 Licensed under MIT License, (c) B. Kerler 2018-2019
 '''
+default_vid_pid=[
+                    [0x2c7c,0x0125,-1], #Quectel EC25
+                    [0x1199,0x9071,-1], #Sierra Wireless
+                    [0x1199,0x9091,-1], #Sierra Wireless
+                    [0x05C6,0x9008,-1], #QC EDL
+                    [0x19d2,0x0016,-1], #ZTE Diag
+                    [0x19d2,0x0076,-1], #ZTE Download
+                    [0x12d1,0x1506,-1],
+                    [0x413c,0x81d7,5],  #Telit LN940
+                ]
+
 import os
 import sys
 import argparse
@@ -305,9 +316,8 @@ FS_DIAG_MAX_READ_REQ = 1024
 # define DIAG_NV_READ_F 0x26
 
 class qcdiag():
-    def __init__(self, log, vidpid, interface, ep_in=-1, ep_out=-1):
-        self.vidpid = vidpid
-        self.interface = interface
+    def __init__(self, log, portconfig, ep_in=-1, ep_out=-1):
+        self.portconfig = portconfig
         self.nvlist = {}
         self.ep_in = ep_in
         self.ep_out = ep_out
@@ -360,7 +370,7 @@ class qcdiag():
             return True
 
     def connect(self):
-        self.cdc = usb_class(self.vidpid, interface=self.interface,log=self.log)
+        self.cdc = usb_class(self.portconfig, log=self.log)
         self.hdlc = None
         if self.cdc.connect(self.ep_in, self.ep_out):
             self.hdlc = hdlc(self.cdc)
@@ -380,8 +390,8 @@ class qcdiag():
         return self.prettyprint(reply)
 
     def enforce_crash(self):
-        #./diag.py -nvwrite 1027,01 enable adsp log
-        #./diag.py -nvwrite 4399,01 enable download on reboot
+        #./diag.py -nvwrite 1027,01 enable adsp log NV_MDSP_MEM_DUMP_ENABLED_I
+        #./diag.py -nvwrite 4399,01 enable download on reboot NV_DETECT_HW_RESET_I
         res = self.send(b"\x4B\x25\x03\x00")
         print(self.decodestatus(res))
 
@@ -1019,7 +1029,7 @@ class qcdiag():
 
 
 def main():
-    info = 'Qualcomm Diag Client (c) B.Kerler 2019.'
+    info = 'Qualcomm Diag Client (c) B.Kerler 2019-2021.'
     parser = argparse.ArgumentParser(description=info)
     print("\n" + info + "\n---------------------------------------\n")
     parser.add_argument('-vid', metavar="<vid>", help='[Option] Specify vid, default=0x05c6)', default="")
@@ -1061,21 +1071,11 @@ def main():
 
     connected=False
     diag=None
-    default_vid_pid=[
-                        [0x2c7c,0x0125], #Quectel EC25
-                        [0x1199,0x9071], #Sierra Wireless
-                        [0x1199,0x9091], #Sierra Wireless
-                        [0x05C6,0x9008], #QC EDL
-                        [0x19d2,0x0016], #ZTE Diag
-                        [0x19d2,0x0076], #ZTE Download
-                        [0x12d1,0x1506],
-                        [0x413c,0x81d7]  #Telit LN940
-                    ]
     if vid==None or pid==None:
-        diag = qcdiag(LOGGER,default_vid_pid, interface)
+        diag = qcdiag(LOGGER,default_vid_pid)
         connected = diag.connect()
     else:
-        diag = qcdiag(LOGGER, [[vid, pid]], interface)
+        diag = qcdiag(LOGGER, [[vid, pid, interface]])
         connected = diag.connect()
     if connected:
         if args.sp:
