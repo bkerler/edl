@@ -483,7 +483,6 @@ class qualcomm_sahara:
                                 f"PK_HASH:           0x{self.pkhash}\n" +
                                 f"Serial:            0x{self.serials}\n")
             if self.programmer == "":
-                fname = ""
                 if self.hwidstr in self.loaderdb:
                     mt = self.loaderdb[self.hwidstr]
                     unfused=False
@@ -493,27 +492,36 @@ class qualcomm_sahara:
                     if unfused:
                         logger.info("Possibly unfused device detected, so any loader should be fine...")
                         if self.pkhash[0:16] in mt:
-                            fname = mt[self.pkhash[0:16]]
-                            logger.info(f"Trying loader: {fname}")
+                            self.programmer = mt[self.pkhash[0:16]]
+                            logger.info(f"Trying loader: {self.programmer}")
                         else:
                             for loader in mt:
-                                fname = mt[loader]
-                                logger.info(f"Possible loader available: {fname}")
+                                self.programmer = mt[loader]
+                                logger.info(f"Possible loader available: {self.programmer}")
                             for loader in mt:
-                                fname = mt[loader]
-                                logger.info(f"Trying loader: {fname}")
+                                self.programmer = mt[loader]
+                                logger.info(f"Trying loader: {self.programmer}")
                                 break
                     elif self.pkhash[0:16] in mt:
-                        fname = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        logger.info(f"Detected loader: {fname}")
+                        self.programmer = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
+                        logger.info(f"Detected loader: {self.programmer}")
                     else:
                         for loader in self.loaderdb[self.hwidstr]:
-                            fname = self.loaderdb[self.hwidstr][loader]
-                            logger.info(f"Trying loader: {fname}")
+                            self.programmer = self.loaderdb[self.hwidstr][loader]
+                            logger.info(f"Trying loader: {self.programmer}")
                             break
                         # print("Couldn't find a loader for given hwid and pkhash :(")
                         # exit(0)
                 elif self.hwidstr!=None and self.pkhash!=None:
+                    msmid=self.hwidstr[:8]
+                    for hwidstr in self.loaderdb:
+                        if msmid==hwidstr[:8]:
+                            for pkhash in self.loaderdb[hwidstr]:
+                                if self.pkhash[0:16]==pkhash:
+                                    self.programmer = self.loaderdb[hwidstr][pkhash]
+                                    logger.info(f"Trying loader: {self.programmer}")
+                                    self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
+                                    return True
                     logger.error(
                         f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
                         "_[FHPRG/ENPRG].bin) :(")
@@ -522,7 +530,6 @@ class qualcomm_sahara:
                     logger.error(f"Couldn't find a suitable loader :(")
                     return False
 
-                self.programmer = fname
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
             return True
         return False
