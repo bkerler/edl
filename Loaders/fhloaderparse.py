@@ -367,7 +367,7 @@ def main(argv):
                             auth = ""
                             with open(item.filename, "rb") as rf:
                                 data = rf.read()
-                                if b"EDL Auth" in data:
+                                if b"sig tag can" in data:
                                     auth = "_EDLAuth"
                                 if b"peek\x00" in data:
                                     auth += "_peek"
