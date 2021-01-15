@@ -56,6 +56,7 @@ class qualcomm_firehose:
 
     def __init__(self, cdc, xml, cfg, log, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
+        self.lasterror = b""
         self.args = args
         self.xml = xml
         self.cfg = cfg
@@ -465,6 +466,7 @@ class qualcomm_firehose:
         return True
 
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
+        self.lasterror = b""
         maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
         total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
         dataread = 0
@@ -513,6 +515,7 @@ class qualcomm_firehose:
                             self.log.error(f"Error:")
                             for line in info:
                                 self.log.error(line)
+                                self.lasterror+=bytes(line+"\n","utf-8")
                             return False
                 else:
                     if display:
@@ -522,6 +525,7 @@ class qualcomm_firehose:
             return True
 
     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+        self.lasterror = b""
         maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
         total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
         dataread = 0
@@ -574,6 +578,7 @@ class qualcomm_firehose:
                 if len(rsp)>1:
                     if not b"Failed to open the UFS Device" in rsp[2]:
                         self.log.error(f"Error:{rsp[2]}")
+                self.lasterror=rsp[2]
                 return -1
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -723,6 +728,13 @@ class qualcomm_firehose:
             self.cfg.SECTOR_SIZE_IN_BYTES = 512
         elif self.cfg.MemoryName.lower() == "ufs":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+
+        rsp=self.cmd_read_buffer(0,1,1,False)
+        if rsp==-1:
+                if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
+                    self.log.warning("Memory type UFS doesn't seem to match (Failed to init). Use eMMC instead.")
+                    self.cfg.MemoryName="eMMC"
+                    return self.configure(0)
 
     def connect(self):
         v = b'-1'

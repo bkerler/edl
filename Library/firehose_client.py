@@ -61,7 +61,7 @@ class firehose_client:
 
         # We assume ufs is fine (hopefully), set it as default
         if self.cfg.MemoryName=="":
-            self.LOGGER.info("No --memory option set, we assume \"UFS\" as default ...")
+            self.LOGGER.info("No --memory option set, we assume \"UFS\" as default ..., if it fails, try using \"--memory=eMMC\" instead !")
             self.cfg.MemoryName="UFS"
 
         if self.firehose.configure(0):
