@@ -1,10 +1,13 @@
 import sys
 import logging
+import logging.config
 import codecs
 import struct
 import os
 import shutil
 import stat
+import colorama
+import copy
 from binascii import hexlify
 
 try:
@@ -140,73 +143,70 @@ def parse_args(cmd, args, mainargs):
         options["<xmlstring>"] = opts[0]
     return options
 
-class log_class:
-    def __init__(self, level=logging.INFO, filename="log.txt"):
-        self.level = level
-        logging.basicConfig(level=self.level, format="%(name)s - %(message)s")
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(level)
-        if level == logging.DEBUG:
-            if os.path.exists(filename):
-                os.remove(filename)
-            fh = logging.FileHandler(filename)
-            self.logger.addHandler(fh)
+class ColorFormatter(logging.Formatter):
+    LOG_COLORS = {
+        logging.ERROR: colorama.Fore.RED,
+        logging.DEBUG: colorama.Fore.LIGHTMAGENTA_EX,
+        logging.WARNING: colorama.Fore.YELLOW,
+    }
 
-    def getlevel(self):
-        return self.level
+    def format(self, record, *args, **kwargs):
+        # if the corresponding logger has children, they may receive modified
+        # record, so we want to keep it intact
+        new_record = copy.copy(record)
+        if new_record.levelno in self.LOG_COLORS:
+            pad = ""
+            if new_record.name != "root":
+                print(new_record.name)
+                pad = "[LIB]: "
+            # we want levelname to be in different color, so let's modify it
+            new_record.msg = "{pad}{color_begin}{msg}{color_end}".format(
+                pad=pad,
+                msg=new_record.msg,
+                color_begin=self.LOG_COLORS[new_record.levelno],
+                color_end=colorama.Style.RESET_ALL,
+            )
+        # now we can let standart formatting take care of the rest
+        return super(ColorFormatter, self).format(new_record, *args, **kwargs)
 
-    def setlevel(self, level):
-        self.level = level
-        return self.logger.setLevel(level)
+class LogBase(type):
+    debuglevel=logging.root.level
 
-    def decoder(self, data):
-        if isinstance(data, bytes) or isinstance(data, bytearray):
-            if data[:5] == b"<?xml":
-                try:
-                    rdata = ""
-                    for line in data.split(b"\n"):
-                        try:
-                            rdata += line.decode('utf-8') + "\n"
-                        except:
-                            rdata += hexlify(line).decode('utf-8') + "\n"
-                    return rdata
-                except:
-                    pass
-        return data
+    def __init__(cls, *args):
+        super().__init__(*args)
+        logger_attribute_name = '_' + cls.__name__ + '__logger'
+        logger_debuglevel_name = '_' + cls.__name__ + '__debuglevel'
+        logger_name = '.'.join([c.__name__ for c in cls.mro()[-2::-1]])
+        LOG_CONFIG = {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "root": {
+                    "()": ColorFormatter,
+                    "format": "%(name)s - %(message)s",
+                }
+            },
+            "handlers": {
+                "root": {
+                    #"level": cls.__logger.level,
+                    "formatter": "root",
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                }
+            },
+            "loggers": {
+                "": {
+                    "handlers": ["root"],
+                    #"level": cls.debuglevel,
+                    "propagate": False
+                }
+            },
+        }
+        logging.config.dictConfig(LOG_CONFIG)
+        logger=logging.getLogger(logger_name)
 
-    def verify_data(self, data, pre="RX:"):
-        if isinstance(data, bytes) or isinstance(data, bytearray):
-            if data[:5] == b"<?xml":
-                try:
-                    rdata = b""
-                    for line in data.split(b"\n"):
-                        try:
-                            self.logger.debug(pre + line.decode('utf-8'))
-                            rdata += line + b"\n"
-                        except:
-                            v = hexlify(line)
-                            self.logger.debug(pre + v.decode('utf-8'))
-                    return rdata
-                except:
-                    pass
-            if logging.DEBUG >= logging.root.level:
-                self.logger.debug(pre + hexlify(data).decode('utf-8'))
-        else:
-            if logging.DEBUG >= logging.root.level:
-                self.logger.debug(pre + data)
-        return data
-
-    def debug(self, info):
-        return self.logger.debug(info)
-
-    def info(self, info):
-        return self.logger.info(info)
-
-    def error(self, info):
-        return self.logger.error(info)
-
-    def warning(self, info):
-        return self.logger.warning(info)
+        setattr(cls, logger_attribute_name, logger)
+        setattr(cls, logger_debuglevel_name, cls.debuglevel)
 
 
 def del_rw(action, name, exc):

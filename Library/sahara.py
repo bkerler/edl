@@ -3,11 +3,8 @@ import time
 import os
 import sys
 from struct import unpack, pack
-from Library.utils import logging, read_object, print_progress, rmrf
+from Library.utils import read_object, print_progress, rmrf, LogBase
 from Config.qualcomm_config import sochw, msmids, root_cert_hash
-
-logger = logging.getLogger(__name__)
-
 
 def convertmsmid(msmid):
     msmiddb=[]
@@ -26,7 +23,7 @@ def convertmsmid(msmid):
     return msmiddb
 
 
-class qualcomm_sahara:
+class sahara(metaclass=LogBase):
     SAHARA_VERSION = 2
     SAHARA_MIN_VERSION = 1
 
@@ -332,7 +329,7 @@ class qualcomm_sahara:
                     return None
             return [pkt, data]
         except Exception as e:
-            logger.error(str(e))
+            self.__logger.error(str(e))
             return None
 
 
@@ -345,7 +342,7 @@ class qualcomm_sahara:
             self.cdc.write(responsedata)
             return True
         except Exception as e:
-            logger.error(str(e))
+            self.__logger.error(str(e))
             return False
 
     def connect(self):
@@ -383,7 +380,7 @@ class qualcomm_sahara:
                         return ["sahara", None]
 
         except Exception as e:
-            logger.error(str(e))
+            self.__logger.error(str(e))
             try:
                 data = b"\x7E\x06\x4E\x95\x7E"  # Streaming nop
                 self.cdc.write(data, 4096)
@@ -393,7 +390,7 @@ class qualcomm_sahara:
                 else:
                     return ["", None]
             except Exception as e:
-                logger.error(str(e))
+                self.__logger.error(str(e))
                 return ["", None]
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
         cmd, pkt = self.get_rsp()
@@ -408,7 +405,7 @@ class qualcomm_sahara:
         if cmd["cmd"] == self.cmd.SAHARA_CMD_READY:
             return True
         elif "status" in pkt:
-            logger.error(self.get_error_desc(pkt["status"]))
+            self.__logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -432,7 +429,7 @@ class qualcomm_sahara:
             res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
             return binascii.hexlify(res).decode('utf-8')
         except Exception as e:
-            logger.error(str(e))
+            self.__logger.error(str(e))
             return None
 
     def cmdexec_get_sbl_version(self):
@@ -468,7 +465,7 @@ class qualcomm_sahara:
                 self.model_id = "{:04x}".format(self.model_id)
                 self.msm_str = "{:08x}".format(self.msm_id)
                 if self.version >= 2.4:
-                    logger.info(f"\n------------------------\n" +
+                    self.__logger.info(f"\n------------------------\n" +
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
                                 f"OEM_ID:0x{self.oem_str}," +
                                 f"MODEL_ID:0x{self.model_id})\n" +
@@ -476,7 +473,7 @@ class qualcomm_sahara:
                                 f"Serial:            0x{self.serials}\n" +
                                 f"SBL Version:       0x{self.sblversion}\n")
                 else:
-                    logger.info(f"\n------------------------\n" +
+                    self.__logger.info(f"\n------------------------\n" +
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
                                 f"OEM_ID:0x{self.oem_str}," +
                                 f"MODEL_ID:0x{self.model_id})\n" +
@@ -490,25 +487,25 @@ class qualcomm_sahara:
                         if self.pkhash[0:16] in root_cert_hash[rootcert]:
                             unfused=True
                     if unfused:
-                        logger.info("Possibly unfused device detected, so any loader should be fine...")
+                        self.__logger.info("Possibly unfused device detected, so any loader should be fine...")
                         if self.pkhash[0:16] in mt:
                             self.programmer = mt[self.pkhash[0:16]]
-                            logger.info(f"Trying loader: {self.programmer}")
+                            self.__logger.info(f"Trying loader: {self.programmer}")
                         else:
                             for loader in mt:
                                 self.programmer = mt[loader]
-                                logger.info(f"Possible loader available: {self.programmer}")
+                                self.__logger.info(f"Possible loader available: {self.programmer}")
                             for loader in mt:
                                 self.programmer = mt[loader]
-                                logger.info(f"Trying loader: {self.programmer}")
+                                self.__logger.info(f"Trying loader: {self.programmer}")
                                 break
                     elif self.pkhash[0:16] in mt:
                         self.programmer = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        logger.info(f"Detected loader: {self.programmer}")
+                        self.__logger.info(f"Detected loader: {self.programmer}")
                     else:
                         for loader in self.loaderdb[self.hwidstr]:
                             self.programmer = self.loaderdb[self.hwidstr][loader]
-                            logger.info(f"Trying loader: {self.programmer}")
+                            self.__logger.info(f"Trying loader: {self.programmer}")
                             break
                         # print("Couldn't find a loader for given hwid and pkhash :(")
                         # exit(0)
@@ -519,15 +516,15 @@ class qualcomm_sahara:
                             for pkhash in self.loaderdb[hwidstr]:
                                 if self.pkhash[0:16]==pkhash:
                                     self.programmer = self.loaderdb[hwidstr][pkhash]
-                                    logger.info(f"Trying loader: {self.programmer}")
+                                    self.__logger.info(f"Trying loader: {self.programmer}")
                                     self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                                     return True
-                    logger.error(
+                    self.__logger.error(
                         f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
                         "_[FHPRG/ENPRG].bin) :(")
                     return False
                 else:
-                    logger.error(f"Couldn't find a suitable loader :(")
+                    self.__logger.error(f"Couldn't find a suitable loader :(")
                     return False
 
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
@@ -537,7 +534,7 @@ class qualcomm_sahara:
     def streaminginfo(self):
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
-            logger.info(f"Device serial : {hex(self.serial)}")
+            self.__logger.info(f"Device serial : {hex(self.serial)}")
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
             return True
         return False
@@ -550,7 +547,7 @@ class qualcomm_sahara:
                 return True
             elif cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
                 if pkt["status"] == self.status.SAHARA_NAK_INVALID_CMD:
-                    logger.error("Invalid Transfer command received.")
+                    self.__logger.error("Invalid Transfer command received.")
                     return False
             return True
         return False
@@ -561,7 +558,7 @@ class qualcomm_sahara:
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
         elif "status" in pkt:
-            logger.error(self.get_error_desc(pkt["status"]))
+            self.__logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -631,7 +628,7 @@ class qualcomm_sahara:
                 if self.read_memory(mem_base, length, True, wf):
                     print("Done dumping memory")
                 else:
-                    logger.error("Error dumping memory")
+                    self.__logger.error("Error dumping memory")
         self.cmd_reset()
         return True
 
@@ -697,7 +694,7 @@ class qualcomm_sahara:
                         self.dump_partitions(partitions)
                     return True
         elif "status" in pkt:
-            logger.error(self.get_error_desc(pkt["status"]))
+            self.__logger.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -705,11 +702,11 @@ class qualcomm_sahara:
         if self.programmer == "":
             return ""
         try:
-            logger.info(f"Using loader {self.programmer} ...")
+            self.__logger.info(f"Using loader {self.programmer} ...")
             with open(self.programmer, "rb") as rf:
                 programmer = rf.read()
         except Exception as e:
-            logger.error(str(e))
+            self.__logger.error(str(e))
             sys.exit()
 
         if not self.cmd_hello(self.sahara_mode.SAHARA_MODE_IMAGE_TX_PENDING):
@@ -724,7 +721,7 @@ class qualcomm_sahara:
                     if self.cmd_done():
                         return self.mode  # Do NOT remove
                     else:
-                        logger.error("Timeout while uploading loader. Wrong loader ?")
+                        self.__logger.error("Timeout while uploading loader. Wrong loader ?")
                         return ""
                 if cmd["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_READ_DATA:
                     self.bit64 = True
@@ -737,10 +734,10 @@ class qualcomm_sahara:
                     else:
                         return ""
                 elif "status" in pkt:
-                    logger.error(self.get_error_desc(pkt["status"]))
+                    self.__logger.error(self.get_error_desc(pkt["status"]))
                     return ""
                 else:
-                    logger.error("Unexpected error on uploading")
+                    self.__logger.error("Unexpected error on uploading")
                     return ""
                 self.id = pkt["id"]
                 if self.id == 0x7:
@@ -758,7 +755,7 @@ class qualcomm_sahara:
                 data_to_send = programmer[data_offset:data_offset + data_len]
                 self.cdc.write(data_to_send, self.pktsize)
                 datalen -= data_len
-            logger.info("Loader uploaded.")
+            self.__logger.info("Loader uploaded.")
             cmd, pkt = self.get_rsp()
             if cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
                 if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:
@@ -766,7 +763,7 @@ class qualcomm_sahara:
                     return self.mode
             return ""
         except Exception as e:
-            logger.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
+            self.__logger.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
 
     def cmd_modeswitch(self, mode):
@@ -786,6 +783,6 @@ class qualcomm_sahara:
             payload = self.cdc.read(pkt["data_len"])
             return payload
         elif "status" in pkt:
-            logger.error(self.get_error_desc(pkt["status"]))
+            self.__logger.error(self.get_error_desc(pkt["status"]))
             return None
         return [cmd, pkt]

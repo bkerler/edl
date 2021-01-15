@@ -2,16 +2,16 @@
 '''
 Licensed under MIT License, (c) B. Kerler 2018-2019
 '''
-default_vid_pid=[
-                    [0x2c7c,0x0125,-1], #Quectel EC25
-                    [0x1199,0x9071,-1], #Sierra Wireless
-                    [0x1199,0x9091,-1], #Sierra Wireless
-                    [0x05C6,0x9008,-1], #QC EDL
-                    [0x19d2,0x0016,-1], #ZTE Diag
-                    [0x19d2,0x0076,-1], #ZTE Download
-                    [0x12d1,0x1506,-1],
-                    [0x413c,0x81d7,5],  #Telit LN940
-                ]
+default_vid_pid = [
+    [0x2c7c, 0x0125, -1],  # Quectel EC25
+    [0x1199, 0x9071, -1],  # Sierra Wireless
+    [0x1199, 0x9091, -1],  # Sierra Wireless
+    [0x05C6, 0x9008, -1],  # QC EDL
+    [0x19d2, 0x0016, -1],  # ZTE Diag
+    [0x19d2, 0x0076, -1],  # ZTE Download
+    [0x12d1, 0x1506, -1],
+    [0x413c, 0x81d7, 5],  # Telit LN940
+]
 
 import os
 import sys
@@ -24,7 +24,7 @@ from xml.etree import ElementTree
 
 from struct import unpack, pack
 from binascii import hexlify, unhexlify
-from Library.utils import print_progress, read_object, write_object, log_class
+from Library.utils import print_progress, read_object, write_object, LogBase
 from Library.usblib import usb_class
 from Library.hdlc import hdlc
 from enum import Enum
@@ -260,49 +260,49 @@ class diag_cmds(Enum):
 
 
 class efs_cmds(Enum):
-    EFS2_DIAG_HELLO = 0     # Parameter negotiation packet
-    EFS2_DIAG_QUERY = 1     # Send information about EFS2 params
-    EFS2_DIAG_OPEN = 2      # Open a file
-    EFS2_DIAG_CLOSE = 3     # Close a file
-    EFS2_DIAG_READ = 4      # Read a file
-    EFS2_DIAG_WRITE = 5     # Write a file
-    EFS2_DIAG_SYMLINK = 6   # Create a symbolic link
+    EFS2_DIAG_HELLO = 0  # Parameter negotiation packet
+    EFS2_DIAG_QUERY = 1  # Send information about EFS2 params
+    EFS2_DIAG_OPEN = 2  # Open a file
+    EFS2_DIAG_CLOSE = 3  # Close a file
+    EFS2_DIAG_READ = 4  # Read a file
+    EFS2_DIAG_WRITE = 5  # Write a file
+    EFS2_DIAG_SYMLINK = 6  # Create a symbolic link
     EFS2_DIAG_READLINK = 7  # Read a symbolic link
-    EFS2_DIAG_UNLINK = 8    # Remove a symbolic link or file
-    EFS2_DIAG_MKDIR = 9     # Create a directory
-    EFS2_DIAG_RMDIR = 10    # Remove a directory
+    EFS2_DIAG_UNLINK = 8  # Remove a symbolic link or file
+    EFS2_DIAG_MKDIR = 9  # Create a directory
+    EFS2_DIAG_RMDIR = 10  # Remove a directory
     EFS2_DIAG_OPENDIR = 11  # Open a directory for reading
     EFS2_DIAG_READDIR = 12  # Read a directory
-    EFS2_DIAG_CLOSEDIR = 13 # Close an open directory
-    EFS2_DIAG_RENAME = 14   # Rename a file or directory
-    EFS2_DIAG_STAT = 15     # Obtain information about a named file
-    EFS2_DIAG_LSTAT = 16    # Obtain information about a symbolic link
-    EFS2_DIAG_FSTAT = 17    # Obtain information about a file descriptor
-    EFS2_DIAG_CHMOD = 18    # Change file permissions
-    EFS2_DIAG_STATFS = 19   # Obtain file system information
-    EFS2_DIAG_ACCESS = 20   # Check a named file for accessibility
-    EFS2_DIAG_NAND_DEV_INFO = 21    # Get NAND device info
-    EFS2_DIAG_FACT_IMAGE_START = 22 # Start data output for Factory Image
+    EFS2_DIAG_CLOSEDIR = 13  # Close an open directory
+    EFS2_DIAG_RENAME = 14  # Rename a file or directory
+    EFS2_DIAG_STAT = 15  # Obtain information about a named file
+    EFS2_DIAG_LSTAT = 16  # Obtain information about a symbolic link
+    EFS2_DIAG_FSTAT = 17  # Obtain information about a file descriptor
+    EFS2_DIAG_CHMOD = 18  # Change file permissions
+    EFS2_DIAG_STATFS = 19  # Obtain file system information
+    EFS2_DIAG_ACCESS = 20  # Check a named file for accessibility
+    EFS2_DIAG_NAND_DEV_INFO = 21  # Get NAND device info
+    EFS2_DIAG_FACT_IMAGE_START = 22  # Start data output for Factory Image
     EFS2_DIAG_FACT_IMAGE_READ = 23  # Get data for Factory Image
-    EFS2_DIAG_FACT_IMAGE_END = 24   # End data output for Factory Image
+    EFS2_DIAG_FACT_IMAGE_END = 24  # End data output for Factory Image
     EFS2_DIAG_PREP_FACT_IMAGE = 25  # Prepare file system for image dump
-    EFS2_DIAG_PUT_DEPRECATED = 26   # Write an EFS item file
-    EFS2_DIAG_GET_DEPRECATED = 27   # Read an EFS item file
-    EFS2_DIAG_ERROR = 28            # Send an EFS Error Packet back through DIAG
-    EFS2_DIAG_EXTENDED_INFO = 29    # Get Extra information.
-    EFS2_DIAG_CHOWN = 30            # Change ownership
+    EFS2_DIAG_PUT_DEPRECATED = 26  # Write an EFS item file
+    EFS2_DIAG_GET_DEPRECATED = 27  # Read an EFS item file
+    EFS2_DIAG_ERROR = 28  # Send an EFS Error Packet back through DIAG
+    EFS2_DIAG_EXTENDED_INFO = 29  # Get Extra information.
+    EFS2_DIAG_CHOWN = 30  # Change ownership
     EFS2_DIAG_BENCHMARK_START_TEST = 31  # Start Benchmark
-    EFS2_DIAG_BENCHMARK_GET_RESULTS = 32 # Get Benchmark Report
-    EFS2_DIAG_BENCHMARK_INIT = 33   # Init/Reset Benchmark
+    EFS2_DIAG_BENCHMARK_GET_RESULTS = 32  # Get Benchmark Report
+    EFS2_DIAG_BENCHMARK_INIT = 33  # Init/Reset Benchmark
     EFS2_DIAG_SET_RESERVATION = 34  # Set group reservation
-    EFS2_DIAG_SET_QUOTA = 35        # Set group quota
-    EFS2_DIAG_GET_GROUP_INFO = 36   # Retrieve Q&R values
-    EFS2_DIAG_DELTREE = 37          # Delete a Directory Tree
-    EFS2_DIAG_PUT = 38              # Write a EFS item file in order
-    EFS2_DIAG_GET = 39              # Read a EFS item file in order
-    EFS2_DIAG_TRUNCATE = 40         # Truncate a file by the name
-    EFS2_DIAG_FTRUNCATE = 41        # Truncate a file by a descriptor
-    EFS2_DIAG_STATVFS_V2 = 42       # Obtains extensive file system info
+    EFS2_DIAG_SET_QUOTA = 35  # Set group quota
+    EFS2_DIAG_GET_GROUP_INFO = 36  # Retrieve Q&R values
+    EFS2_DIAG_DELTREE = 37  # Delete a Directory Tree
+    EFS2_DIAG_PUT = 38  # Write a EFS item file in order
+    EFS2_DIAG_GET = 39  # Read a EFS item file in order
+    EFS2_DIAG_TRUNCATE = 40  # Truncate a file by the name
+    EFS2_DIAG_FTRUNCATE = 41  # Truncate a file by a descriptor
+    EFS2_DIAG_STATVFS_V2 = 42  # Obtains extensive file system info
 
 
 O_RDONLY = 0
@@ -315,17 +315,21 @@ FS_DIAG_MAX_READ_REQ = 1024
 # define DIAG_NV_WRITE_F 0x27
 # define DIAG_NV_READ_F 0x26
 
-class qcdiag():
-    def __init__(self, log, portconfig, ep_in=-1, ep_out=-1):
+class qcdiag(metaclass=LogBase):
+    def __init__(self, loglevel, portconfig, ep_in=-1, ep_out=-1):
         self.portconfig = portconfig
         self.nvlist = {}
         self.ep_in = ep_in
         self.ep_out = ep_out
-        self.log = log
-        import os,sys,inspect
+        self.__logger.setLevel(loglevel)
+        if loglevel == logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
+        import os, sys, inspect
         current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    
-        nvxml = os.path.join(current_dir,"Config", "nvitems.xml")
+
+        nvxml = os.path.join(current_dir, "Config", "nvitems.xml")
         e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
@@ -370,11 +374,11 @@ class qcdiag():
             return True
 
     def connect(self):
-        self.cdc = usb_class(self.portconfig, log=self.log)
+        self.cdc = usb_class(portconfig=self.portconfig, loglevel=self.__logger.level)
         self.hdlc = None
         if self.cdc.connect(self.ep_in, self.ep_out):
             self.hdlc = hdlc(self.cdc)
-            data=self.hdlc.receive_reply(1)
+            data = self.hdlc.receive_reply(1)
             return True
         return False
 
@@ -390,8 +394,8 @@ class qcdiag():
         return self.prettyprint(reply)
 
     def enforce_crash(self):
-        #./diag.py -nvwrite 1027,01 enable adsp log NV_MDSP_MEM_DUMP_ENABLED_I
-        #./diag.py -nvwrite 4399,01 enable download on reboot NV_DETECT_HW_RESET_I
+        # ./diag.py -nvwrite 1027,01 enable adsp log NV_MDSP_MEM_DUMP_ENABLED_I
+        # ./diag.py -nvwrite 4399,01 enable download on reboot NV_DETECT_HW_RESET_I
         res = self.send(b"\x4B\x25\x03\x00")
         print(self.decodestatus(res))
 
@@ -880,7 +884,7 @@ class qcdiag():
                 return -1
             return [fdata, offset, bytes_written]
 
-    def handle_error(self,resp):
+    def handle_error(self, resp):
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             diagerror = unpack("<I", resp[0x4:0x8])[0]
             if self.efsdiagerror(diagerror) != 0:
@@ -1028,6 +1032,84 @@ class qcdiag():
         return num_bytes
 
 
+class DiagTools(metaclass=LogBase):
+    def run(self, args):
+        if args.vid != "":
+            self.vid = int(args.vid, 16)
+        if args.pid != "":
+            self.pid = int(args.pid, 16)
+        if args.interface != "":
+            self.interface = int(args.interface, 16)
+        self.interface = -1
+        self.vid = None
+        self.pid = None
+
+        logfilename = "diag.txt"
+        if args.debugmode:
+            if os.path.exists(logfilename):
+                os.remove(logfilename)
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
+            self.__logger.setLevel(logging.DEBUG)
+        else:
+            self.__logger.setLevel(logging.INFO)
+
+        connected = False
+        diag = None
+        if self.vid == None or self.pid == None:
+            diag = qcdiag(loglevel=self.__logger.level, portconfig=default_vid_pid)
+            connected = diag.connect()
+        else:
+            diag = qcdiag(loglevel=self.__logger.level, portconfig=[[self.vid, self.pid, self.interface]])
+            connected = diag.connect()
+        if connected:
+            if args.sp:
+                diag.send_sp(args.sp)
+            elif args.spc:
+                diag.send_spc(args.spc)
+            elif args.cmd:
+                print(diag.send_cmd(args.cmd))
+            elif args.info:
+                print(diag.info())
+            elif args.download:
+                diag.enter_downloadmode()
+            elif args.sahara:
+                diag.enter_saharamode()
+            elif args.crash:
+                diag.enforce_crash()
+            elif args.efslistdir:
+                print(diag.efslistdir(args.efslistdir))
+            elif args.nvread:
+                if "0x" in args.nvread:
+                    nvitem = int(args.nvread, 16)
+                else:
+                    nvitem = int(args.nvread)
+                diag.print_nvitem(nvitem)
+            elif args.nvwrite:
+                if not "," in args.nvwrite:
+                    print("NvWrite requires data to write")
+                    sys.exit()
+                nv = args.nvwrite.split(",")
+                if "0x" in args.nvwrite:
+                    nvitem = int(nv[0], 16)
+                else:
+                    nvitem = int(nv[0])
+                data = unhexlify(nv[1])
+                diag.write_nvitem(nvitem, data)
+            elif args.nvbackup:
+                diag.backup_nvitems(args.nvbackup, "error.log")
+            elif args.efsread:
+                diag.efsread(args.efsread)
+            else:
+                print("A command is required. Use -cmd \"data\" for sending requests.")
+            diag.disconnect()
+            sys.exit()
+        else:
+            print("No diag device detected. Use -pid and -vid options. See -h for help.")
+            diag.disconnect()
+            sys.exit()
+
+
 def main():
     info = 'Qualcomm Diag Client (c) B.Kerler 2019-2021.'
     parser = argparse.ArgumentParser(description=info)
@@ -1052,77 +1134,9 @@ def main():
     parser.add_argument('-crash', help='[Option] Enforce crash', action='store_true')
     parser.add_argument('--debugmode', help='[Option] Enable verbose logging', action='store_true')
 
-    interface=None
-    vid=None
-    pid=None
     args = parser.parse_args()
-    if args.vid != "":
-        vid = int(args.vid, 16)
-    if args.pid != "":
-        pid = int(args.pid, 16)
-    if args.interface != "":
-        interface = int(args.interface, 16)
-    logfilename="diag.txt"
-    LOGGER=None
-    if args.debugmode:
-        LOGGER = log_class(logging.DEBUG, logfilename)
-    else:
-        LOGGER = log_class(logging.INFO, logfilename)
-
-    connected=False
-    diag=None
-    if vid==None or pid==None:
-        diag = qcdiag(LOGGER,default_vid_pid)
-        connected = diag.connect()
-    else:
-        diag = qcdiag(LOGGER, [[vid, pid, interface]])
-        connected = diag.connect()
-    if connected:
-        if args.sp:
-            diag.send_sp(args.sp)
-        elif args.spc:
-            diag.send_spc(args.spc)
-        elif args.cmd:
-            print(diag.send_cmd(args.cmd))
-        elif args.info:
-            print(diag.info())
-        elif args.download:
-            diag.enter_downloadmode()
-        elif args.sahara:
-            diag.enter_saharamode()
-        elif args.crash:
-            diag.enforce_crash()
-        elif args.efslistdir:
-            print(diag.efslistdir(args.efslistdir))
-        elif args.nvread:
-            if "0x" in args.nvread:
-                nvitem = int(args.nvread, 16)
-            else:
-                nvitem = int(args.nvread)
-            diag.print_nvitem(nvitem)
-        elif args.nvwrite:
-            if not "," in args.nvwrite:
-                print("NvWrite requires data to write")
-                sys.exit()
-            nv=args.nvwrite.split(",")
-            if "0x" in args.nvwrite:
-                nvitem = int(nv[0], 16)
-            else:
-                nvitem = int(nv[0])
-            data=unhexlify(nv[1])
-            diag.write_nvitem(nvitem,data)
-        elif args.nvbackup:
-            diag.backup_nvitems(args.nvbackup, "error.log")
-        elif args.efsread:
-            diag.efsread(args.efsread)
-        else:
-            print("A command is required. Use -cmd \"data\" for sending requests.")
-        diag.disconnect()
-        sys.exit()
-    else:
-        print("No diag device detected. Use -pid and -vid options. See -h for help.")
-        diag.disconnect()
-        sys.exit()
+    dg = DiagTools()
+    dg.run(args)
 
 
 if __name__ == '__main__':

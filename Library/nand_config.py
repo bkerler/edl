@@ -232,11 +232,9 @@ samsung_tbl = {
 }
 
 class SettingsOpt:
-    def __init__(self, parent, chipset, logger, verbose=False):
+    def __init__(self, parent, chipset):
         self.PAGESIZE = 4096
         self.parent = parent
-        logger.setLevel(verbose)
-        self.logger = logger
         self.bad_loader = 0
         self.sectors_per_page = 0
         self.sectorsize = 512

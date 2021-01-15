@@ -42,32 +42,58 @@ CDC_CMDS = {
 }
 
 
-class usb_class:
+class usb_class(metaclass=LogBase):
 
-    def __init__(self, portconfig=None, devclass=-1, log=None):
+    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
         self.portconfig = portconfig
         self.connected = False
         self.devclass = devclass
         self.timeout = None
-        self.log = log
         self.vid = None
         self.pid = None
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
+
+    def verify_data(self, data, pre="RX:"):
+        if isinstance(data, bytes) or isinstance(data, bytearray):
+            if data[:5] == b"<?xml":
+                try:
+                    rdata = b""
+                    for line in data.split(b"\n"):
+                        try:
+                            self.__logger.debug(pre + line.decode('utf-8'))
+                            rdata += line + b"\n"
+                        except:
+                            v = hexlify(line)
+                            self.__logger.debug(pre + v.decode('utf-8'))
+                    return rdata
+                except:
+                    pass
+            if logging.DEBUG >= self.__logger.level:
+                self.__logger.debug(pre + hexlify(data).decode('utf-8'))
+        else:
+            if logging.DEBUG >= self.__logger.level:
+                self.__logger.debug(pre + data)
+        return data
 
     def getInterfaceCount(self):
         if self.vid is not None:
             self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
             if self.device is None:
-                self.log.debug("Couldn't detect the device. Is it connected ?")
+                self.__logger.debug("Couldn't detect the device. Is it connected ?")
                 return False
             try:
                 self.device.set_configuration()
             except:
                 pass
             self.configuration = self.device.get_active_configuration()
-            self.log.debug(2, self.configuration)
+            self.__logger.debug(2, self.configuration)
             return self.configuration.bNumInterfaces
         else:
-            self.log.error("No device detected. Is it connected ?")
+            self.__logger.error("No device detected. Is it connected ?")
         return 0
 
     def setLineCoding(self, baudrate=None, parity=None, databits=None, stopbits=None):
@@ -127,7 +153,7 @@ class usb_class:
         wlen = self.device.ctrl_transfer(
             req_type, CDC_CMDS["SET_LINE_CODING"],
             data_or_wLength=data, wIndex=1)
-        self.log.debug("Linecoding set, {}b sent".format(wlen))
+        self.__logger.debug("Linecoding set, {}b sent".format(wlen))
 
     def connect(self, EP_IN=-1, EP_OUT=-1):
         if self.connected:
@@ -145,7 +171,7 @@ class usb_class:
                 break
 
         if self.device is None:
-            self.log.debug("Couldn't detect the device. Is it connected ?")
+            self.__logger.debug("Couldn't detect the device. Is it connected ?")
             return False
         # try:
         #    self.device.set_configuration()
@@ -163,7 +189,7 @@ class usb_class:
                     self.interface = interfacenum
                     break
 
-        self.log.debug(self.configuration)
+        self.__logger.debug(self.configuration)
         if self.interface > self.configuration.bNumInterfaces:
             print("Invalid interface, max number is %d" % self.configuration.bNumInterfaces)
             return False
@@ -171,10 +197,10 @@ class usb_class:
             itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
             try:
                 if self.device.is_kernel_driver_active(self.interface):
-                    self.log.debug("Detaching kernel driver")
+                    self.__logger.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
             except:
-                self.log.debug("No kernel driver supported.")
+                self.__logger.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
             if EP_OUT == -1:
@@ -233,12 +259,12 @@ class usb_class:
                     if i == 5:
                         return False
                     pass
-        self.log.verify_data(bytearray(command), "TX:")
+        self.verify_data(bytearray(command), "TX:")
         return True
 
     def read(self, length=0x80, timeout=None):
         tmp = b''
-        self.log.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
+        self.__logger.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
         if timeout is None:
             timeout = self.timeout
         while bytearray(tmp) == b'':
@@ -250,15 +276,15 @@ class usb_class:
                     # if platform.system()=='Windows':
                     # time.sleep(0.05)
                     # print("Waiting...")
-                    self.log.debug("Timed out")
-                    self.log.debug(tmp)
+                    self.__logger.debug("Timed out")
+                    self.__logger.debug(tmp)
                     return bytearray(tmp)
                 elif e.errno is not None:
                     print(repr(e), type(e), e.errno)
                     sys.exit(0)
                 else:
                     break
-        self.log.verify_data(bytearray(tmp), "RX:")
+        self.verify_data(bytearray(tmp), "RX:")
         return bytearray(tmp)
 
     def ctrl_transfer(self, bmRequestType, bRequest, wValue, wIndex, data_or_wLength):
@@ -343,15 +369,16 @@ class scsi:
 
     # /StevenCPHuang_20110820,add Moto's mode switch cmd to support PID switch function --
 
-    def __init__(self, vid, pid, interface=-1):
+    def __init__(self, loglevel=logging.INFO, vid=None, pid=None, interface=-1):
         self.vid = vid
         self.pid = pid
         self.interface = interface
         self.Debug = False
         self.usb = None
+        self.loglevel=loglevel
 
     def connect(self):
-        self.usb = usb_class(portconfig=[self.vid, self.pid,self.interface], devclass=8)
+        self.usb = usb_class(loglevel=self.loglevel,portconfig=[self.vid, self.pid,self.interface], devclass=8)
         if self.usb.connect():
             return True
         return False

@@ -127,7 +127,7 @@ Windows:
 
 - For flashing full image:
    ```
-   ./qfil.py --log_level info --firehose prog_firehose_lite.elf --rawprogram rawprogram0.xml --patch patch0.xml --imagedir image_dir
+   ./edl.py qfil rawprogram0.xml patch0.xml image_dir
    ```
 
 ## Install EDL loaders

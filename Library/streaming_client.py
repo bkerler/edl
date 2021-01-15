@@ -1,19 +1,24 @@
 import sys
 import os
-from Library.streaming import QualcommStreaming
+import logging
+from Library.streaming import Streaming
 from binascii import hexlify, unhexlify
 from struct import unpack, pack
 from Library.utils import do_tcp_server
 
 
 class streaming_client:
-    def __init__(self, arguments, cdc, sahara, LOGGER, printer):
-        self.LOGGER = LOGGER
+    def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
         self.sahara = sahara
         self.arguments = arguments
-        self.streaming = QualcommStreaming(cdc, sahara)
+        self.streaming = Streaming(cdc, sahara, loglevel)
         self.printer = printer
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
 
     def disconnect(self):
         self.cdc.close()
@@ -70,7 +75,7 @@ class streaming_client:
                         write_handle.write(data)
                     self.printer(f"Dumped Partition Table to {sfilename}")
                 else:
-                    self.LOGGER.error(f"Error on dumping partition table to {sfilename}")
+                    self.__logger.error(f"Error on dumping partition table to {sfilename}")
             elif cmd == "printgpt":
                 partitions = self.streaming.get_partitions()
                 self.print_partitions(partitions)
@@ -81,7 +86,7 @@ class streaming_client:
                 filenames = filename.split(",")
                 partitions = partitionname.split(",")
                 if len(partitions) != len(filenames):
-                    self.LOGGER.error("You need to gives as many filenames as given partitions.")
+                    self.__logger.error("You need to gives as many filenames as given partitions.")
                     return
                 i = 0
                 rpartitions = self.streaming.get_partitions()
@@ -98,7 +103,7 @@ class streaming_client:
                         self.streaming.read_raw(offset, length, self.streaming.settings.UD_SIZE_BYTES, partfilename)
                         self.printer(f"Dumped sector {str(offset)} with sector count {str(length)} as {partfilename}.")
                     else:
-                        self.LOGGER.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+                        self.__logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                         self.print_partitions(rpartitions)
             elif cmd == "rs":
                 start = int(options["<start_sector>"])
@@ -114,7 +119,7 @@ class streaming_client:
                         self.printer(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
                         return
                 except Exception as error:
-                    self.LOGGER.error(f"Couldn't open {filename} for writing: %s" % str(error))
+                    self.__logger.error(f"Couldn't open {filename} for writing: %s" % str(error))
                 self.streaming.nand_post()
             elif cmd == "rl":
                 directory = options["<directory>"]
@@ -133,7 +138,7 @@ class streaming_client:
                     with open(sfilename, "wb") as write_handle:
                         write_handle.write(partdata)
                 else:
-                    self.LOGGER.error(f"Couldn't detect partition header.")
+                    self.__logger.error(f"Couldn't detect partition header.")
                     return
                 partitions = self.streaming.get_partitions()
                 for partition in partitions:
@@ -147,7 +152,7 @@ class streaming_client:
                     # attr2 = spartition["attr2"]
                     # attr3 = spartition["attr3"]
                     partfilename = filename
-                    self.LOGGER.info(f"Dumping partition {str(partition)} with block count {str(length)} as " +
+                    self.__logger.info(f"Dumping partition {str(partition)} with block count {str(length)} as " +
                                      f"{filename}.")
                     self.streaming.read_raw(offset, length, self.streaming.settings.UD_SIZE_BYTES, partfilename)
             elif cmd == "peek":
@@ -165,7 +170,7 @@ class streaming_client:
                             else:
                                 break
                         length -= size
-                self.LOGGER.info(
+                self.__logger.info(
                     f"Peek data from offset {hex(offset)} and length {hex(length)} was written to {filename}")
             elif cmd == "peekhex":
                 offset = int(options["<offset>"], 16)
@@ -190,35 +195,35 @@ class streaming_client:
                     with open(filename, "rb") as rf:
                         data = rf.read()
                         if self.streaming.memwrite(offset, data):
-                            self.LOGGER.info("Poke succeeded.")
+                            self.__logger.info("Poke succeeded.")
                         else:
-                            self.LOGGER.error("Poke failed.")
+                            self.__logger.error("Poke failed.")
                 except Exception as e:
-                    self.LOGGER.error(str(e))
+                    self.__logger.error(str(e))
             elif cmd == "pokehex":
                 offset = int(options["<offset>"], 16)
                 data = unhexlify(options["<data>"])
                 if self.streaming.memwrite(offset, data):
-                    self.LOGGER.info("Poke succeeded.")
+                    self.__logger.info("Poke succeeded.")
                 else:
-                    self.LOGGER.error("Poke failed.")
+                    self.__logger.error("Poke failed.")
             elif cmd == "pokeqword":
                 offset = int(options["<offset>"], 16)
                 data = pack("<Q", int(options["<data>"], 16))
                 if self.streaming.memwrite(offset, data):
-                    self.LOGGER.info("Poke succeeded.")
+                    self.__logger.info("Poke succeeded.")
                 else:
-                    self.LOGGER.error("Poke failed.")
+                    self.__logger.error("Poke failed.")
             elif cmd == "pokedword":
                 offset = int(options["<offset>"], 16)
                 data = pack("<I", int(options["<data>"], 16))
                 if self.streaming.mempoke(offset, data):
-                    self.LOGGER.info("Poke succeeded.")
+                    self.__logger.info("Poke succeeded.")
                 else:
-                    self.LOGGER.error("Poke failed.")
+                    self.__logger.error("Poke failed.")
             elif cmd == "reset":
                 if self.streaming.reset():
-                    self.LOGGER.info("Reset succeeded.")
+                    self.__logger.info("Reset succeeded.")
             elif cmd == "memtbl":
                 filename = options["<filename>"]
                 memtbl = self.streaming.settings.memtbl
@@ -228,7 +233,7 @@ class streaming_client:
                         wf.write(data)
                         self.printer(f"Dumped memtbl at offset {hex(memtbl[0])} as {filename}.")
                 else:
-                    self.LOGGER.error("Error on dumping memtbl")
+                    self.__logger.error("Error on dumping memtbl")
             elif cmd == "secureboot":
                 value = self.streaming.mempeek(self.streaming.settings.secureboot)
                 if value != -1:
@@ -250,7 +255,7 @@ class streaming_client:
                     else:
                         self.printer("Secure boot disabled.")
                 else:
-                    self.LOGGER.error("Unknown target chipset")
+                    self.__logger.error("Unknown target chipset")
             elif cmd == "pbl":
                 filename = options["<filename>"]
                 pbl = self.streaming.settings.pbl
@@ -261,7 +266,7 @@ class streaming_client:
                         wf.write(data)
                         self.printer(f"Dumped pbl at offset {hex(pbl[0])} as {filename}.")
                 else:
-                    self.LOGGER.error("Error on dumping pbl")
+                    self.__logger.error("Error on dumping pbl")
             elif cmd == "qfp":
                 filename = options["<filename>"]
                 qfp = self.streaming.settings.qfprom
@@ -272,7 +277,7 @@ class streaming_client:
                         wf.write(data)
                         self.printer(f"Dumped qfprom at offset {hex(qfp[0])} as {filename}.")
                 else:
-                    self.LOGGER.error("Error on dumping qfprom")
+                    self.__logger.error("Error on dumping qfprom")
             elif cmd == "memcpy":
                 if not self.check_param(["<offset>", "<size>"]):
                     return False
@@ -286,13 +291,13 @@ class streaming_client:
                     return False
             ###############################
             elif cmd == "nop":
-                self.LOGGER.error("Nop command isn't supported by streaming loader")
+                self.__logger.error("Nop command isn't supported by streaming loader")
                 return True
             elif cmd == "setbootablestoragedrive":
-                self.LOGGER.error("setbootablestoragedrive command isn't supported by streaming loader")
+                self.__logger.error("setbootablestoragedrive command isn't supported by streaming loader")
                 return True
             elif cmd == "getstorageinfo":
-                self.LOGGER.error("getstorageinfo command isn't supported by streaming loader")
+                self.__logger.error("getstorageinfo command isn't supported by streaming loader")
                 return True
             elif cmd == "w":
                 if not self.check_param(["<partitionname>", "<filename>"]):
@@ -300,7 +305,7 @@ class streaming_client:
                 partitionname = options["<partitionname>"]
                 filename = options["<filename>"]
                 if not os.path.exists(filename):
-                    self.LOGGER.error(f"Error: Couldn't find file: {filename}")
+                    self.__logger.error(f"Error: Couldn't find file: {filename}")
                     return False
                 rpartitions = self.streaming.get_partitions()
                 if self.streaming.enter_flash_mode():
@@ -314,7 +319,7 @@ class streaming_client:
                         sectors = int(os.stat(
                             filename).st_size / self.streaming.settings.num_pages_per_blk / self.streaming.settings.PAGESIZE)
                         if sectors > length:
-                            self.LOGGER.error(
+                            self.__logger.error(
                                 f"Error: {filename} has {sectors} sectors but partition only has {length}.")
                             return False
                         if self.streaming.modules is not None:
@@ -326,7 +331,7 @@ class streaming_client:
                             self.printer(f"Error writing {filename} to sector {str(offset)}.")
                             return False
                     else:
-                        self.LOGGER.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+                        self.__logger.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
                         self.print_partitions(rpartitions)
                 return False
             elif cmd == "wl":
@@ -338,7 +343,7 @@ class streaming_client:
                 else:
                     skip = []
                 if not os.path.exists(directory):
-                    self.LOGGER.error(f"Error: Couldn't find directory: {directory}")
+                    self.__logger.error(f"Error: Couldn't find directory: {directory}")
                     return False
                 filenames = []
                 if self.streaming.enter_flash_mode():
@@ -366,7 +371,7 @@ class streaming_client:
                                                       self.streaming.settings.num_pages_per_blk /
                                                       self.streaming.settings.PAGESIZE)
                                         if sectors > length:
-                                            self.LOGGER.error(
+                                            self.__logger.error(
                                                 f"Error: {filename} has {sectors} sectors but partition only has {length}.")
                                             return False
                                         self.printer(f"Writing {filename} to partition {str(partition)}.")
@@ -376,25 +381,25 @@ class streaming_client:
                             return False
                 return True
             elif cmd == "ws":
-                self.LOGGER.error("ws command isn't supported by streaming loader")  # todo
+                self.__logger.error("ws command isn't supported by streaming loader")  # todo
                 return False
             elif cmd == "wf":
-                self.LOGGER.error("wf command isn't supported by streaming loader")  # todo
+                self.__logger.error("wf command isn't supported by streaming loader")  # todo
                 return False
             elif cmd == "e":
-                self.LOGGER.error("e command isn't supported by streaming loader")  # todo
+                self.__logger.error("e command isn't supported by streaming loader")  # todo
                 return False
             elif cmd == "es":
-                self.LOGGER.error("es command isn't supported by streaming loader")  # todo
+                self.__logger.error("es command isn't supported by streaming loader")  # todo
                 return False
             elif cmd == "xml":
-                self.LOGGER.error("xml command isn't supported by streaming loader")
+                self.__logger.error("xml command isn't supported by streaming loader")
                 return False
             elif cmd == "rawxml":
-                self.LOGGER.error("rawxml command isn't supported by streaming loader")
+                self.__logger.error("rawxml command isn't supported by streaming loader")
                 return False
             elif cmd == "send":
-                self.LOGGER.error("send command isn't supported by streaming loader")
+                self.__logger.error("send command isn't supported by streaming loader")
                 return False
             ###############################
             elif cmd == "server":
@@ -405,10 +410,10 @@ class streaming_client:
                 command = options["<command>"]
                 options = options["<options>"]
                 if self.streaming.modules is None:
-                    self.LOGGER.error("Feature is not supported")
+                    self.__logger.error("Feature is not supported")
                     return False
                 else:
                     return self.streaming.modules.run(mainargs=options, command=command)
             else:
-                self.LOGGER.error("Unknown/Missing command, a command is required.")
+                self.__logger.error("Unknown/Missing command, a command is required.")
                 return False

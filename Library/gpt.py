@@ -2,7 +2,7 @@ import binascii
 from Library.utils import *
 
 
-class gpt:
+class gpt(metaclass=LogBase):
     from enum import Enum
     gpt_header = [
         ('signature', '8s'),
@@ -115,7 +115,7 @@ class gpt:
         EFI_VMWARE_VMFS = 0xAA31E02A
         EFI_VMWARE_RESERVED = 0x9198EFFC
 
-    def __init__(self, num_part_entries=0, part_entry_size=0, part_entry_start_lba=0, *args, **kwargs):
+    def __init__(self, num_part_entries=0, part_entry_size=0, part_entry_start_lba=0, loglevel=logging.INFO,*args, **kwargs):
         self.num_part_entries = num_part_entries
         self.part_entry_size = part_entry_size
         self.part_entry_start_lba = part_entry_start_lba
@@ -125,6 +125,11 @@ class gpt:
             if part_entry_size is 0:
                 self.gpt_header += [('part_entry_size', 'I'),]
         '''
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
 
     def parseheader(self, gptdata, sectorsize=512):
         return read_object(gptdata[sectorsize:sectorsize + 0x5C], self.gpt_header)
@@ -133,10 +138,10 @@ class gpt:
         self.header = read_object(gptdata[sectorsize:sectorsize + 0x5C], self.gpt_header)
         self.sectorsize = sectorsize
         if self.header["signature"] != b"EFI PART":
-            print("Invalid or unknown GPT magic.")
+            self.__logger.error("Invalid or unknown GPT magic.")
             return False
         if self.header["revision"] != 0x100:
-            print("Unknown GPT revision.")
+            self.__logger.error("Unknown GPT revision.")
             return False
         if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
@@ -156,7 +161,7 @@ class gpt:
             sector = 0
             sectors = 0
             type = b""
-            name = b""
+            name = ""
 
         if "num_part_entries" in self.header:
             num_part_entries = self.header["num_part_entries"]

@@ -3,11 +3,8 @@ from Library.utils import *
 from Library.hdlc import *
 from Library.nand_config import BadFlags, SettingsOpt, nand_ids, nand_manuf_ids, nandregs, NandDevice
 
-logger = logging.getLogger(__name__)
-
-
-class QualcommStreaming:
-    def __init__(self, cdc, sahara):
+class Streaming(metaclass=LogBase):
+    def __init__(self, cdc, sahara, loglevel=logging.INFO):
         self.cdc = cdc
         self.hdlc = hdlc(self.cdc)
         self.mode = sahara.mode
@@ -17,6 +14,11 @@ class QualcommStreaming:
         self.bbtbl = {}
         self.nanddevice = None
         self.nandbase = 0
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
 
     def get_flash_config(self):
         """
@@ -600,7 +602,7 @@ class QualcommStreaming:
                 #    print("Unlocked bootloader being used, cannot continue")
                 #    exit(2)
                 chipset = self.identify_chipset()
-                self.settings = SettingsOpt(self, chipset, logger)
+                self.settings = SettingsOpt(self, chipset)
                 self.nanddevice = NandDevice(self.settings)
                 self.setupregs()
                 self.get_flash_config()
@@ -624,7 +626,7 @@ class QualcommStreaming:
                 return True
 
             chipset = self.identify_chipset()
-            self.settings = SettingsOpt(self, chipset, logger, False)
+            self.settings = SettingsOpt(self, chipset)
             if self.settings.bad_loader:
                 logging.error("Loader id doesn't match device, please fix config and patch loader. Rebooting.")
                 self.reset()
@@ -786,8 +788,8 @@ class QualcommStreaming:
 def test_nand_config():
     class sahara:
         mode = None
-    qs = QualcommStreaming(None, sahara())
-    qs.settings = SettingsOpt(qs, 8, logger)
+    qs = Streaming(None, sahara(),logging.INFO)
+    qs.settings = SettingsOpt(qs, 8)
     qs.nanddevice = NandDevice(qs.settings)
     testconfig = [
         # nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, cfg1, eccbufcfg, bccbchcfg, badblockbyte
