@@ -58,6 +58,7 @@ class usb_class(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def verify_data(self, data, pre="RX:"):
+        self.__logger.debug("",stack_info=True)
         if isinstance(data, bytes) or isinstance(data, bytearray):
             if data[:5] == b"<?xml":
                 try:

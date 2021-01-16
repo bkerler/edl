@@ -3,7 +3,7 @@ import platform
 import time
 from Library.utils import *
 from Library.gpt import gpt
-
+from Library.sparse import QCSparse
 
 try:
     from Library.Modules.init import modules
@@ -54,7 +54,7 @@ class firehose(metaclass=LogBase):
         MaxXMLSizeInBytes = 4096
         bit64 = True
 
-    def __init__(self, cdc, xml, cfg, log, devicemodel, serial, skipresponse, luns, args):
+    def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
         self.lasterror = b""
         self.args = args
@@ -67,8 +67,14 @@ class firehose(metaclass=LogBase):
         self.skipresponse = skipresponse
         self.luns = luns
         self.supported_functions = []
-        if self.cfg.MemoryName == "UFS":
+        if self.cfg.MemoryName == "UFS" or self.cfg.MemoryName == "spinor":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
+
 
     def detect_partition(self, arguments, partitionname):
         fpartitions = {}
@@ -275,7 +281,10 @@ class firehose(metaclass=LogBase):
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
         fsize = os.stat(filename).st_size
-        fname = os.path.basename(filename)
+        sparse = QCSparse(filename)
+        sparseformat = False
+        if sparse.readheader():
+            sparseformat = True
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -293,7 +302,6 @@ class firehose(metaclass=LogBase):
             old = 0
             if num_partition_sectors<maxsectors:
                 maxsectors=num_partition_sectors
-
             for cursector in range(start_sector, start_sector + num_partition_sectors, maxsectors):
                 data = f"<?xml version=\"1.0\" ?><data>\n" + \
                        f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
@@ -313,7 +321,10 @@ class firehose(metaclass=LogBase):
                         wlen = self.cfg.MaxPayloadSizeToTargetInBytes
                         if fsize < wlen:
                             wlen = fsize
-                        wdata = rf.read(wlen)
+                        if sparseformat:
+                            wdata=sparse.read(wlen)
+                        else:
+                            wdata = rf.read(wlen)
                         wlen=len(wdata)
                         bytesToWrite -= wlen
                         fsize -= wlen
@@ -740,15 +751,15 @@ class firehose(metaclass=LogBase):
         self.__logger.info(f"TargetName={self.cfg.TargetName}")
         self.__logger.info(f"MemoryName={self.cfg.MemoryName}")
         self.__logger.info(f"Version={self.cfg.Version}")
-        if self.cfg.MemoryName.lower() == "emmc":
+        if self.cfg.MemoryName.lower() == "emmc" or self.cfg.MemoryName.lower()=="nand":
             self.cfg.SECTOR_SIZE_IN_BYTES = 512
-        elif self.cfg.MemoryName.lower() == "ufs":
+        elif self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
             self.cfg.SECTOR_SIZE_IN_BYTES = 4096
 
         rsp=self.cmd_read_buffer(0,1,1,False)
         if rsp==-1:
                 if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
-                    self.__logger.warning("Memory type UFS doesn't seem to match (Failed to init). Use eMMC instead.")
+                    self.__logger.warning("Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                     self.cfg.MemoryName="eMMC"
                     return self.configure(0)
 

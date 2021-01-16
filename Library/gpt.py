@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import binascii
 from Library.utils import *
 
@@ -237,3 +238,23 @@ class gpt(metaclass=LogBase):
             mstr += "</data>"
             wf.write(bytes(mstr, 'utf-8'))
             print(f"Wrote partition xml as {fname}")
+
+    def print_gptfile(self,filename):
+        with open(filename, "rb") as rf:
+            sectorsize = 4096
+            result=self.parse(rf.read(), sectorsize)
+            if result:
+                print(self.tostring())
+            return result
+        return False
+
+    def test_gpt(self):
+        res=self.print_gptfile(os.path.join("TestFiles", "gpt_sm8180x.bin"))
+        assert res,"GPT Partition wasn't decoded properly"
+
+if __name__=="__main__":
+    if len(sys.argv)<2:
+        print("Usage: ./gpt.py <filename>")
+        sys.exit()
+    gp = gpt()
+    gp.print_gptfile(sys.argv[1])

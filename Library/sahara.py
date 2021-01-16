@@ -2,6 +2,7 @@ import binascii
 import time
 import os
 import sys
+import logging
 from struct import unpack, pack
 from Library.utils import read_object, print_progress, rmrf, LogBase
 from Config.qualcomm_config import sochw, msmids, root_cert_hash
@@ -273,7 +274,7 @@ class sahara(metaclass=LogBase):
         ('filename', '20s')
     ]
 
-    def __init__(self, cdc):
+    def __init__(self, cdc, loglevel):
         self.cdc = cdc
         self.init_loader_db()
         self.version=2.1
@@ -291,6 +292,12 @@ class sahara(metaclass=LogBase):
         self.model_id = None
         self.oem_str = None
         self.msm_str = None
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
+
 
     def get_rsp(self):
         data = []
@@ -454,8 +461,8 @@ class sahara(metaclass=LogBase):
             self.serials = "{:08x}".format(self.serial)
             self.hwid = self.cmdexec_get_msm_hwid()
             self.pkhash = self.cmdexec_get_pkhash()
-            if self.version>=2.4:
-                self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
+            #if self.version>=2.4:
+            #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             if self.hwid is not None:
                 self.hwidstr = "{:016x}".format(self.hwid)
                 self.msm_id = int(self.hwidstr[2:8], 16)
@@ -464,6 +471,7 @@ class sahara(metaclass=LogBase):
                 self.oem_str = "{:04x}".format(self.oem_id)
                 self.model_id = "{:04x}".format(self.model_id)
                 self.msm_str = "{:08x}".format(self.msm_id)
+                """
                 if self.version >= 2.4:
                     self.__logger.info(f"\n------------------------\n" +
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
@@ -473,7 +481,8 @@ class sahara(metaclass=LogBase):
                                 f"Serial:            0x{self.serials}\n" +
                                 f"SBL Version:       0x{self.sblversion}\n")
                 else:
-                    self.__logger.info(f"\n------------------------\n" +
+                """
+                self.__logger.info(f"\n------------------------\n" +
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
                                 f"OEM_ID:0x{self.oem_str}," +
                                 f"MODEL_ID:0x{self.model_id})\n" +
@@ -702,7 +711,7 @@ class sahara(metaclass=LogBase):
         if self.programmer == "":
             return ""
         try:
-            self.__logger.info(f"Using loader {self.programmer} ...")
+            self.__logger.info(f"Uploading loader {self.programmer} ...")
             with open(self.programmer, "rb") as rf:
                 programmer = rf.read()
         except Exception as e:

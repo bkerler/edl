@@ -65,6 +65,8 @@ class firehose_client(metaclass=LogBase):
                             type=memory_type.preferred_memory[self.target_name]
                             if type==memory_type.nand:
                                 self.cfg.MemoryName = "nand"
+                            if type==memory_type.spinor:
+                                self.cfg.MemoryName = "spinor"
                             elif type==memory_type.emmc:
                                 self.cfg.MemoryName = "eMMC"
                             elif type==memory_type.ufs:

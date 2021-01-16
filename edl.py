@@ -97,7 +97,7 @@ Options:
     --lun=lun                          Set lun to read/write from (UFS memory only) [default: None]
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
     --sectorsize=bytes                 Set default sector size [default: 0x200]
-    --memory=memtype                   Set memory type (EMMC or UFS)
+    --memory=memtype                   Set memory type ("eMMC", "UFS", "spinor")
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
@@ -281,7 +281,7 @@ class main(metaclass=LogBase):
             self.__logger.setLevel(logging.INFO)
 
         cdc = usb_class(portconfig=portconfig,loglevel=self.__logger.level)
-        saharahdl = sahara(cdc)
+        saharahdl = sahara(cdc,loglevel=self.__logger.level)
 
         if args["--loader"] == 'None':
             self.__logger.info("Trying with no loader given ...")
