@@ -6,12 +6,12 @@
 - Because we'd like to flexible dump smartphones
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
-  
+
 ## Installation
 
 - Get python >= 3.7 64-Bit
 
-Linux/Windows: 
+Linux/Windows:
 - ```cp Drivers/51-edl.rules /etc/udev/rules.d```
 - ```cp Drivers/50-android.rules /etc/udev/rules.d```
 - ```sudo apt install adb```
@@ -21,9 +21,9 @@ Linux/Windows:
 - ```sudo apt purge ModemManager```
 - ```python -m pip install -r requirements.txt```
 
-Mac: 
+Mac:
 - ```brew install libusb```
-- ```python -m pip install -r requirements.txt```
+- ```sudo python3 -m pip install -r requirements.txt```
 
 Windows:
 - Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows
@@ -46,7 +46,7 @@ Windows:
 - ```./edl.py server --memory=ufs --tcpport=1340``` -> Run TCP/IP server on port 1340, see tcpclient.py for an example client
 - ```./edl.py xml run.xml``` -> To send a xml file run.xml via firehose
 - ```./edl.py reset``` -> To reboot the phone
-- ```./edl.py rawxml <xmlstring>``` -> To send own xml string, example : 
+- ```./edl.py rawxml <xmlstring>``` -> To send own xml string, example :
    ```./edl.py rawxml "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><response value=\"ACK\" /></data>```
 - ```./edl.py [anycommand] --debugmode``` -> enables Verbose. Only do that is REALLY needed as it will print out everything happening !
 
@@ -108,7 +108,7 @@ Windows:
 
 ### Streaming mode (credits to forth32)
 
-#### Sierra Wireless Modem 
+#### Sierra Wireless Modem
 - Send AT!BOOTHOLD and AT!QPSTDLOAD to modem port or use ```modem/boottodwnload.py``` script
 - Send AT!ENTERCND="A710" and then AT!EROPTION=0 for memory dump
 - ```./edl.py --vid 1199 --pid 9070 --loader=loaders/NPRG9x35p.bin printgpt``` -> To show the partition table
