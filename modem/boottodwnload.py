@@ -4,24 +4,28 @@
 # If you use my code, make sure you refer to my name
 # If you want to use in a commercial product, ask me before integrating it
 import time
-from telnetlib import Telnet
 import serial
 import serial.tools.list_ports
 import argparse
-import logging
 import requests
-from diag import qcdiag
-from Library.utils import print_progress, read_object, write_object, log_class
-from Library.usblib import usb_class
-from Library.hdlc import hdlc
-import sys
+from telnetlib import Telnet
 import usb.core
 from enum import Enum
+from diag import qcdiag
+try:
+    from Library.utils import LogBase
+except Exception as e:
+    import os,sys,inspect
+    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = os.path.dirname(current_dir)
+    sys.path.insert(0, parent_dir)
+    from Library.utils import LogBase
 
 class vendor(Enum):
     sierra = 0x1199
     quectel = 0x2c7c
     zte = 0x19d2
+    netgear = 0x0846
 
 class deviceclass:
     vid=0
@@ -29,7 +33,6 @@ class deviceclass:
     def __init__(self,vid,pid):
         self.vid=vid
         self.pid=pid
-
 
 
 class connection:
@@ -80,7 +83,8 @@ class connection:
         vendortable={
             0x1199:["Sierra Wireless",3],
             0x2c7c:["Quectel",3],
-            0x19d2:["ZTE",2]
+            0x19d2:["ZTE",2],
+            0x0846:["Netgear", 2]
         }
         mode="Unknown"
         for device in self.detectusbdevices():
@@ -167,16 +171,66 @@ class connection:
                         data["vendor"]="Sierra Wireless"
                     elif "ZTE CORPORATION" in data["manufacturer"]:
                         data["vendor"]="ZTE"
+                    elif "Netgear" in data["manufacturer"]:
+                        data["vendor"]="Netgear"
         return data
 
-def sendcmd(tn,cmd):
-    tn.write(bytes(cmd,'utf-8')+b"\n")
-    time.sleep(0.05)
-    return tn.read_eager().strip().decode('utf-8')
+class dwnloadtools(metaclass=LogBase):
+    def sendcmd(self, tn,cmd):
+        tn.write(bytes(cmd,'utf-8')+b"\n")
+        time.sleep(0.05)
+        return tn.read_eager().strip().decode('utf-8')
+
+    def run(self, args):
+        port = args.port
+        cn = connection(port)
+        if cn.connected:
+            info=cn.ati()
+            if "vendor" in info:
+                if info["vendor"]=="Sierra Wireless" or info["vendor"]=="Netgear":
+                    print("Sending download mode command")
+                    print(cn.send("AT!BOOTHOLD\r"))
+                    print(cn.send('AT!QPSTDLOAD\r'))
+                    print("Done switching to download mode")
+                elif info["vendor"]=="Quectel":
+                    print("Sending download mode command")
+                    interface=0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c,0x0125,interface]])
+                    if diag.connect():
+                        diag.hdlc.receive_reply()
+                        res = diag.send(b"\x4b\x65\x01\x00")
+                        diag.disconnect()
+                        print("Done switching to download mode")
+                elif info["vendor"]=="ZTE":
+                    print("Sending download mode command")
+                    interface=0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x19d2,0x0016, interface]])
+                    if diag.connect():
+                        diag.hdlc.receive_reply()
+                        res = diag.send(b"\x4b\x65\x01\x00")
+                        if res[0]==0x4B:
+                            print("Done switching to ENANDPRG mode")
+                        else:
+                            res = diag.send(b"\x3a")
+                            if res[0]==0x3A:
+                                while True:
+                                    state=cn.waitforusb(vendor.zte.value,0x0076)
+                                    if not state:
+                                        diag.disconnect()
+                                        if diag.connect():
+                                            res = diag.send(b"\x3a")
+                                    else:
+                                        break
+                                if state:
+                                    print("Done switching to NANDPRG mode")
+                                else:
+                                    print("Failed switching to download mode")
+                        diag.disconnect()
+        cn.close()
 
 def main():
-    version = "1.0"
-    info = 'Modem Gimme-EDL ' + version + ' (c) B. Kerler 2020'
+    version = "1.1"
+    info = 'Modem Gimme-EDL ' + version + ' (c) B. Kerler 2020-2021'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,description=info)
     parser.add_argument(
         '-port', '-p',
@@ -187,58 +241,8 @@ def main():
         help='use logfile for debug log',
         default="")
     args = parser.parse_args()
-    LOGGER=None
-    if args.logfile!="":
-        LOGGER = log_class(logging.DEBUG, args.logfile)
-    else:
-        LOGGER = log_class(logging.INFO, "")
-    port = args.port
-    cn = connection(port)
-    if cn.connected:
-        info=cn.ati()
-        if "vendor" in info:
-            if info["vendor"]=="Sierra Wireless":
-                print("Sending download mode command")
-                print(cn.send("AT!BOOTHOLD\r"))
-                print(cn.send('AT!QPSTDLOAD\r'))
-                print("Done switching to download mode")
-            elif info["vendor"]=="Quectel":
-                print("Sending download mode command")
-                interface=0
-                diag = qcdiag(LOGGER, [[0x2c7c,0x0125]], interface)
-                if diag.connect():
-                    diag.hdlc.receive_reply()
-                    res = diag.send(b"\x4b\x65\x01\x00")
-                    diag.disconnect()
-                    print("Done switching to download mode")
-            elif info["vendor"]=="ZTE":
-                print("Sending download mode command")
-                interface=0
-                diag = qcdiag(LOGGER, [[0x19d2,0x0016]], interface)
-                if diag.connect():
-                    diag.hdlc.receive_reply()
-                    res = diag.send(b"\x4b\x65\x01\x00")
-                    if res[0]==0x4B:
-                        print("Done switching to ENANDPRG mode")
-                    else:
-                        res = diag.send(b"\x3a")
-                        if res[0]==0x3A:
-                            while True:
-                                state=cn.waitforusb(vendor.zte.value,0x0076)
-                                if not state:
-                                    diag.disconnect()
-                                    if diag.connect():
-                                        res = diag.send(b"\x3a")
-                                else:
-                                    break
-                            if state:
-                                print("Done switching to NANDPRG mode")
-                            else:
-                                print("Failed switching to download mode")
-                    diag.disconnect()
-
-
-    cn.close()
+    dw=dwnloadtools()
+    dw.run(args)
 
 if __name__=="__main__":
     main()

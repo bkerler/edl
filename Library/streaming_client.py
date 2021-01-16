@@ -4,10 +4,10 @@ import logging
 from Library.streaming import Streaming
 from binascii import hexlify, unhexlify
 from struct import unpack, pack
-from Library.utils import do_tcp_server
+from Library.utils import do_tcp_server, LogBase
 
 
-class streaming_client:
+class streaming_client(metaclass=LogBase):
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
         self.sahara = sahara

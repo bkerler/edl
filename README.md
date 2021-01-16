@@ -119,7 +119,7 @@ Windows:
 - now use ./edl.py regulary such as ```./edl.py printgpt``` (do not use loader option)
 
 #### ZTE MF920V, Quectel, Telit, etc.. Modem
-- run ```modem/enableadb.sh```, or send to at port "AT+ZCDRUN=E", or send via ```./diag.py -sahara```
+- run ```modem/enableadb.sh```, or send to at port "AT+ZCDRUN=E", or send via ```./modem/diag.py -sahara```
 - ```adb reboot edl```
 - ```./edl.py printgpt``` -> To show the partition table
 
@@ -141,17 +141,17 @@ Windows:
 
 For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and try :
 
-- ```./diag.py -vid 0x05c6 -pid 0x676c -interface 0 -info```
+- ```./modem/diag.py -vid 0x05c6 -pid 0x676c -interface 0 -info```
 
 ### Usage
 
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -info``` -> Send cmd "00" and return info
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -spc 303030303030``` -> Send spc "303030303030"
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -cmd 00``` -> Send cmd "00" (hexstring)
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -nvread 0x55``` -> Display nvitem 0x55
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -nvbackup backup.json``` -> Backup all nvitems to a json structured file
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -efsread efs.bin``` -> Dump the EFS Modem partition to file efs.bin
-- ```./diag.py -vid 0x1234 -pid 0x5678 -interface 0 -efslistdir /``` -> Display / directory listing of EFS
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -info``` -> Send cmd "00" and return info
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -spc 303030303030``` -> Send spc "303030303030"
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -cmd 00``` -> Send cmd "00" (hexstring)
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -nvread 0x55``` -> Display nvitem 0x55
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -nvbackup backup.json``` -> Backup all nvitems to a json structured file
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -efsread efs.bin``` -> Dump the EFS Modem partition to file efs.bin
+- ```./modem/diag.py -vid 0x1234 -pid 0x5678 -interface 0 -efslistdir /``` -> Display / directory listing of EFS
 
 
 ## Issues

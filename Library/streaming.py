@@ -146,7 +146,7 @@ class Streaming(metaclass=LogBase):
         resp = self.send(b"\x1b\x0e" + name + b"\x00")
         if resp[1] == 0x1c:
             return True
-        logger.error("Error on sending section header")
+        self.__logger.error("Error on sending section header")
         return False
 
     def enter_flash_mode(self, ptable=None):
@@ -168,23 +168,23 @@ class Streaming(metaclass=LogBase):
                     scmd = b"\x07" + pack("<I", adr) + subdata
                     resp = self.send(scmd)
                     if len(resp) == 0 or resp[1] != 0x8:
-                        logger.error("Error on sending data at address %08X" % adr)
+                        self.__logger.error("Error on sending data at address %08X" % adr)
                         return False
                     adr += len(subdata)
                     filesize -= len(subdata)
             if not self.qclose(0):
-                logger.error("Error on closing data stream")
+                self.__logger.error("Error on closing data stream")
                 return False
 
     def send_ptable(self, parttable, mode):
         cmdbuf = b"\x19" + pack("<B", mode) + parttable
         resp = self.send(cmdbuf)
         if resp[1] != 0x1a:
-            logger.error("Error on sending raw partition table")
+            self.__logger.error("Error on sending raw partition table")
             return False
         elif resp[2] == 0x0:
             return True
-        logger.error("Partition tables do not match - you need to fully flash the modem")
+        self.__logger.error("Partition tables do not match - you need to fully flash the modem")
         return False
 
     def memread(self, address, length):
@@ -430,7 +430,7 @@ class Streaming(metaclass=LogBase):
                 buffer.extend(tmp)
             cursize += size
         if bad_ecc:
-            logger.debug("ECC error at : Block %08X Page %08X" % (block, page))
+            self.__logger.debug("ECC error at : Block %08X Page %08X" % (block, page))
 
         if self.settings.bad_processing_flag == BadFlags.BAD_DISABLE.value:
             self.hardware_bad_off()
@@ -700,7 +700,7 @@ class Streaming(metaclass=LogBase):
                 if savespare:
                     fw.write(spare)
             else:
-                logger.debug("Bad block at block %d" % curblock)
+                self.__logger.debug("Bad block at block %d" % curblock)
                 badblocks += 1
             pos += self.settings.PAGESIZE
             if info:
