@@ -77,8 +77,8 @@ class firehose_client(metaclass=LogBase):
 
         # We assume ufs is fine (hopefully), set it as default
         if self.cfg.MemoryName=="":
-            self.__logger.info("No --memory option set, we assume \"UFS\" as default ..., if it fails, try using \"--memory=eMMC\" instead !")
-            self.cfg.MemoryName="UFS"
+            self.__logger.info("No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
+            self.cfg.MemoryName="eMMC"
 
         if self.firehose.configure(0):
             funcs = "Supported functions:\n-----------------\n"
@@ -116,8 +116,8 @@ class firehose_client(metaclass=LogBase):
             return [int(argument["--lun"])]
 
         luns = []
-        if not self.cfg.MemoryName == "emmc":
-            for i in range(0, 99):
+        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower()=="spinor":
+            for i in range(0, self.cfg.maxlun):
                 luns.append(i)
         else:
             luns = [0]
@@ -546,7 +546,7 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("getstorageinfo command isn't supported by edl loader")
                 return False
             else:
-                return self.firehose.cmd_getstorageinfo()
+                return self.firehose.cmd_getstorageinfo_string()
         elif cmd == "w":
             if not self.check_param(["<partitionname>", "<filename>"]):
                 return False

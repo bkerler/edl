@@ -38,7 +38,7 @@ Usage:
     edl.py secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl.py getstorageinfo [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl.py getstorageinfo [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
@@ -92,12 +92,12 @@ Description:
 
 Options:
     --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
-    --vid=vid                          Set usb vendor id used for EDL [default: 0x05c6]
-    --pid=pid                          Set usb product id used for EDL [default: 0x9008]
+    --vid=vid                          Set usb vendor id used for EDL [default: -1]
+    --pid=pid                          Set usb product id used for EDL [default: -1]
     --lun=lun                          Set lun to read/write from (UFS memory only) [default: None]
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
     --sectorsize=bytes                 Set default sector size [default: 0x200]
-    --memory=memtype                   Set memory type ("eMMC", "UFS", "spinor")
+    --memory=memtype                   Set memory type ("NAND", "eMMC", "UFS", "spinor")
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
@@ -266,7 +266,7 @@ class main(metaclass=LogBase):
         vid = int(args["--vid"], 16)
         pid = int(args["--pid"], 16)
         interface = -1
-        if vid!="":
+        if vid!=-1 and pid!=-1:
             portconfig = [[vid, pid, interface]]
         else:
             portconfig = default_ids

@@ -1,6 +1,8 @@
 import binascii
 import platform
 import time
+import json
+from struct import unpack
 from Library.utils import *
 from Library.gpt import gpt
 from Library.sparse import QCSparse
@@ -13,6 +15,67 @@ except Exception as e:
 from queue import Queue
 from threading import Thread
 
+
+class nand_partition:
+    partentries = []
+
+    def __init__(self,parent,printer=None):
+        if printer==None:
+            self.printer=print
+        else:
+            self.printer=printer
+        self.partentries=[]
+        self.partitiontblsector=None
+        self.parent=parent
+        self.storage_info = {}
+
+    def parse(self,partdata):
+        self.partentries = []
+
+        class partf:
+            sector = 0
+            sectors = 0
+            name = ""
+            attr1=0
+            attr2=0
+            attr3=0
+            which_flash=0
+
+        magic1, magic2, version, numparts = unpack("<IIII", partdata[0:0x10])
+        if magic1 == 0x55EE73AA or magic2 == 0xE35EBDDB:
+            data = partdata[0x10:]
+            for i in range(0, len(data) // 0x1C):
+                name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
+                                                                                data[i * 0x1C:(i * 0x1C) + 0x1C])
+                if name[1] != 0x3A:
+                    break
+                np=partf()
+                np.name=name[2:].rstrip(b"\x00").decode('utf-8').lower()
+                np.sector=offset*self.parent.cfg.block_size//self.parent.cfg.SECTOR_SIZE_IN_BYTES
+                np.sectors=(length&0xFFFF)*self.parent.cfg.block_size//self.parent.cfg.SECTOR_SIZE_IN_BYTES
+                np.attr1=attr1
+                np.attr2=attr2
+                np.attr3=attr3
+                np.which_flash=which_flash
+                self.partentries.append(np)
+            return True
+        return False
+
+    def print(self):
+        self.printer("Name            Offset\t\tLength\t\tAttr\t\t\tFlash")
+        self.printer("-------------------------------------------------------------")
+        for partition in self.partentries:
+            name=partition.name
+            for i in range(0x10 - len(partition.name)):
+                name += " "
+            offset = partition.sector * self.parent.cfg.SECTOR_SIZE_IN_BYTES
+            length = partition.sectors * self.parent.cfg.SECTOR_SIZE_IN_BYTES
+            attr1 = partition.attr1
+            attr2 = partition.attr2
+            attr3 = partition.attr3
+            which_flash = partition.which_flash
+            self.printer(
+                f"{name}\t%08X\t%08X\t{hex(attr1)}/{hex(attr2)}/{hex(attr3)}\t{which_flash}" % (offset, length))
 
 def writefile(wf, q, stop):
     while True:
@@ -42,7 +105,6 @@ class asyncwriter():
 
 class firehose(metaclass=LogBase):
     class cfg:
-        MemoryName = "eMMC"
         TargetName = ""
         Version = ""
         ZLPAwareHost = 1
@@ -50,9 +112,15 @@ class firehose(metaclass=LogBase):
         SkipWrite = 0
         MaxPayloadSizeToTargetInBytes = 1048576
         MaxPayloadSizeFromTargetInBytes = 8192
-        SECTOR_SIZE_IN_BYTES = 512
         MaxXMLSizeInBytes = 4096
         bit64 = True
+
+        total_blocks = 0
+        block_size = 0
+        SECTOR_SIZE_IN_BYTES = 0
+        MemoryName = "eMMC"
+        prod_name = "Unknown"
+        maxlun=99
 
     def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
@@ -67,14 +135,14 @@ class firehose(metaclass=LogBase):
         self.skipresponse = skipresponse
         self.luns = luns
         self.supported_functions = []
-        if self.cfg.MemoryName == "UFS" or self.cfg.MemoryName == "spinor":
-            self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+
         self.__logger.setLevel(loglevel)
         if loglevel==logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
-
+        self.nandparttbl = None
+        self.nandpart=nand_partition(parent=self,printer=print)
 
     def detect_partition(self, arguments, partitionname):
         fpartitions = {}
@@ -618,29 +686,46 @@ class firehose(metaclass=LogBase):
 
         if data == b"" or data == -1:
             return None, None
-        guid_gpt = gpt(
-            num_part_entries=gpt_num_part_entries,
-            part_entry_size=gpt_part_entry_size,
-            part_entry_start_lba=gpt_part_entry_start_lba,
-            loglevel=self.__logger.level
-        )
-        try:
-            header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-            if "first_usable_lba" in header:
-                sectors = header["first_usable_lba"]
-                if sectors == 0:
-                    return None, None
-                if sectors>34:
-                    sectors=34
-                data = self.cmd_read_buffer(lun, 0, sectors, False)
-                if data == b"":
-                    return None, None
-                guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                return data, guid_gpt
-            else:
-                return None, None
-        except:
+        magic=unpack("<I",data[0:4])[0]
+        if magic==0x844bdcd1:
+            self.__logger.info("Nand storage detected. Trying to find partition table")
+
+            if self.nandpart.partitiontblsector==None:
+                for sector in range(0, 1024):
+                    data = self.cmd_read_buffer(0,sector,1,False)
+                    if data[0:8] != b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd":
+                        continue
+                    self.nandpart.partitiontblsector=sector
+
+            if self.nandpart.partitiontblsector!=None:
+                data = self.cmd_read_buffer(0,self.nandpart.partitiontblsector+1, 2, False)
+                if self.nandpart.parse(data):
+                    return data, self.nandpart
             return None, None
+        else:
+            guid_gpt = gpt(
+                num_part_entries=gpt_num_part_entries,
+                part_entry_size=gpt_part_entry_size,
+                part_entry_start_lba=gpt_part_entry_start_lba,
+                loglevel=self.__logger.level
+            )
+            try:
+                header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                if "first_usable_lba" in header:
+                    sectors = header["first_usable_lba"]
+                    if sectors == 0:
+                        return None, None
+                    if sectors>34:
+                        sectors=34
+                    data = self.cmd_read_buffer(lun, 0, sectors, False)
+                    if data == b"":
+                        return None, None
+                    guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                    return data, guid_gpt
+                else:
+                    return None, None
+            except:
+                return None, None
 
     def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         data = self.cmd_read_buffer(lun, 0, 2, False)
@@ -668,6 +753,12 @@ class firehose(metaclass=LogBase):
         return sector, offset
 
     def configure(self,lvl):
+        if self.cfg.SECTOR_SIZE_IN_BYTES==0:
+            if self.cfg.MemoryName.lower() == "emmc":
+                self.cfg.SECTOR_SIZE_IN_BYTES = 512
+            else:
+                self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+
         connectcmd = f"<?xml version =\"1.0\" ?><data>" + \
                      f"<configure MemoryName=\"{self.cfg.MemoryName}\" " + \
                      f"ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
@@ -751,10 +842,6 @@ class firehose(metaclass=LogBase):
         self.__logger.info(f"TargetName={self.cfg.TargetName}")
         self.__logger.info(f"MemoryName={self.cfg.MemoryName}")
         self.__logger.info(f"Version={self.cfg.Version}")
-        if self.cfg.MemoryName.lower() == "emmc" or self.cfg.MemoryName.lower()=="nand":
-            self.cfg.SECTOR_SIZE_IN_BYTES = 512
-        elif self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
-            self.cfg.SECTOR_SIZE_IN_BYTES = 4096
 
         rsp=self.cmd_read_buffer(0,1,1,False)
         if rsp==-1:
@@ -762,6 +849,10 @@ class firehose(metaclass=LogBase):
                     self.__logger.warning("Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                     self.cfg.MemoryName="eMMC"
                     return self.configure(0)
+                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
+                    self.cfg.SECTOR_SIZE_IN_BYTES = 512
+                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
+                    self.cfg.SECTOR_SIZE_IN_BYTES = 4096
 
     def connect(self):
         v = b'-1'
@@ -824,6 +915,45 @@ class firehose(metaclass=LogBase):
             self.__logger.info(data.decode('utf-8'))
         except:
             pass
+
+        if self.supported_functions==[]:
+            self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
+                                        'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
+                                        'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
+
+        if "getstorageinfo" in self.supported_functions:
+            storageinfo=self.cmd_getstorageinfo()
+            if storageinfo!=None:
+                for info in storageinfo:
+                    if "storage_info" in info:
+                        si=json.loads(info)["storage_info"]
+                        self.__logger.info("Storage report:")
+                        for sii in si:
+                            self.__logger.info(f"{sii}:{si[sii]}")
+                        if "total_blocks" in si:
+                            self.cfg.total_blocks=si["total_blocks"]
+
+                        if "block_size" in si:
+                            self.cfg.block_size=si["block_size"]
+                        if "page_size" in si:
+                            self.cfg.SECTOR_SIZE_IN_BYTES=si["page_size"]
+                        if "mem_type" in si:
+                            self.cfg.MemoryName=si["mem_type"]
+                        if "prod_name" in si:
+                            self.cfg.prod_name=si["prod_name"]
+                    if "UFS Inquiry Command Output:" in info:
+                        self.cfg.prod_name=info.split("Output: ")[1]
+                        self.__logger.info(info)
+                    if "UFS Erase Block Size:" in info:
+                        self.cfg.block_size=int(info.split("Size: ")[1],16)
+                        self.__logger.info(info)
+                    if "UFS Boot" in info:
+                        self.cfg.MemoryName="UFS"
+                        self.cfg.SECTOR_SIZE_IN_BYTES=4096
+                    if "UFS Boot Partition Enabled: " in info:
+                        self.__logger.info(info)
+                    if "UFS Total Active LU: " in info:
+                        self.cfg.maxlun=int(info.split("LU: ")[1],16)
         return self.supported_functions
 
     # OEM Stuff here below --------------------------------------------------
@@ -845,23 +975,24 @@ class firehose(metaclass=LogBase):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val = self.xmlsend(data)
         if val[0]:
-            self.__logger.info(f"GetStorageInfo:\n--------------------\n")
-            self.__logger.info(val[1])
-            return True
+            data=self.xml.getlog(val[2])
+            return data
         else:
             self.__logger.warning("GetStorageInfo command isn't supported.")
-            return False
+            return None
 
     def cmd_getstorageinfo_string(self):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val = self.xmlsend(data)
-        resp = ""
-        if val[0] == True:
-            resp += (f"GetStorageInfo:\n--------------------\n")
-            resp += (val[1])
-            return resp
+        if val[0]:
+            self.__logger.info(f"GetStorageInfo:\n--------------------\n")
+            data=self.xml.getlog(val[2])
+            for line in data:
+                self.__logger.info(line)
+            return True
         else:
-            return ""
+            self.__logger.warning("GetStorageInfo command isn't supported.")
+            return False
 
     def cmd_poke(self, address, data, filename="", info=False):
         rf = None
