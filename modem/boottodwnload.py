@@ -26,6 +26,7 @@ class vendor(Enum):
     quectel = 0x2c7c
     zte = 0x19d2
     netgear = 0x0846
+    telit = 0x413c
 
 class deviceclass:
     vid=0
@@ -35,7 +36,7 @@ class deviceclass:
         self.pid=pid
 
 
-class connection:
+class connection(metaclass=LogBase):
     def __init__(self, port=""):
         self.serial = None
         self.tn = None
@@ -84,7 +85,8 @@ class connection:
             0x1199:["Sierra Wireless",3],
             0x2c7c:["Quectel",3],
             0x19d2:["ZTE",2],
-            0x0846:["Netgear", 2]
+            0x0846:["Netgear", 2],
+            0x413c:["Telit",0]
         }
         mode="Unknown"
         for device in self.detectusbdevices():
@@ -101,6 +103,19 @@ class connection:
                     if self.websend(url):
                         mode="AT"
                         break
+            elif device.vid==vendor.telit.value:
+                if device.pid==0x81d7:
+                    print(f"Detected a {vendortable[device.vid][0]} device with pid {hex(device.pid)} in Diag mode")
+                    print("Sending download mode command")
+                    interface = 5
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x413c, 0x81d7, interface]])
+                    if diag.connect():
+                        data=diag.hdlc.receive_reply()
+                        res = diag.send(b"\x4b\x65\x01\x00")
+                        if res[0]==0x4B:
+                            print("Sending download mode succeeded")
+                        diag.disconnect()
+                    break
         if mode=="AT" or mode=="Unknown":
             for port in self.getserialports():
                 if port.vid in vendortable:
@@ -173,6 +188,8 @@ class connection:
                         data["vendor"]="ZTE"
                     elif "Netgear" in data["manufacturer"]:
                         data["vendor"]="Netgear"
+                    elif "Telit" in data["manufacturer"]:
+                        data["vendor"]="Telit"
         return data
 
 class dwnloadtools(metaclass=LogBase):
@@ -193,6 +210,15 @@ class dwnloadtools(metaclass=LogBase):
                     print(cn.send('AT!QPSTDLOAD\r'))
                     print("Done switching to download mode")
                 elif info["vendor"]=="Quectel":
+                    print("Sending download mode command")
+                    interface=0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c,0x0125,interface]])
+                    if diag.connect():
+                        diag.hdlc.receive_reply()
+                        res = diag.send(b"\x4b\x65\x01\x00")
+                        diag.disconnect()
+                        print("Done switching to download mode")
+                elif info["vendor"]=="Telit":
                     print("Sending download mode command")
                     interface=0
                     diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c,0x0125,interface]])

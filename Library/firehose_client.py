@@ -8,7 +8,7 @@ from Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
 from Library.xmlparser import xmlparser
 from Library.utils import do_tcp_server
 from Config.qualcomm_config import memory_type
-from Library.utils import LogBase
+from Library.utils import LogBase, getint
 try:
     import xml.etree.cElementTree as ET
     from xml.etree import cElementTree as ElementTree
@@ -38,8 +38,8 @@ class firehose_client(metaclass=LogBase):
         self.cfg.ZLPAwareHost = 1
         self.cfg.SkipStorageInit = arguments["--skipstorageinit"]
         self.cfg.SkipWrite = arguments["--skipwrite"]
-        self.cfg.MaxPayloadSizeToTargetInBytes = int(arguments["--maxpayload"], 16)
-        self.cfg.SECTOR_SIZE_IN_BYTES = int(arguments["--sectorsize"], 16)
+        self.cfg.MaxPayloadSizeToTargetInBytes = getint(arguments["--maxpayload"])
+        self.cfg.SECTOR_SIZE_IN_BYTES = getint(arguments["--sectorsize"])
         self.cfg.bit64 = sahara.bit64
         devicemodel = ""
         skipresponse = False
@@ -427,8 +427,8 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Peek command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
-                length = int(options["<length>"], 16)
+                offset = getint(options["<offset>"])
+                length = getint(options["<length>"])
                 filename = options["<filename>"]
                 self.firehose.cmd_peek(offset, length, filename, True)
                 self.__logger.info(
@@ -441,8 +441,8 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Peek command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
-                length = int(options["<length>"], 16)
+                offset = getint(options["<offset>"])
+                length = getint(options["<length>"])
                 resp = self.firehose.cmd_peek(offset, length, "", True)
                 self.printer("\n")
                 self.printer(hexlify(resp))
@@ -454,7 +454,7 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Peek command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 resp = self.firehose.cmd_peek(offset, 8, "", True)
                 self.printer("\n")
                 self.printer(hex(unpack("<Q", resp[:8])[0]))
@@ -466,7 +466,7 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Peek command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 resp = self.firehose.cmd_peek(offset, 4, "", True)
                 self.printer("\n")
                 self.printer(hex(unpack("<I", resp[:4])[0]))
@@ -478,7 +478,7 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Poke command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 filename = options["<filename>"]
                 return self.firehose.cmd_poke(offset, "", filename, True)
         elif cmd == "pokehex":
@@ -488,7 +488,7 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Poke command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 data = unhexlify(options["<data>"])
                 return self.firehose.cmd_poke(offset, data, "", True)
         elif cmd == "pokeqword":
@@ -498,8 +498,8 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Poke command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
-                data = pack("<Q", int(options["<data>"], 16))
+                offset = getint(options["<offset>"])
+                data = pack("<Q", getint(options["<data>"]))
                 return self.firehose.cmd_poke(offset, data, "", True)
         elif cmd == "pokedword":
             if not self.check_param(["<offset>", "<data>"]):
@@ -508,8 +508,8 @@ class firehose_client(metaclass=LogBase):
                 self.__logger.error("Poke command isn't supported by edl loader")
                 return False
             else:
-                offset = int(options["<offset>"], 16)
-                data = pack("<I", int(options["<data>"], 16))
+                offset = getint(options["<offset>"])
+                data = pack("<I", getint(options["<data>"]))
                 return self.firehose.cmd_poke(offset, data, "", True)
         elif cmd == "memcpy":
             if not self.check_param(["<offset>", "<size>"]):
@@ -517,8 +517,8 @@ class firehose_client(metaclass=LogBase):
             if not self.check_cmd("poke"):
                 self.printer("Poke command isn't supported by edl loader")
             else:
-                srcoffset = int(options["<offset>"], 16)
-                size = int(options["<size>"], 16)
+                srcoffset = getint(options["<offset>"])
+                size = getint(options["<size>"])
                 dstoffset = srcoffset + size
                 if self.firehose.cmd_memcpy(dstoffset, srcoffset, size):
                     self.printer(f"Memcpy from {hex(srcoffset)} to {hex(dstoffset)} succeeded")

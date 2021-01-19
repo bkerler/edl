@@ -190,9 +190,10 @@ class firehose(metaclass=LogBase):
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
         else:
             self.cdc.write(bytes(data, 'utf-8'), self.cfg.MaxXMLSizeInBytes)
+        time.sleep(0.01)
         rdata = bytearray()
         counter = 0
-        timeout = 3
+        timeout = 30
         resp = {"value": "NAK"}
         status = False
         if not skipresponse:
@@ -201,7 +202,7 @@ class firehose(metaclass=LogBase):
                     tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                     if tmp == b"":
                         counter += 1
-                        time.sleep(0.3)
+                        time.sleep(0.05)
                         if counter > timeout:
                             break
                     rdata += tmp
@@ -380,7 +381,7 @@ class firehose(metaclass=LogBase):
                     data += self.modules.addprogram()
                 data += f"/>\n</data>"
                 rsp = self.xmlsend(data)
-                time.sleep(0.01)
+                #time.sleep(0.01)
                 if display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 if rsp[0]:
@@ -410,7 +411,7 @@ class firehose(metaclass=LogBase):
                                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
                     self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                    time.sleep(0.2)
+                    #time.sleep(0.2)
                     info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                     rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                     if "value" in rsp:
@@ -455,7 +456,7 @@ class firehose(metaclass=LogBase):
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
-            time.sleep(0.01)
+            #time.sleep(0.01)
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             if rsp[0]:
@@ -484,7 +485,7 @@ class firehose(metaclass=LogBase):
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                time.sleep(0.2)
+                #time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 if "value" in rsp:
@@ -525,7 +526,7 @@ class firehose(metaclass=LogBase):
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
-            time.sleep(0.01)
+            #time.sleep(0.01)
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             if rsp[0]:
@@ -542,7 +543,7 @@ class firehose(metaclass=LogBase):
                     bytesToWrite -= wlen
                     pos += wlen
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                time.sleep(0.2)
+                #time.sleep(0.2)
                 info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
                 if "value" in rsp:
@@ -584,7 +585,7 @@ class firehose(metaclass=LogBase):
                        f" start_sector=\"{cursector}\"/>\n</data>"
 
                 rsp = self.xmlsend(data, self.skipresponse)
-                time.sleep(0.01)
+                #time.sleep(0.01)
                 if rsp[0]:
                     if "value" in rsp[1]:
                         if rsp[1]["value"] == "NAK":

@@ -255,9 +255,9 @@ class usb_class(metaclass=LogBase):
                     pos += pktsize
                 except:
                     # print("Error while writing")
-                    time.sleep(0.05)
+                    time.sleep(0.01)
                     i += 1
-                    if i == 5:
+                    if i == 3:
                         return False
                     pass
         self.verify_data(bytearray(command), "TX:")
@@ -280,6 +280,9 @@ class usb_class(metaclass=LogBase):
                     self.__logger.debug("Timed out")
                     self.__logger.debug(tmp)
                     return bytearray(tmp)
+                elif "Overflow" in error:
+                    self.__logger.error("USB Overflow")
+                    sys.exit(0)
                 elif e.errno is not None:
                     print(repr(e), type(e), e.errno)
                     sys.exit(0)

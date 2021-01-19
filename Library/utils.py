@@ -143,6 +143,15 @@ def parse_args(cmd, args, mainargs):
         options["<xmlstring>"] = opts[0]
     return options
 
+def getint(valuestr):
+    try:
+        return int(valuestr)
+    except:
+        try:
+            return int(valuestr,16)
+        except:
+            return 0
+
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
         logging.ERROR: colorama.Fore.RED,

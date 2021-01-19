@@ -197,6 +197,8 @@ class hdlc:
         # FlushFileBuffers(ser)
 
     def send_cmd_base(self, outdata, prefixflag, nocrc=False):
+        if isinstance(outdata,str):
+            outdata=bytes(outdata,'utf-8')
         packet = self.convert_cmdbuf(bytearray(outdata))
         if self.send_unframed_buf(packet, prefixflag):
             if nocrc:

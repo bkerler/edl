@@ -367,10 +367,24 @@ class sahara(metaclass=LogBase):
                     return ["sahara", None]
                 elif b"<?xml" in v:
                     return ["firehose", None]
+                elif v[0]==0x7E:
+                    return ["nandprg", None]
             else:
                 data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
-                self.cdc.write(data, 4096)
+                self.cdc.write(data, 0x80)
                 res = self.cdc.read()
+                if res==b"":
+                    try:
+                        data = b"\x7E\x06\x4E\x95\x7E"  # Streaming nop
+                        self.cdc.write(data, 0x80)
+                        res = self.cdc.read()
+                        if b"\x7E\x0D\x16\x00\x00\x00\x00" in res or b"Invalid Command" in res:
+                            return ["nandprg", None]
+                        else:
+                            return ["", None]
+                    except Exception as e:
+                        self.__logger.error(str(e))
+                        return ["", None]
                 if (b"<?xml" in res):
                     return ["firehose", None]
                 elif len(res)>0 and res[0] == self.cmd.SAHARA_END_TRANSFER:
@@ -388,17 +402,7 @@ class sahara(metaclass=LogBase):
 
         except Exception as e:
             self.__logger.error(str(e))
-            try:
-                data = b"\x7E\x06\x4E\x95\x7E"  # Streaming nop
-                self.cdc.write(data, 4096)
-                res = self.cdc.read()
-                if b"\x7E\x0D\x16\x00\x00\x00\x00" in res:
-                    return ["nandprg", None]
-                else:
-                    return ["", None]
-            except Exception as e:
-                self.__logger.error(str(e))
-                return ["", None]
+
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
         cmd, pkt = self.get_rsp()
         if cmd==-1 and pkt==-1:
@@ -471,6 +475,10 @@ class sahara(metaclass=LogBase):
                 self.oem_str = "{:04x}".format(self.oem_id)
                 self.model_id = "{:04x}".format(self.model_id)
                 self.msm_str = "{:08x}".format(self.msm_id)
+                if self.msm_id in msmids:
+                    cpustr=f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
+                else:
+                    cpustr="Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
                 """
                 if self.version >= 2.4:
                     self.__logger.info(f"\n------------------------\n" +
@@ -486,6 +494,7 @@ class sahara(metaclass=LogBase):
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
                                 f"OEM_ID:0x{self.oem_str}," +
                                 f"MODEL_ID:0x{self.model_id})\n" +
+                                cpustr +
                                 f"PK_HASH:           0x{self.pkhash}\n" +
                                 f"Serial:            0x{self.serials}\n")
             if self.programmer == "":
@@ -563,7 +572,10 @@ class sahara(metaclass=LogBase):
 
     def cmd_reset(self):
         self.cdc.write(pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))
-        cmd, pkt = self.get_rsp()
+        try:
+            cmd, pkt = self.get_rsp()
+        except:
+            return False
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
         elif "status" in pkt:

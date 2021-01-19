@@ -17,7 +17,7 @@ Usage:
     edl.py rl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py rf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py rs <start_sector> <sectors> <filename> [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl.py w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl.py w <partitionname> <filename> [--partitionfilename=filename] [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py wl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py wf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
     edl.py ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value]
@@ -56,7 +56,7 @@ Description:
     rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]              # Read all partitions from flash to a directory
     rf <filename> [--memory=memtype] [--lun=lun]                                 # Read whole flash to file
     rs <start_sector> <sectors> <filename> [--lun=lun]                           # Read sectors starting at start_sector to filename
-    w <partitionname> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to partition to flash
+    w <partitionname> <filename> [--partitionfilename=filename] [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to partition to flash
     wl <directory> [--memory=memtype] [--lun=lun]                                # Write all files from directory to flash
     wf <filename> [--memory=memtype] [--lun=lun]                                 # Write whole filename to flash
     ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to flash at start_sector
@@ -65,7 +65,7 @@ Description:
     ep <partitionname> <sectors> [--memory=memtype] [--skipwrite] [--lun=lun]    # Erase sector count from flash partition
     footer <filename> [--memory=memtype] [--lun=lun]                             # Read crypto footer from flash
     peek <offset> <length> <filename>                                            # Dump memory at offset with given length to filename
-    peekhex <offset> <length>                                                    # Dump memory at offset and given length as hex string
+    peekhex <offset> <length>                                                    # Dump memory at offset and given length
     peekdword <offset>                                                           # Dump DWORD at memory offset
     peekqword <offset>                                                           # Dump QWORD at memory offset
     memtbl <filename>                                                            # Dump memory table to file
@@ -96,8 +96,9 @@ Options:
     --pid=pid                          Set usb product id used for EDL [default: -1]
     --lun=lun                          Set lun to read/write from (UFS memory only) [default: None]
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
-    --sectorsize=bytes                 Set default sector size [default: 0x200]
+    --sectorsize=bytes                 Set default sector size
     --memory=memtype                   Set memory type ("NAND", "eMMC", "UFS", "spinor")
+    --partitionfilename=filename       Set partition table as filename for streaming mode
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
@@ -115,7 +116,10 @@ import os
 import sys
 import time
 import logging
+import subprocess
+import re
 from docopt import docopt
+
 
 args = docopt(__doc__, version='3')
 
@@ -140,37 +144,44 @@ from Library.streaming import Streaming
 print("Qualcomm Sahara / Firehose Client V3.2 (c) B.Kerler 2018-2021.")
 
 class main(metaclass=LogBase):
-    def doconnect(self,cdc, loop, mode, resp, sahara):
-        while not cdc.connected:
-            cdc.connected = cdc.connect()
-            if not cdc.connected:
+    def doconnect(self, loop, mode, resp):
+        while not self.cdc.connected:
+            self.cdc.connected = self.cdc.connect()
+            if not self.cdc.connected:
                 sys.stdout.write('.')
+                if loop == 5:
+                    sys.stdout.write('\n')
+                    self.__logger.info("Hint:   Press and hold vol up+dwn, connect usb. For some, only use vol up.")
+                    self.__logger.info("Xiaomi: Press and hold Vol up + pwr, in fastboot mode connect usb.\n" +
+                                       "        Run \"./fastboot oem edl\".")
+                    self.__logger.info("Other:  Run \"adb reboot edl\".")
+                    sys.stdout.write('\n')
+
                 if loop >= 20:
                     sys.stdout.write('\n')
-                    loop = 0
+                    loop = 6
                 loop += 1
                 time.sleep(1)
                 sys.stdout.flush()
             else:
                 self.__logger.info("Device detected :)")
                 try:
-                    mode, resp = sahara.connect()
-                    if mode == "" or resp == -1:
-                        mode, resp = sahara.connect()
+                    mode, resp = self.sahara.connect()
                 except Exception as e:
                     if mode == "" or resp == -1:
-                        mode, resp = sahara.connect()
+                        mode, resp = self.sahara.connect()
+                if mode == -1:
+                    mode, resp = self.sahara.connect()
                 if mode == "":
                     self.__logger.info("Unknown mode. Aborting.")
-                    cdc.close()
-                    sys.exit()
+                    self.exit()
                 self.__logger.info(f"Mode detected: {mode}")
                 break
 
         return mode, resp
 
-    def exit(self,cdc):
-        cdc.close()
+    def exit(self):
+        self.cdc.close()
         sys.exit()
 
     def parse_option(self,args):
@@ -260,7 +271,18 @@ class main(metaclass=LogBase):
             cmd = "qfil"
         return cmd
 
+    def console_cmd(self,cmd):
+        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, \
+                                stderr=subprocess.STDOUT, close_fds=True)
+        output = read.stdout.read().decode()
+        return output
+
     def run(self):
+        if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
+            proper_driver = self.console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
+            if re.findall(r'QCUSB', str(proper_driver)):
+                self.__logger.warning(f'Please first install libusb_win32 driver from Zadig')
+
         mode = ""
         loop = 0
         vid = int(args["--vid"], 16)
@@ -280,52 +302,53 @@ class main(metaclass=LogBase):
         else:
             self.__logger.setLevel(logging.INFO)
 
-        cdc = usb_class(portconfig=portconfig,loglevel=self.__logger.level)
-        saharahdl = sahara(cdc,loglevel=self.__logger.level)
+        self.cdc = usb_class(portconfig=portconfig,loglevel=self.__logger.level)
+        self.sahara = sahara(self.cdc,loglevel=self.__logger.level)
 
         if args["--loader"] == 'None':
             self.__logger.info("Trying with no loader given ...")
-            saharahdl.programmer = ""
+            self.sahara.programmer = ""
         else:
             loader = args["--loader"]
             self.__logger.info(f"Using loader {loader} ...")
-            saharahdl.programmer = loader
+            self.sahara.programmer = loader
 
         self.__logger.info("Waiting for the device")
         resp = None
-        cdc.timeout = 100
-        mode, resp = self.doconnect(cdc, loop, mode, resp, saharahdl)
+        self.cdc.timeout = 100
+        mode, resp = self.doconnect(loop, mode, resp)
         if resp == -1:
-            mode, resp = self.doconnect(cdc, loop, mode, resp, saharahdl)
+            mode, resp = self.doconnect(loop, mode, resp)
             if resp == -1:
                 self.__logger.error("USB desync, please rerun command !")
-                sys.exit()
+                self.exit()
         # print((mode, resp))
         if mode == "sahara":
             if resp==None:
                 if mode=="sahara":
                     print("Sahara in error state, resetting ...")
-                    saharahdl.cmd_reset()
-                    exit(cdc)
+                    self.sahara.cmd_reset()
+                    data=self.cdc.read(5)
+                    self.exit()
             elif "mode" in resp:
                 mode = resp["mode"]
-                if mode == saharahdl.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
+                if mode == self.sahara.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
                     if args["memorydump"]:
                         time.sleep(0.5)
                         print("Device is in memory dump mode, dumping memory")
-                        saharahdl.debug_mode()
-                        exit(cdc)
+                        self.sahara.debug_mode()
+                        self.exit()
                     else:
                         print("Device is in streaming mode, uploading loader")
-                        cdc.timeout = None
-                        sahara_info = saharahdl.streaminginfo()
+                        self.cdc.timeout = None
+                        sahara_info = self.sahara.streaminginfo()
                         if sahara_info:
-                            mode, resp = saharahdl.connect()
+                            mode, resp = self.sahara.connect()
                             if mode == "sahara":
-                                mode = saharahdl.upload_loader()
-                                if "enprg" in saharahdl.programmer.lower():
+                                mode = self.sahara.upload_loader()
+                                if "enprg" in self.sahara.programmer.lower():
                                     mode = "load_enandprg"
-                                elif "nprg" in saharahdl.programmer.lower():
+                                elif "nprg" in self.sahara.programmer.lower():
                                     mode = "load_nandprg"
                                 elif mode!="":
                                     mode = "load_" + mode
@@ -333,53 +356,54 @@ class main(metaclass=LogBase):
                                     time.sleep(0.3)
                                 else:
                                     print("Error, couldn't find suitable enprg/nprg loader :(")
-                                    exit(cdc)
+                                    self.exit()
                 else:
                     print("Device is in EDL mode .. continuing.")
-                    cdc.timeout = None
-                    sahara_info = saharahdl.info()
+                    self.cdc.timeout = None
+                    sahara_info = self.sahara.info()
                     if sahara_info:
-                        mode, resp = saharahdl.connect()
+                        mode, resp = self.sahara.connect()
                         if mode == "sahara":
-                            mode = saharahdl.upload_loader()
+                            mode = self.sahara.upload_loader()
                             if mode == "firehose":
-                                if "enprg" in saharahdl.programmer.lower():
+                                if "enprg" in self.sahara.programmer.lower():
                                     mode = "enandprg"
-                                elif "nprg" in saharahdl.programmer.lower():
+                                elif "nprg" in self.sahara.programmer.lower():
                                     mode = "nandprg"
                             if mode != "":
                                 if mode != "firehose":
-                                    streaming = Streaming(cdc, saharahdl, self.__logger.level)
+                                    streaming = Streaming(self.cdc, self.sahara, self.__logger.level)
                                     if streaming.connect(1):
                                         print("Successfully uploaded programmer :)")
                                         mode = "nandprg"
                                     else:
                                         print("Device is in an unknown state")
-                                        exit(cdc)
+                                        self.exit()
                                 else:
                                     print("Successfully uploaded programmer :)")
                             else:
                                 print("No suitable loader found :(")
-                                exit(cdc)
+                                self.exit()
                     else:
-                        print("Device is in an unknown sahara state")
+                        print("Device is in an unknown sahara state, resetting")
                         print("resp={0}".format(resp))
-                        exit(cdc)
+                        self.sahara.cmd_reset()
+                        self.exit()
             else:
                 print("Device is in an unknown state")
-                exit(cdc)
+                self.exit()
         else:
-            saharahdl.bit64 = True
+            self.sahara.bit64 = True
 
         if mode == "firehose":
-            cdc.timeout = None
-            fh = firehose_client(args, cdc, saharahdl, self.__logger.level,print)
+            self.cdc.timeout = None
+            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level,print)
             cmd=self.parse_cmd(args)
             options=self.parse_option(args)
             if cmd!="":
                 fh.handle_firehose(cmd,options)
         elif mode == "nandprg" or mode == "enandprg" or mode == "load_nandprg" or mode == "load_enandprg":
-            sc = streaming_client(args, cdc, saharahdl, self.__logger.level,print)
+            sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level,print)
             cmd = self.parse_cmd(args)
             options = self.parse_option(args)
             if "load_" in mode:
@@ -390,7 +414,7 @@ class main(metaclass=LogBase):
         else:
             self.__logger.error("Sorry, couldn't talk to Sahara, please reboot the device !")
 
-        exit(cdc)
+        self.exit()
 
 
 if __name__ == '__main__':

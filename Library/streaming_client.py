@@ -4,7 +4,7 @@ import logging
 from Library.streaming import Streaming
 from binascii import hexlify, unhexlify
 from struct import unpack, pack
-from Library.utils import do_tcp_server, LogBase
+from Library.utils import do_tcp_server, LogBase, getint
 
 
 class streaming_client(metaclass=LogBase):
@@ -59,11 +59,22 @@ class streaming_client(metaclass=LogBase):
 
     def handle_streaming(self, cmd, options):
         mode = 0
+        """
+        offset = getint(options["<offset>"])
+        length = getint(options["<length>"])
+        filename = options["<filename>"]
+        self.streaming.streaming_mode=self.streaming.Qualcomm
+        self.streaming.memread=self.streaming.qc_memread
+        self.streaming.memtofile(offset, length, filename)
+        """
+
         if "<mode>" in options:
             mode = options["<mode>"]
         if self.streaming.connect(mode):
             xflag = 0
-            self.streaming.nand_init(xflag)
+            res=self.streaming.hdlc.receive_reply(5)
+            if self.streaming.streaming_mode==self.streaming.Patched:
+                self.streaming.nand_init(xflag)
             if cmd == "gpt":
                 directory = options["<directory>"]
                 if directory is None:
@@ -106,21 +117,19 @@ class streaming_client(metaclass=LogBase):
                         self.__logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                         self.print_partitions(rpartitions)
             elif cmd == "rs":
-                start = int(options["<start_sector>"])
-                sectors = int(options["<sectors>"])
+                sector = getint(options["<start_sector>"]) #Page
+                sectors = getint(options["<sectors>"])
                 filename = options["<filename>"]
-                self.printer(f"Dumping Sector {hex(start)} with Sectorcount {hex(sectors)}...")
-                block = 131
-                page = 0x20
-                data, extra = self.streaming.flash_read(block, page, sectors, self.streaming.settings.UD_SIZE_BYTES)
-                try:
-                    with open(filename, "wb") as write_handle:
-                        write_handle.write(data)
-                        self.printer(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
-                        return
-                except Exception as error:
-                    self.__logger.error(f"Couldn't open {filename} for writing: %s" % str(error))
-                self.streaming.nand_post()
+                self.printer(f"Dumping at Sector {hex(sector)} with Sectorcount {hex(sectors)}...")
+                if self.streaming.read_sectors(sector,sectors,filename,True):
+                    self.printer(f"Dumped sector {str(sector)} with sector count {str(sectors)} as {filename}.")
+            elif cmd == "rf":
+                sector = 0
+                sectors = self.streaming.settings.MAXBLOCK*self.streaming.settings.num_pages_per_blk*self.streaming.settings.sectors_per_page
+                filename = options["<filename>"]
+                self.printer(f"Dumping Flash from sector 0 to sector {hex(sectors)}...")
+                if self.streaming.read_sectors(sector,sectors,filename,True):
+                    self.printer(f"Dumped sector {str(sector)} with sector count {str(sectors)} as {filename}.")
             elif cmd == "rl":
                 directory = options["<directory>"]
                 if options["--skip"]:
@@ -156,40 +165,30 @@ class streaming_client(metaclass=LogBase):
                                      f"{filename}.")
                     self.streaming.read_raw(offset, length, self.streaming.settings.UD_SIZE_BYTES, partfilename)
             elif cmd == "peek":
-                offset = int(options["<offset>"], 16)
-                length = int(options["<length>"], 16)
+                offset = getint(options["<offset>"])
+                length = getint(options["<length>"])
                 filename = options["<filename>"]
-                with open(filename, "wb") as wf:
-                    while length > 0:
-                        size = 0x20000
-                        if length < size:
-                            size = length
-                            data = self.streaming.memread(offset, size)
-                            if data != b"":
-                                wf.write(data)
-                            else:
-                                break
-                        length -= size
-                self.__logger.info(
-                    f"Peek data from offset {hex(offset)} and length {hex(length)} was written to {filename}")
+                if self.streaming.memtofile(offset,length,filename):
+                    self.__logger.info(
+                        f"Peek data from offset {hex(offset)} and length {hex(length)} was written to {filename}")
             elif cmd == "peekhex":
-                offset = int(options["<offset>"], 16)
-                length = int(options["<length>"], 16)
+                offset = getint(options["<offset>"])
+                length = getint(options["<length>"])
                 resp = self.streaming.memread(offset, length)
                 self.printer("\n")
                 self.printer(hexlify(resp))
             elif cmd == "peekqword":
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 resp = self.streaming.memread(offset, 8)
                 self.printer("\n")
                 self.printer(hex(unpack("<Q", resp[:8])[0]))
             elif cmd == "peekdword":
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 resp = self.streaming.mempeek(offset)
                 self.printer("\n")
                 self.printer(hex(resp))
             elif cmd == "poke":
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 filename = unhexlify(options["<filename>"])
                 try:
                     with open(filename, "rb") as rf:
@@ -201,22 +200,22 @@ class streaming_client(metaclass=LogBase):
                 except Exception as e:
                     self.__logger.error(str(e))
             elif cmd == "pokehex":
-                offset = int(options["<offset>"], 16)
+                offset = getint(options["<offset>"])
                 data = unhexlify(options["<data>"])
                 if self.streaming.memwrite(offset, data):
                     self.__logger.info("Poke succeeded.")
                 else:
                     self.__logger.error("Poke failed.")
             elif cmd == "pokeqword":
-                offset = int(options["<offset>"], 16)
-                data = pack("<Q", int(options["<data>"], 16))
+                offset = getint(options["<offset>"])
+                data = pack("<Q", getint(options["<data>"]))
                 if self.streaming.memwrite(offset, data):
                     self.__logger.info("Poke succeeded.")
                 else:
                     self.__logger.error("Poke failed.")
             elif cmd == "pokedword":
-                offset = int(options["<offset>"], 16)
-                data = pack("<I", int(options["<data>"], 16))
+                offset = getint(options["<offset>"])
+                data = pack("<I", getint(options["<data>"]))
                 if self.streaming.mempoke(offset, data):
                     self.__logger.info("Poke succeeded.")
                 else:
@@ -281,8 +280,8 @@ class streaming_client(metaclass=LogBase):
             elif cmd == "memcpy":
                 if not self.check_param(["<offset>", "<size>"]):
                     return False
-                srcoffset = int(options["<offset>"], 16)
-                size = int(options["<size>"], 16)
+                srcoffset = getint(options["<offset>"])
+                size = getint(options["<size>"])
                 dstoffset = srcoffset + size
                 if self.streaming.cmd_memcpy(dstoffset, srcoffset, size):
                     self.printer(f"Memcpy from {hex(srcoffset)} to {hex(dstoffset)} succeeded")
@@ -291,6 +290,7 @@ class streaming_client(metaclass=LogBase):
                     return False
             ###############################
             elif cmd == "nop":
+                #resp=self.streaming.send(b"\x7E\x09")
                 self.__logger.error("Nop command isn't supported by streaming loader")
                 return True
             elif cmd == "setbootablestoragedrive":
@@ -304,10 +304,19 @@ class streaming_client(metaclass=LogBase):
                     return False
                 partitionname = options["<partitionname>"]
                 filename = options["<filename>"]
+                partitionfilename=""
+                if "--partitionfilename" in options:
+                    partitionfilename = options["--partitionfilename"]
+                    if not os.path.exists(partitionfilename):
+                        self.__logger.error(f"Error: Couldn't find partition file: {partitionfilename}")
+                        return False
                 if not os.path.exists(filename):
                     self.__logger.error(f"Error: Couldn't find file: {filename}")
                     return False
-                rpartitions = self.streaming.get_partitions()
+                if partitionfilename=="":
+                    rpartitions = self.streaming.get_partitions()
+                else:
+                    rpartitions = self.streaming.get_partitions(partitionfilename)
                 if self.streaming.enter_flash_mode():
                     if partitionname in rpartitions:
                         spartition = rpartitions[partitionname]

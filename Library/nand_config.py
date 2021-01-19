@@ -1,18 +1,19 @@
 import ctypes
 from enum import Enum
 from struct import unpack, pack
-
+from Config.qualcomm_config import secgen,secureboottbl
 c_uint8 = ctypes.c_uint8
 
 # nandbase MSM_NAND_BASE
 # qfprom SECURITY_CONTROL_BASE_PHYS
 config_tbl={
     #           bam nandbase bcraddr    secureboot          pbl                   qfprom                memtbl
-    3:  ["9x25",1,0xf9af0000,0xfc401a40,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0xFC4B8000, 0x6000], [0x200000, 0x24000]],
-    8:  ["9x35",1,0xf9af0000,0xfc401a40,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0xFC4B8000, 0x6000], [0x200000, 0x24000]],
-    10: ["9x45",1,0x79B0000,0x183f000,0xFC4B8000 + 0x6080,[0xFC010000, 0x18000],[0x58000, 0x6000],[0x200000, 0x24000]],
-    16: ["9x55",0,0x79B0000,0x183F000,0x000a01d0,[0x100000, 0x18000],[0x000A0000, 0x6000],[0x200000, 0x24000]], #9x6x as well
-    12: ["9x07",0,0x79B0000,0x183F000,0x000a01d0,[0x100000, 0x18000],[0x000A0000, 0x6000],[0x200000, 0x24000]]
+    3:  ["9x25",1,0xf9af0000,0xfc401a40,secureboottbl["MDM9x25"],secgen[2][0],secgen[2][1],secgen[2][2]],
+    8:  ["9x35",1,0xf9af0000,0xfc401a40,secureboottbl["MDM9x35"],secgen[2][0],secgen[2][1],secgen[2][2]],
+    10: ["9x45",1,0x79B0000,0x183f000,secureboottbl["MDM9x45"],secgen[2][0],secgen[2][1],secgen[2][2]],
+    16: ["9x55",0,0x79B0000,0x183f000,secureboottbl["MDM9x45"],secgen[5][0],secgen[5][1],secgen[5][2]],
+    17: ["9x60",0,0x79B0000,0x183f000,secureboottbl["MDM9x60"],secgen[5][0],secgen[5][1],secgen[5][2]],
+    12: ["9x07",0,0x79B0000,0x183f000,secureboottbl["MDM9607"],secgen[5][0],secgen[5][1],secgen[5][2]]
 }
 
 supported_flash = {
@@ -264,6 +265,11 @@ class SettingsOpt:
         self.BAD_BLOCK_IN_SPARE_AREA = 0
         self.ECC_MODE = 0
         self.bad_loader = 1
+        self.secureboot=secureboottbl["MDM9607"]
+        self.pbl=secgen[5][0]
+        self.qfprom=secgen[5][1]
+        self.memtbl=secgen[5][2]
+        self.chipname = "Unknown"
         if chipset in config_tbl:
             self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl=config_tbl[chipset]
             self.bad_loader = 0
@@ -274,6 +280,8 @@ class SettingsOpt:
                     self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl = \
                     config_tbl[chipid]
                     self.bad_loader = 0
+        if chipset==0xFF:
+            self.bad_loader=0
 
 class nand_toshiba_ids(ctypes.LittleEndianStructure):
     _fields_ = [
