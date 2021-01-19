@@ -190,7 +190,7 @@ class firehose(metaclass=LogBase):
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
         else:
             self.cdc.write(bytes(data, 'utf-8'), self.cfg.MaxXMLSizeInBytes)
-        time.sleep(0.01)
+        #time.sleep(0.01)
         rdata = bytearray()
         counter = 0
         timeout = 30
@@ -347,6 +347,19 @@ class firehose(metaclass=LogBase):
             self.__logger.error(f"Error:{rsp}")
             return False
 
+    def wait_for_data(self):
+        tmp=bytearray()
+        timeout=0
+        while not b'</data>' in tmp:
+            res = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+            if res==b'':
+                timeout+=1
+                if timeout==15:
+                    break
+                time.sleep(0.1)
+            tmp+=res
+        return tmp
+
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
         fsize = os.stat(filename).st_size
@@ -410,14 +423,13 @@ class firehose(metaclass=LogBase):
                             if display:
                                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-                    self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                    #time.sleep(0.2)
-                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    self.cdc.write(b'', self.cfg.MaxXMLSizeInBytes)
+                    log = self.xml.getlog(self.wait_for_data())
+                    rsp = self.xml.getresponse(self.wait_for_data())
                     if "value" in rsp:
                         if rsp["value"] != "ACK":
                             self.__logger.error(f"Error:")
-                            for line in info:
+                            for line in log:
                                 self.__logger.error(line)
                             return False
                 else:
@@ -465,7 +477,7 @@ class firehose(metaclass=LogBase):
                 if fsize < bytesToWrite:
                     bytesToWrite = fsize
                 while bytesToWrite > 0:
-                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                    wlen=self.cfg.MaxPayloadSizeToTargetInBytes
                     if fsize < wlen:
                         wlen = fsize
                     wdata = wfdata[fpos:fpos + wlen]
@@ -484,10 +496,10 @@ class firehose(metaclass=LogBase):
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-                self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+                self.cdc.write(b'', 0x80)
                 #time.sleep(0.2)
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                info = self.xml.getlog(self.wait_for_data())
+                rsp = self.xml.getresponse(self.wait_for_data())
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
                         self.__logger.error(f"Error:")
@@ -517,7 +529,7 @@ class firehose(metaclass=LogBase):
 
         for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
             data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                   f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                   f"<erase SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{maxsectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{cursector}\" "
@@ -526,26 +538,24 @@ class firehose(metaclass=LogBase):
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data)
-            #time.sleep(0.01)
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             if rsp[0]:
                 bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
                 while bytesToWrite > 0:
-                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                    wlen = self.cfg.SECTOR_SIZE_IN_BYTES
                     if bytesToWrite < wlen:
                         wlen = bytesToWrite
-                    self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
+                    self.cdc.write(empty[0:wlen], wlen)
                     prog = int(float(pos) / float(total) * float(100))
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     bytesToWrite -= wlen
                     pos += wlen
-                self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
-                #time.sleep(0.2)
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                self.cdc.write(b'', self.cfg.MaxXMLSizeInBytes)
+                info = self.xml.getlog(self.wait_for_data())
+                rsp = self.xml.getresponse(self.wait_for_data())
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
                         self.__logger.error(f"Error:")
@@ -577,6 +587,7 @@ class firehose(metaclass=LogBase):
 
         with open(filename, "wb") as wr:
             for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
+                buffer = bytearray()
                 bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
 
                 data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
@@ -593,8 +604,12 @@ class firehose(metaclass=LogBase):
                                 self.__logger.error(rsp[2].decode('utf-8'))
                             return False
                     while bytesToRead > 0:
-                        tmp = self.cdc.read(bytesToRead)
-                        wr.write(tmp)
+                        size=self.cfg.MaxPayloadSizeToTargetInBytes
+                        if size>bytesToRead:
+                            size=bytesToRead
+                        tmp = self.cdc.read(size)
+                        if tmp!=b"":
+                            buffer.extend(tmp)
                         bytesToRead -= len(tmp)
                         dataread += len(tmp)
                         prog = int(float(dataread) / float(total) * float(100))
@@ -602,8 +617,9 @@ class firehose(metaclass=LogBase):
                             if display:
                                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                             old = prog
-                    info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                    rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                    wr.write(buffer)
+                    info = self.xml.getlog(self.wait_for_data())
+                    rsp = self.xml.getresponse(self.wait_for_data())
                     if "value" in rsp:
                         if rsp["value"] != "ACK":
                             self.__logger.error(f"Error:")
@@ -651,7 +667,10 @@ class firehose(metaclass=LogBase):
                             self.__logger.error(rsp[2].decode('utf-8'))
                         return resData
                 while bytesToRead > 0:
-                    tmp = self.cdc.read(bytesToRead)
+                    size = self.cfg.MaxPayloadSizeToTargetInBytes
+                    if size > bytesToRead:
+                        size = bytesToRead
+                    tmp = self.cdc.read(size)
                     resData += tmp
                     bytesToRead -= len(tmp)
                     dataread += len(tmp)
@@ -660,8 +679,8 @@ class firehose(metaclass=LogBase):
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                         old = prog
-                info = self.xml.getlog(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
-                rsp = self.xml.getresponse(self.cdc.read(self.cfg.MaxXMLSizeInBytes))
+                info = self.xml.getlog(self.wait_for_data())
+                rsp = self.xml.getresponse(self.wait_for_data())
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
                         self.__logger.error(f"Error:")
@@ -752,6 +771,18 @@ class firehose(metaclass=LogBase):
         sector = sector + (offset // self.cfg.SECTOR_SIZE_IN_BYTES)
         offset = offset % self.cfg.SECTOR_SIZE_IN_BYTES
         return sector, offset
+
+    def getluns(self, argument):
+        if argument["--lun"] != "None":
+            return [int(argument["--lun"])]
+
+        luns = []
+        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower()=="spinor":
+            for i in range(0, self.cfg.maxlun):
+                luns.append(i)
+        else:
+            luns = [0]
+        return luns
 
     def configure(self,lvl):
         if self.cfg.SECTOR_SIZE_IN_BYTES==0:
@@ -854,6 +885,7 @@ class firehose(metaclass=LogBase):
                     self.cfg.SECTOR_SIZE_IN_BYTES = 512
                 elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
                     self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+        self.luns = self.getluns(self.args)
 
     def connect(self):
         v = b'-1'

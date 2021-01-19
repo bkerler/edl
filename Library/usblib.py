@@ -246,7 +246,17 @@ class usb_class(metaclass=LogBase):
             command = bytes(command, 'utf-8')
         pos = 0
         if command == b'':
-            self.device.write(self.EP_OUT, b'')
+            try:
+                self.device.write(self.EP_OUT, b'')
+            except usb.core.USBError as e:
+                error = str(e.strerror)
+                if "timeout" in error:
+                    time.sleep(0.01)
+                    try:
+                        self.device.write(self.EP_OUT, b'')
+                    except:
+                        return False
+                return True
         else:
             i = 0
             while pos < len(command):
