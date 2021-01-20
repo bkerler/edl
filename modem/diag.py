@@ -9,12 +9,15 @@ default_vid_pid = [
     [0x0846, 0x68e2,  2],  # Netgear
     [0x05C6, 0x9008, -1],  # QC EDL
     [0x05C6, 0x676C, 0],   # QC Handset
+    [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
     [0x19d2, 0x0016, -1],  # ZTE Diag
     [0x19d2, 0x0076, -1],  # ZTE Download
     [0x12d1, 0x1506, -1],
     [0x413c, 0x81d7, 5],  # Telit LN940
+
 ]
 
+import sys
 import argparse
 import json
 import logging
@@ -1043,15 +1046,16 @@ class qcdiag(metaclass=LogBase):
 
 class DiagTools(metaclass=LogBase):
     def run(self, args):
+        self.interface = -1
+        self.vid = None
+        self.pid = None
+
         if args.vid != "":
             self.vid = int(args.vid, 16)
         if args.pid != "":
             self.pid = int(args.pid, 16)
         if args.interface != "":
             self.interface = int(args.interface, 16)
-        self.interface = -1
-        self.vid = None
-        self.pid = None
 
         logfilename = "diag.txt"
         if args.debugmode:
@@ -1123,8 +1127,8 @@ def main():
     info = 'Qualcomm Diag Client (c) B.Kerler 2019-2021.'
     parser = argparse.ArgumentParser(description=info)
     print("\n" + info + "\n---------------------------------------\n")
-    parser.add_argument('-vid', metavar="<vid>", help='[Option] Specify vid, default=0x05c6)', default="")
-    parser.add_argument('-pid', metavar="<pid>", help='[Option] Specify pid, default=0x9008)', default="")
+    parser.add_argument('-vid', metavar="<vid>", help='[Option] Specify vid', default="")
+    parser.add_argument('-pid', metavar="<pid>", help='[Option] Specify pid', default="")
     parser.add_argument('-interface', metavar="<pid>", help='[Option] Specify interface number, default=0)',
                         default="0")
     parser.add_argument('-info', help='[Option] Get diag info', action='store_true')
