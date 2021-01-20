@@ -385,7 +385,7 @@ class sahara(metaclass=LogBase):
                     except Exception as e:
                         self.__logger.error(str(e))
                         return ["", None]
-                if (b"<?xml" in res):
+                if b"<?xml" in res:
                     return ["firehose", None]
                 elif len(res)>0 and res[0] == self.cmd.SAHARA_END_TRANSFER:
                     print("Device is in Sahara error state, please reboot the device.")

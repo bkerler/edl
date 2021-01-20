@@ -353,11 +353,11 @@ class firehose(metaclass=LogBase):
     def wait_for_data(self):
         tmp = bytearray()
         timeout = 0
-        while b'</data>' not in tmp:
+        while b'response value' not in tmp:
             res = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
             if res == b'':
                 timeout += 1
-                if timeout == 15:
+                if timeout == 4:
                     break
                 time.sleep(0.1)
             tmp += res
@@ -427,8 +427,9 @@ class firehose(metaclass=LogBase):
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 # time.sleep(0.2)
 
-                log = self.xml.getlog(self.wait_for_data())
-                rsp = self.xml.getresponse(self.wait_for_data())
+                wd = self.wait_for_data()
+                log = self.xml.getlog(wd)
+                rsp = self.xml.getresponse(wd)
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
                         self.__logger.error(f"Error:")
@@ -498,8 +499,9 @@ class firehose(metaclass=LogBase):
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
             self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
             # time.sleep(0.2)
-            info = self.xml.getlog(self.wait_for_data())
-            rsp = self.xml.getresponse(self.wait_for_data())
+            wd=self.wait_for_data()
+            info = self.xml.getlog(wd)
+            rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
                     self.__logger.error(f"Error:")
@@ -614,8 +616,9 @@ class firehose(metaclass=LogBase):
                 if display and prog != 100:
                     print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
                 # time.sleep(0.2)
-                info = self.xml.getlog(self.wait_for_data())
-                rsp = self.xml.getresponse(self.wait_for_data())
+                wd = self.wait_for_data()
+                info = self.xml.getlog(wd)
+                rsp = self.xml.getresponse(wd)
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
                         self.__logger.error(f"Error:")
@@ -674,8 +677,9 @@ class firehose(metaclass=LogBase):
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-            info = self.xml.getlog(self.wait_for_data())
-            rsp = self.xml.getresponse(self.wait_for_data())
+            wd=self.wait_for_data()
+            info = self.xml.getlog(wd)
+            rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
                     self.__logger.error(f"Error:")
@@ -770,7 +774,7 @@ class firehose(metaclass=LogBase):
         return sector, offset
 
     def getluns(self, argument):
-        if argument["--lun"] != "None":
+        if argument["--lun"] != "0":
             return [int(argument["--lun"])]
 
         luns = []
