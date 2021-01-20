@@ -691,7 +691,9 @@ class firehose(metaclass=LogBase):
                     if b"Failed to open the UFS Device" in rsp[2]:
                         self.__logger.error(f"Error:{rsp[2]}")
                 self.lasterror = rsp[2]
-                return -1
+                return resData
+        if len(rsp)>2 and not rsp[0]:
+            self.lasterror = rsp[2]
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         return resData  # Do not remove, needed for oneplus
@@ -879,7 +881,12 @@ class firehose(metaclass=LogBase):
         self.__logger.info(f"Version={self.cfg.Version}")
 
         rsp = self.cmd_read_buffer(0, 1, 1, False)
-        if rsp == -1:
+        if rsp == b"" and self.args["--memory"] is None:
+            if b"Failed to open the SDCC Device" in self.lasterror:
+                self.__logger.warning(
+                    "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
+                self.cfg.MemoryName = "UFS"
+                return self.configure(0)
             if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
                 self.__logger.warning(
                     "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
@@ -959,7 +966,7 @@ class firehose(metaclass=LogBase):
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
 
-        if "getstorageinfo" in self.supported_functions:
+        if "getstorageinfo" in self.supported_functions and self.args["--memory"] is None:
             storageinfo = self.cmd_getstorageinfo()
             if storageinfo is not None:
                 for info in storageinfo:

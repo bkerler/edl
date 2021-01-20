@@ -112,7 +112,7 @@ class firehose_client(metaclass=LogBase):
         return part
 
     def getluns(self, argument):
-        if argument["--lun"] != "None":
+        if argument["--lun"] != "0":
             return [int(argument["--lun"])]
 
         luns = []
