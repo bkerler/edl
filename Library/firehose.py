@@ -19,27 +19,27 @@ from threading import Thread
 class nand_partition:
     partentries = []
 
-    def __init__(self,parent,printer=None):
-        if printer==None:
-            self.printer=print
+    def __init__(self, parent, printer=None):
+        if printer == None:
+            self.printer = print
         else:
-            self.printer=printer
-        self.partentries=[]
-        self.partitiontblsector=None
-        self.parent=parent
+            self.printer = printer
+        self.partentries = []
+        self.partitiontblsector = None
+        self.parent = parent
         self.storage_info = {}
 
-    def parse(self,partdata):
+    def parse(self, partdata):
         self.partentries = []
 
         class partf:
             sector = 0
             sectors = 0
             name = ""
-            attr1=0
-            attr2=0
-            attr3=0
-            which_flash=0
+            attr1 = 0
+            attr2 = 0
+            attr3 = 0
+            which_flash = 0
 
         magic1, magic2, version, numparts = unpack("<IIII", partdata[0:0x10])
         if magic1 == 0x55EE73AA or magic2 == 0xE35EBDDB:
@@ -49,14 +49,14 @@ class nand_partition:
                                                                                 data[i * 0x1C:(i * 0x1C) + 0x1C])
                 if name[1] != 0x3A:
                     break
-                np=partf()
-                np.name=name[2:].rstrip(b"\x00").decode('utf-8').lower()
-                np.sector=offset*self.parent.cfg.block_size//self.parent.cfg.SECTOR_SIZE_IN_BYTES
-                np.sectors=(length&0xFFFF)*self.parent.cfg.block_size//self.parent.cfg.SECTOR_SIZE_IN_BYTES
-                np.attr1=attr1
-                np.attr2=attr2
-                np.attr3=attr3
-                np.which_flash=which_flash
+                np = partf()
+                np.name = name[2:].rstrip(b"\x00").decode('utf-8').lower()
+                np.sector = offset * self.parent.cfg.block_size // self.parent.cfg.SECTOR_SIZE_IN_BYTES
+                np.sectors = (length & 0xFFFF) * self.parent.cfg.block_size // self.parent.cfg.SECTOR_SIZE_IN_BYTES
+                np.attr1 = attr1
+                np.attr2 = attr2
+                np.attr3 = attr3
+                np.which_flash = which_flash
                 self.partentries.append(np)
             return True
         return False
@@ -65,7 +65,7 @@ class nand_partition:
         self.printer("Name            Offset\t\tLength\t\tAttr\t\t\tFlash")
         self.printer("-------------------------------------------------------------")
         for partition in self.partentries:
-            name=partition.name
+            name = partition.name
             for i in range(0x10 - len(partition.name)):
                 name += " "
             offset = partition.sector * self.parent.cfg.SECTOR_SIZE_IN_BYTES
@@ -76,6 +76,7 @@ class nand_partition:
             which_flash = partition.which_flash
             self.printer(
                 f"{name}\t%08X\t%08X\t{hex(attr1)}/{hex(attr2)}/{hex(attr3)}\t{which_flash}" % (offset, length))
+
 
 def writefile(wf, q, stop):
     while True:
@@ -120,11 +121,12 @@ class firehose(metaclass=LogBase):
         SECTOR_SIZE_IN_BYTES = 0
         MemoryName = "eMMC"
         prod_name = "Unknown"
-        maxlun=99
+        maxlun = 99
 
     def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
         self.lasterror = b""
+        self.loglevel=loglevel
         self.args = args
         self.xml = xml
         self.cfg = cfg
@@ -137,12 +139,12 @@ class firehose(metaclass=LogBase):
         self.supported_functions = []
 
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
         self.nandparttbl = None
-        self.nandpart=nand_partition(parent=self,printer=print)
+        self.nandpart = nand_partition(parent=self, printer=print)
 
     def detect_partition(self, arguments, partitionname):
         fpartitions = {}
@@ -186,11 +188,11 @@ class firehose(metaclass=LogBase):
         return data
 
     def xmlsend(self, data, skipresponse=False):
-        if isinstance(data,bytes) or isinstance(data,bytearray):
+        if isinstance(data, bytes) or isinstance(data, bytearray):
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
         else:
             self.cdc.write(bytes(data, 'utf-8'), self.cfg.MaxXMLSizeInBytes)
-        #time.sleep(0.01)
+        # time.sleep(0.01)
         rdata = bytearray()
         counter = 0
         timeout = 30
@@ -221,17 +223,17 @@ class firehose(metaclass=LogBase):
             except Exception as e:
                 status = True
                 self.__logger.debug(str(e))
-                if isinstance(rdata,bytes) or isinstance(rdata,bytearray):
+                if isinstance(rdata, bytes) or isinstance(rdata, bytearray):
                     try:
                         self.__logger.debug("Error on getting xml response:" + rdata.decode('utf-8'))
                     except:
                         self.__logger.debug("Error on getting xml response:" + hexlify(rdata).decode('utf-8'))
-                elif isinstance(rdata,str):
+                elif isinstance(rdata, str):
                     self.__logger.debug("Error on getting xml response:" + rdata)
                 return [status, {"value": "NAK"}, rdata]
         else:
             status = True
-            resp = {"value":"ACK"}
+            resp = {"value": "ACK"}
         return [status, resp, rdata]
 
     def cmd_reset(self):
@@ -246,7 +248,8 @@ class firehose(metaclass=LogBase):
                 else:
                     break
                 print(resp)
-        except:
+        except Exception as err:
+            self.__logger.error(str(err))
             pass
         if val[0]:
             self.__logger.info("Reset succeeded.")
@@ -309,7 +312,7 @@ class firehose(metaclass=LogBase):
         data = f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
         if response:
             val = self.xmlsend(data)
-            if val[0] and not b"log value=\"ERROR\"" in val[1]:
+            if val[0] and b"log value=\"ERROR\"" not in val[1]:
                 return val[2]
             else:
                 self.__logger.error(f"{content} failed.")
@@ -348,25 +351,26 @@ class firehose(metaclass=LogBase):
             return False
 
     def wait_for_data(self):
-        tmp=bytearray()
-        timeout=0
-        while not b'</data>' in tmp:
+        tmp = bytearray()
+        timeout = 0
+        while b'</data>' not in tmp:
             res = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            if res==b'':
-                timeout+=1
-                if timeout==15:
+            if res == b'':
+                timeout += 1
+                if timeout == 15:
                     break
                 time.sleep(0.1)
-            tmp+=res
+            tmp += res
         return tmp
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
-        fsize = os.stat(filename).st_size
-        sparse = QCSparse(filename)
+        sparse = QCSparse(filename,self.loglevel)
         sparseformat = False
         if sparse.readheader():
             sparseformat = True
+            size = sparse.getsize()
+        fsize = size
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -374,70 +378,69 @@ class firehose(metaclass=LogBase):
                 num_partition_sectors += 1
             if display:
                 self.__logger.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
-                              f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+                                   f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
-            maxsectors = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES
-            total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
-            pos=0
-            fpos = 0
+            data = f"<?xml version=\"1.0\" ?><data>\n" + \
+                   f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+                   f" physical_partition_number=\"{physical_partition_number}\"" + \
+                   f" start_sector=\"{start_sector}\" "
+            if self.modules is not None:
+                data += self.modules.addprogram()
+            data += f"/>\n</data>"
+            rsp = self.xmlsend(data, self.skipresponse)
+            pos = 0
             prog = 0
-            old = 0
-            if num_partition_sectors<maxsectors:
-                maxsectors=num_partition_sectors
-            for cursector in range(start_sector, start_sector + num_partition_sectors, maxsectors):
-                data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                       f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                       f" num_partition_sectors=\"{maxsectors}\"" + \
-                       f" physical_partition_number=\"{physical_partition_number}\"" + \
-                       f" start_sector=\"{cursector}\" "
-                if self.modules is not None:
-                    data += self.modules.addprogram()
-                data += f"/>\n</data>"
-                rsp = self.xmlsend(data)
-                #time.sleep(0.01)
-                if display:
-                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                if rsp[0]:
-                    bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
-                    while bytesToWrite > 0:
-                        wlen = self.cfg.MaxPayloadSizeToTargetInBytes
-                        if fsize < wlen:
-                            wlen = fsize
-                        if sparseformat:
-                            wdata=sparse.read(wlen)
-                        else:
-                            wdata = rf.read(wlen)
-                        wlen=len(wdata)
-                        bytesToWrite -= wlen
-                        fsize -= wlen
-                        pos += wlen
-                        fpos += wlen
-                        if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
-                            filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
-                                      self.cfg.SECTOR_SIZE_IN_BYTES
-                            wdata += b"\x00" * (filllen - wlen)
-                            wlen = len(wdata)
-                        self.cdc.write(wdata, wlen)
-                        prog = int(float(pos) / float(total) * float(100))
-                        if prog > old:
-                            if display:
-                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            if display:
+                print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % start_sector,
+                               bar_length=50)
+            if rsp[0]:
+                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+                total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+                old = 0
+                while fsize > 0:
+                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES
+                    if fsize < wlen:
+                        wlen = fsize
+                    if sparseformat:
+                        wdata = sparse.read(wlen)
+                    else:
+                        wdata = rf.read(wlen)
+                    bytesToWrite -= wlen
+                    fsize -= wlen
+                    pos += wlen
+                    pv = wlen % self.cfg.SECTOR_SIZE_IN_BYTES
+                    if pv != 0:
+                        filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
+                                  self.cfg.SECTOR_SIZE_IN_BYTES
+                        wdata += b"\x00" * (filllen - wlen)
+                        wlen = len(wdata)
 
-                    self.cdc.write(b'', self.cfg.MaxXMLSizeInBytes)
-                    log = self.xml.getlog(self.wait_for_data())
-                    rsp = self.xml.getresponse(self.wait_for_data())
-                    if "value" in rsp:
-                        if rsp["value"] != "ACK":
-                            self.__logger.error(f"Error:")
-                            for line in log:
-                                self.__logger.error(line)
-                            return False
+                    self.cdc.write(wdata, wlen)
+
+                    prog = int(float(pos) / float(total) * float(100))
+                    if prog > old:
+                        if display:
+                            print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
+                                    % (pos // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+
+                self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+                # time.sleep(0.2)
+
+                log = self.xml.getlog(self.wait_for_data())
+                rsp = self.xml.getresponse(self.wait_for_data())
+                if "value" in rsp:
+                    if rsp["value"] != "ACK":
+                        self.__logger.error(f"Error:")
+                        for line in log:
+                            self.__logger.error(line)
+                        return False
                 else:
                     self.__logger.error(f"Error:{rsp}")
                     return False
             if display and prog != 100:
-                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            return True
+                print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
+        return True
 
     def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
         size = len(wfdata)
@@ -447,68 +450,65 @@ class firehose(metaclass=LogBase):
             num_partition_sectors += 1
         if display:
             self.__logger.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
-                          f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+                               f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
-        maxsectors = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES
-        total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
-        pos=0
-        fpos = 0
+        data = f"<?xml version=\"1.0\" ?><data>\n" + \
+               f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" start_sector=\"{start_sector}\" "
+
+        if self.modules is not None:
+            data += self.modules.addprogram()
+        data += f"/>\n</data>"
+        rsp = self.xmlsend(data)
+        pos = 0
         prog = 0
-        old = 0
-        if num_partition_sectors<maxsectors:
-            maxsectors=num_partition_sectors
-
-        for cursector in range(start_sector, start_sector + num_partition_sectors, maxsectors):
-            data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                   f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{maxsectors}\"" + \
-                   f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{cursector}\" "
-            if self.modules is not None:
-                data += self.modules.addprogram()
-            data += f"/>\n</data>"
-            rsp = self.xmlsend(data)
-            #time.sleep(0.01)
-            if display:
-                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            if rsp[0]:
-                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
-                fsize = len(wfdata)
-                if fsize < bytesToWrite:
-                    bytesToWrite = fsize
-                while bytesToWrite > 0:
-                    wlen=self.cfg.MaxPayloadSizeToTargetInBytes
-                    if fsize < wlen:
-                        wlen = fsize
-                    wdata = wfdata[fpos:fpos + wlen]
-                    bytesToWrite -= wlen
-                    fsize -= wlen
-                    pos += wlen
-                    fpos += wlen
-                    if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
-                        filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
-                                  self.cfg.SECTOR_SIZE_IN_BYTES
-                        wdata += b"\x00" * (filllen - wlen)
-                        wlen = len(wdata)
-                    self.cdc.write(wdata, wlen)
-                    prog = int(float(pos) / float(total) * float(100))
-                    if prog > old:
-                        if display:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-
-                self.cdc.write(b'', 0x80)
-                #time.sleep(0.2)
-                info = self.xml.getlog(self.wait_for_data())
-                rsp = self.xml.getresponse(self.wait_for_data())
-                if "value" in rsp:
-                    if rsp["value"] != "ACK":
-                        self.__logger.error(f"Error:")
-                        for line in info:
-                            self.__logger.error(line)
-                        return False
-            else:
-                self.__logger.error(f"Error:{rsp}")
-                return False
+        # time.sleep(0.01)
+        if display:
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        if rsp[0]:
+            bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            old = 0
+            fpos = 0
+            fsize = len(wfdata)
+            while fsize > 0:
+                wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES
+                if fsize < wlen:
+                    wlen = fsize
+                wdata = wfdata[fpos:fpos + wlen]
+                bytesToWrite -= wlen
+                fsize -= wlen
+                pos += wlen
+                fpos += wlen
+                if (wlen % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+                    filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
+                              self.cfg.SECTOR_SIZE_IN_BYTES
+                    wdata += b"\x00" * (filllen - wlen)
+                    wlen = len(wdata)
+                self.cdc.write(wdata, wlen)
+                prog = int(float(pos) / float(total) * float(100))
+                if prog > old:
+                    if display:
+                        print_progress(prog, 100, prefix='Progress:', suffix='Written (Sector %d)'
+                                                                             % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                       bar_length=50)
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
+            self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+            # time.sleep(0.2)
+            info = self.xml.getlog(self.wait_for_data())
+            rsp = self.xml.getresponse(self.wait_for_data())
+            if "value" in rsp:
+                if rsp["value"] != "ACK":
+                    self.__logger.error(f"Error:")
+                    for line in info:
+                        self.__logger.error(line)
+                    return False
+        else:
+            self.__logger.error(f"Error:{rsp}")
+            return False
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         return True
@@ -516,52 +516,52 @@ class firehose(metaclass=LogBase):
     def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         if display:
             self.__logger.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
-                          f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+                               f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
+        data = f"<?xml version=\"1.0\" ?><data>\n" + \
+               f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" start_sector=\"{start_sector}\" "
+        if self.modules is not None:
+            data += self.modules.addprogram()
+        data += f"/>\n</data>"
+
+        rsp = self.xmlsend(data, self.skipresponse)
         empty = b"\x00" * self.cfg.MaxPayloadSizeToTargetInBytes
-        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
-        total = num_partition_sectors * self.cfg.SECTOR_SIZE_IN_BYTES
         pos = 0
         prog = 0
-        old = 0
-        if num_partition_sectors<maxsectors:
-            maxsectors=num_partition_sectors
-
-        for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
-            data = f"<?xml version=\"1.0\" ?><data>\n" + \
-                   f"<erase SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{maxsectors}\"" + \
-                   f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{cursector}\" "
-
-            if self.modules is not None:
-                data += self.modules.addprogram()
-            data += f"/>\n</data>"
-            rsp = self.xmlsend(data)
-            if display:
-                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            if rsp[0]:
-                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
-                while bytesToWrite > 0:
-                    wlen = self.cfg.SECTOR_SIZE_IN_BYTES
-                    if bytesToWrite < wlen:
-                        wlen = bytesToWrite
-                    self.cdc.write(empty[0:wlen], wlen)
-                    prog = int(float(pos) / float(total) * float(100))
-                    if prog > old:
-                        if display:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    bytesToWrite -= wlen
-                    pos += wlen
-                self.cdc.write(b'', self.cfg.MaxXMLSizeInBytes)
-                info = self.xml.getlog(self.wait_for_data())
-                rsp = self.xml.getresponse(self.wait_for_data())
-                if "value" in rsp:
-                    if rsp["value"] != "ACK":
-                        self.__logger.error(f"Error:")
-                        for line in info:
-                            self.__logger.error(line)
-                            return False
+        if display:
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        if rsp[0]:
+            bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            old = 0
+            while bytesToWrite > 0:
+                wlen = self.cfg.MaxPayloadSizeToTargetInBytes
+                if bytesToWrite < wlen:
+                    wlen = bytesToWrite
+                self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
+                prog = int(float(pos) / float(total) * float(100))
+                if prog > old:
+                    if display:
+                        print_progress(prog, 100, prefix='Progress:', suffix='Erased (Sector %d)'
+                                                                             % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                       bar_length=50)
+                bytesToWrite -= wlen
+                pos += wlen
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
+            self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
+            # time.sleep(0.2)
+            info = self.xml.getlog(self.wait_for_data())
+            rsp = self.xml.getresponse(self.wait_for_data())
+            if "value" in rsp:
+                if rsp["value"] != "ACK":
+                    self.__logger.error(f"Error:")
+                    for line in info:
+                        self.__logger.error(line)
+                        return False
             else:
                 self.__logger.error(f"Error:{rsp}")
                 return False
@@ -571,114 +571,49 @@ class firehose(metaclass=LogBase):
 
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
         self.lasterror = b""
-        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
-        total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
-        dataread = 0
-        old = 0
         prog = 0
         if display:
             self.__logger.info(
-                f"\nReading from physical partition {str(physical_partition_number)}, " + \
+                f"\nReading from physical partition {str(physical_partition_number)}, " +
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-
-        if num_partition_sectors<maxsectors:
-            maxsectors=num_partition_sectors
 
         with open(filename, "wb") as wr:
-            for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
-                buffer = bytearray()
-                bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
-
-                data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                       f" num_partition_sectors=\"{maxsectors}\"" + \
-                       f" physical_partition_number=\"{physical_partition_number}\"" + \
-                       f" start_sector=\"{cursector}\"/>\n</data>"
-
-                rsp = self.xmlsend(data, self.skipresponse)
-                #time.sleep(0.01)
-                if rsp[0]:
-                    if "value" in rsp[1]:
-                        if rsp[1]["value"] == "NAK":
-                            if display:
-                                self.__logger.error(rsp[2].decode('utf-8'))
-                            return False
-                    while bytesToRead > 0:
-                        size=self.cfg.MaxPayloadSizeToTargetInBytes
-                        if size>bytesToRead:
-                            size=bytesToRead
-                        tmp = self.cdc.read(size)
-                        if tmp!=b"":
-                            buffer.extend(tmp)
-                        bytesToRead -= len(tmp)
-                        dataread += len(tmp)
-                        prog = int(float(dataread) / float(total) * float(100))
-                        if prog > old:
-                            if display:
-                                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                            old = prog
-                    wr.write(buffer)
-                    info = self.xml.getlog(self.wait_for_data())
-                    rsp = self.xml.getresponse(self.wait_for_data())
-                    if "value" in rsp:
-                        if rsp["value"] != "ACK":
-                            self.__logger.error(f"Error:")
-                            for line in info:
-                                self.__logger.error(line)
-                                self.lasterror+=bytes(line+"\n","utf-8")
-                            return False
-                else:
-                    if display:
-                        self.__logger.error(f"Error:{rsp[2]}")
-            if display and prog != 100:
-                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-            return True
-
-    def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
-        self.lasterror = b""
-        maxsectors=self.cfg.MaxPayloadSizeToTargetInBytes//self.cfg.SECTOR_SIZE_IN_BYTES
-        total = num_partition_sectors*self.cfg.SECTOR_SIZE_IN_BYTES
-        dataread = 0
-        old = 0
-        prog = 0
-        if display:
-            self.__logger.info(
-                f"\nReading from physical partition {str(physical_partition_number)}, " + \
-                f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-
-        if num_partition_sectors<maxsectors:
-            maxsectors=num_partition_sectors
-
-        resData=bytearray()
-        for cursector in range(start_sector,start_sector+num_partition_sectors,maxsectors):
-            bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * maxsectors
 
             data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{maxsectors}\"" + \
+                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{cursector}\"/>\n</data>"
+                   f" start_sector=\"{start_sector}\"/>\n</data>"
 
             rsp = self.xmlsend(data, self.skipresponse)
+            # time.sleep(0.01)
             if rsp[0]:
                 if "value" in rsp[1]:
                     if rsp[1]["value"] == "NAK":
                         if display:
                             self.__logger.error(rsp[2].decode('utf-8'))
-                        return resData
+                        return b""
+                bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+                total = bytesToRead
+                dataread = 0
+                old = 0
+                prog = 0
+                if display:
+                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                 while bytesToRead > 0:
-                    size = self.cfg.MaxPayloadSizeToTargetInBytes
-                    if size > bytesToRead:
-                        size = bytesToRead
-                    tmp = self.cdc.read(size)
-                    resData += tmp
+                    tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
                     bytesToRead -= len(tmp)
                     dataread += len(tmp)
-                    prog = int(float(dataread) / float(total) * float(100))
-                    if prog > old:
-                        if display:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                        old = prog
+                    wr.write(tmp)
+                    if display:
+                        prog = int(float(dataread) / float(total) * float(100))
+                        if prog > old:
+                            print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
+                                % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                            old = prog
+                if display and prog != 100:
+                    print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
+                # time.sleep(0.2)
                 info = self.xml.getlog(self.wait_for_data())
                 rsp = self.xml.getresponse(self.wait_for_data())
                 if "value" in rsp:
@@ -686,12 +621,72 @@ class firehose(metaclass=LogBase):
                         self.__logger.error(f"Error:")
                         for line in info:
                             self.__logger.error(line)
-                        return resData
-            else:
-                if len(rsp)>1:
-                    if not b"Failed to open the UFS Device" in rsp[2]:
+                            self.lasterror += bytes(line + "\n", "utf-8")
+                        return False
+                else:
+                    if display:
                         self.__logger.error(f"Error:{rsp[2]}")
-                self.lasterror=rsp[2]
+                        return False
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            return True
+
+    def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+        self.lasterror = b""
+        prog = 0
+        if display:
+            self.__logger.info(
+                f"\nReading from physical partition {str(physical_partition_number)}, " +
+                f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+
+        data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" start_sector=\"{start_sector}\"/>\n</data>"
+
+        rsp = self.xmlsend(data, self.skipresponse)
+        resData = bytearray()
+        if rsp[0]:
+            if "value" in rsp[1]:
+                if rsp[1]["value"] == "NAK":
+                    if display:
+                        self.__logger.error(rsp[2].decode('utf-8'))
+                        return -1
+            bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            total = bytesToRead
+            dataread = 0
+            old = 0
+            prog = 0
+            if display:
+                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            while bytesToRead > 0:
+                tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                bytesToRead -= len(tmp)
+                dataread += len(tmp)
+                resData += tmp
+                prog = int(float(dataread) / float(total) * float(100))
+                if prog > old:
+                    if display:
+                        print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
+                                % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                    old = prog
+            if display and prog != 100:
+                print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+
+            info = self.xml.getlog(self.wait_for_data())
+            rsp = self.xml.getresponse(self.wait_for_data())
+            if "value" in rsp:
+                if rsp["value"] != "ACK":
+                    self.__logger.error(f"Error:")
+                    for line in info:
+                        self.__logger.error(line)
+                    return resData
+            else:
+                if len(rsp) > 1:
+                    if b"Failed to open the UFS Device" in rsp[2]:
+                        self.__logger.error(f"Error:{rsp[2]}")
+                self.lasterror = rsp[2]
                 return -1
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -700,25 +695,26 @@ class firehose(metaclass=LogBase):
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         try:
             data = self.cmd_read_buffer(lun, 0, 2, False)
-        except:
-            self.skipresponse=True
+        except Exception as err:
+            self.__logger.debug(str(err))
+            self.skipresponse = True
             data = self.cmd_read_buffer(lun, 0, 2, False)
 
         if data == b"" or data == -1:
             return None, None
-        magic=unpack("<I",data[0:4])[0]
-        if magic==0x844bdcd1:
+        magic = unpack("<I", data[0:4])[0]
+        if magic == 0x844bdcd1:
             self.__logger.info("Nand storage detected. Trying to find partition table")
 
-            if self.nandpart.partitiontblsector==None:
+            if self.nandpart.partitiontblsector is None:
                 for sector in range(0, 1024):
-                    data = self.cmd_read_buffer(0,sector,1,False)
+                    data = self.cmd_read_buffer(0, sector, 1, False)
                     if data[0:8] != b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd":
                         continue
-                    self.nandpart.partitiontblsector=sector
+                    self.nandpart.partitiontblsector = sector
 
-            if self.nandpart.partitiontblsector!=None:
-                data = self.cmd_read_buffer(0,self.nandpart.partitiontblsector+1, 2, False)
+            if self.nandpart.partitiontblsector is not None:
+                data = self.cmd_read_buffer(0, self.nandpart.partitiontblsector + 1, 2, False)
                 if self.nandpart.parse(data):
                     return data, self.nandpart
             return None, None
@@ -735,8 +731,8 @@ class firehose(metaclass=LogBase):
                     sectors = header["first_usable_lba"]
                     if sectors == 0:
                         return None, None
-                    if sectors>34:
-                        sectors=34
+                    if sectors > 34:
+                        sectors = 34
                     data = self.cmd_read_buffer(lun, 0, sectors, False)
                     if data == b"":
                         return None, None
@@ -744,7 +740,8 @@ class firehose(metaclass=LogBase):
                     return data, guid_gpt
                 else:
                     return None, None
-            except:
+            except Exception as err:
+                self.__logger.debug(str(err))
                 return None, None
 
     def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
@@ -777,15 +774,15 @@ class firehose(metaclass=LogBase):
             return [int(argument["--lun"])]
 
         luns = []
-        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower()=="spinor":
+        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
             for i in range(0, self.cfg.maxlun):
                 luns.append(i)
         else:
             luns = [0]
         return luns
 
-    def configure(self,lvl):
-        if self.cfg.SECTOR_SIZE_IN_BYTES==0:
+    def configure(self, lvl):
+        if self.cfg.SECTOR_SIZE_IN_BYTES == 0:
             if self.cfg.MemoryName.lower() == "emmc":
                 self.cfg.SECTOR_SIZE_IN_BYTES = 512
             else:
@@ -806,27 +803,29 @@ class firehose(metaclass=LogBase):
         "</data>"
         '''
         rsp = self.xmlsend(connectcmd)
-        if len(rsp)>1:
-            if rsp[0]==False:
+        if len(rsp) > 1:
+            if not rsp[0]:
                 if b"Only nop and sig tag can be" in rsp[2]:
                     self.__logger.info("Xiaomi EDL Auth detected.")
                     if self.modules.edlauth():
                         rsp = self.xmlsend(connectcmd)
-        if len(rsp)>1:
-            if rsp[0]: #On Ack
-                data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                if not "MemoryName" in rsp[1]:
+        if len(rsp) > 1:
+            if rsp[0]:  # On Ack
+                self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                if "MemoryName" not in rsp[1]:
                     # print(rsp[1])
                     rsp[1]["MemoryName"] = "eMMC"
-                if not "MaxXMLSizeInBytes" in rsp[1]:
+                if "MaxXMLSizeInBytes" not in rsp[1]:
                     rsp[1]["MaxXMLSizeInBytes"] = "4096"
                     self.__logger.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
-                if not "MaxPayloadSizeToTargetInBytes" in rsp[1]:
+                if "MaxPayloadSizeToTargetInBytes" not in rsp[1]:
                     rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
-                if not "MaxPayloadSizeToTargetInBytesSupported" in rsp[1]:
+                if "MaxPayloadSizeToTargetInBytesSupported" not in rsp[1]:
                     rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
                 if rsp[1]["MemoryName"] != self.cfg.MemoryName:
-                    self.__logger.warning("Memory type was set as "+self.cfg.MemoryName+" but device reported it is "+rsp[1]["MemoryName"]+" instead.")
+                    self.__logger.warning(
+                        "Memory type was set as " + self.cfg.MemoryName + " but device reported it is " + rsp[1][
+                            "MemoryName"] + " instead.")
                 self.cfg.MemoryName = rsp[1]["MemoryName"]
                 self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp[1]["MaxPayloadSizeToTargetInBytes"])
                 self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp[1]["MaxPayloadSizeToTargetInBytesSupported"])
@@ -848,7 +847,7 @@ class firehose(metaclass=LogBase):
                 else:
                     self.cfg.Version = 0
                     self.__logger.warning("Couldn't detect Version")
-            else: #on NAK
+            else:  # on NAK
                 if b"ERROR" in rsp[2]:
                     self.__logger.error(rsp[2].decode('utf-8'))
                     sys.exit()
@@ -875,16 +874,17 @@ class firehose(metaclass=LogBase):
         self.__logger.info(f"MemoryName={self.cfg.MemoryName}")
         self.__logger.info(f"Version={self.cfg.Version}")
 
-        rsp=self.cmd_read_buffer(0,1,1,False)
-        if rsp==-1:
-                if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
-                    self.__logger.warning("Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
-                    self.cfg.MemoryName="eMMC"
-                    return self.configure(0)
-                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
-                    self.cfg.SECTOR_SIZE_IN_BYTES = 512
-                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
-                    self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+        rsp = self.cmd_read_buffer(0, 1, 1, False)
+        if rsp == -1:
+            if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
+                self.__logger.warning(
+                    "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
+                self.cfg.MemoryName = "eMMC"
+                return self.configure(0)
+            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
+                self.cfg.SECTOR_SIZE_IN_BYTES = 512
+            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
+                self.cfg.SECTOR_SIZE_IN_BYTES = 4096
         self.luns = self.getluns(self.args)
 
     def connect(self):
@@ -904,7 +904,7 @@ class firehose(metaclass=LogBase):
                     info.append(data[0])
                 if not info:
                     break
-            except:
+            except Exception as err:
                 pass
         supfunc = False
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
@@ -922,21 +922,22 @@ class firehose(metaclass=LogBase):
                     try:
                         serial = line.split("0x")[1][:-1]
                         self.serial = int(serial, 16)
-                    except:
+                    except Exception as e:
+                        self.__logger.debug(str(e))
                         serial = line.split(": ")[2]
                         self.serial = int(serial.split(" ")[0])
                 if supfunc and "end of supported functions" not in line.lower():
                     rs = line.replace("\n", "")
                     if rs != "":
-                        rs=rs.replace("INFO: ","")
+                        rs = rs.replace("INFO: ", "")
                         self.supported_functions.append(rs)
                 if "supported functions" in line.lower():
                     supfunc = True
 
-            if len(self.supported_functions)>1:
-                info="Supported Functions: "
+            if len(self.supported_functions) > 1:
+                info = "Supported Functions: "
                 for line in self.supported_functions:
-                    info+=line+","
+                    info += line + ","
                 self.__logger.info(info[:-1])
         try:
             self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
@@ -949,44 +950,44 @@ class firehose(metaclass=LogBase):
         except:
             pass
 
-        if self.supported_functions==[]:
+        if not self.supported_functions:
             self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
 
         if "getstorageinfo" in self.supported_functions:
-            storageinfo=self.cmd_getstorageinfo()
-            if storageinfo!=None:
+            storageinfo = self.cmd_getstorageinfo()
+            if storageinfo is not None:
                 for info in storageinfo:
                     if "storage_info" in info:
-                        si=json.loads(info)["storage_info"]
+                        si = json.loads(info)["storage_info"]
                         self.__logger.info("Storage report:")
                         for sii in si:
                             self.__logger.info(f"{sii}:{si[sii]}")
                         if "total_blocks" in si:
-                            self.cfg.total_blocks=si["total_blocks"]
+                            self.cfg.total_blocks = si["total_blocks"]
 
                         if "block_size" in si:
-                            self.cfg.block_size=si["block_size"]
+                            self.cfg.block_size = si["block_size"]
                         if "page_size" in si:
-                            self.cfg.SECTOR_SIZE_IN_BYTES=si["page_size"]
+                            self.cfg.SECTOR_SIZE_IN_BYTES = si["page_size"]
                         if "mem_type" in si:
-                            self.cfg.MemoryName=si["mem_type"]
+                            self.cfg.MemoryName = si["mem_type"]
                         if "prod_name" in si:
-                            self.cfg.prod_name=si["prod_name"]
+                            self.cfg.prod_name = si["prod_name"]
                     if "UFS Inquiry Command Output:" in info:
-                        self.cfg.prod_name=info.split("Output: ")[1]
+                        self.cfg.prod_name = info.split("Output: ")[1]
                         self.__logger.info(info)
                     if "UFS Erase Block Size:" in info:
-                        self.cfg.block_size=int(info.split("Size: ")[1],16)
+                        self.cfg.block_size = int(info.split("Size: ")[1], 16)
                         self.__logger.info(info)
                     if "UFS Boot" in info:
-                        self.cfg.MemoryName="UFS"
-                        self.cfg.SECTOR_SIZE_IN_BYTES=4096
+                        self.cfg.MemoryName = "UFS"
+                        self.cfg.SECTOR_SIZE_IN_BYTES = 4096
                     if "UFS Boot Partition Enabled: " in info:
                         self.__logger.info(info)
                     if "UFS Total Active LU: " in info:
-                        self.cfg.maxlun=int(info.split("LU: ")[1],16)
+                        self.cfg.maxlun = int(info.split("LU: ")[1], 16)
         return self.supported_functions
 
     # OEM Stuff here below --------------------------------------------------
@@ -1008,7 +1009,7 @@ class firehose(metaclass=LogBase):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val = self.xmlsend(data)
         if val[0]:
-            data=self.xml.getlog(val[2])
+            data = self.xml.getlog(val[2])
             return data
         else:
             self.__logger.warning("GetStorageInfo command isn't supported.")
@@ -1019,7 +1020,7 @@ class firehose(metaclass=LogBase):
         val = self.xmlsend(data)
         if val[0]:
             self.__logger.info(f"GetStorageInfo:\n--------------------\n")
-            data=self.xml.getlog(val[2])
+            data = self.xml.getlog(val[2])
             for line in data:
                 self.__logger.info(line)
             return True
@@ -1069,7 +1070,8 @@ class firehose(metaclass=LogBase):
                         f"SizeInBytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
             try:
                 self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
-            except:
+            except Exception as e:
+                self.__logger.debug(str(e))
                 pass
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
             if b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo:
@@ -1128,7 +1130,8 @@ class firehose(metaclass=LogBase):
             '''
         try:
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
-        except:
+        except Exception as err:
+            self.__logger.debug(str(err))
             pass
         addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
         if b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo:
@@ -1159,20 +1162,20 @@ class firehose(metaclass=LogBase):
             if b'<response' in tmp or b"ERROR" in tmp:
                 break
             rdata = self.xml.getlog(tmp)[0].replace("0x", "").replace(" ", "")
-            tmp2=b""
+            tmp2 = b""
             try:
                 tmp2 = binascii.unhexlify(rdata)
             except:
                 print(rdata)
                 exit(0)
             dataread += len(tmp2)
-            if wf != None:
+            if wf is not None:
                 wf.write(tmp2)
             else:
                 resp += tmp2
             if info:
                 prog = int(float(dataread) / float(SizeInBytes) * float(100))
-                if (prog > old):
+                if prog > old:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     old = prog
 

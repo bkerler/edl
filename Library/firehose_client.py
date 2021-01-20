@@ -613,7 +613,7 @@ class firehose_client(metaclass=LogBase):
                     for filename in filenames:
                         for partition in guid_gpt.partentries:
                             partname = filename[filename.rfind("/") + 1:]
-                            if ".bin" in partname[-4:]:
+                            if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
                                 partname = partname[:-4]
                             if partition.name == partname:
                                 if partition.name in skip:
