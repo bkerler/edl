@@ -897,6 +897,8 @@ class firehose(metaclass=LogBase):
             elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
                 self.cfg.SECTOR_SIZE_IN_BYTES = 4096
         self.luns = self.getluns(self.args)
+        return True
+
 
     def connect(self):
         v = b'-1'
