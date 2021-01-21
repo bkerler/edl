@@ -556,8 +556,9 @@ class firehose(metaclass=LogBase):
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
             self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
             # time.sleep(0.2)
-            info = self.xml.getlog(self.wait_for_data())
-            rsp = self.xml.getresponse(self.wait_for_data())
+            res=self.wait_for_data()
+            info = self.xml.getlog(res)
+            rsp = self.xml.getresponse(res)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
                     self.__logger.error(f"Error:")
