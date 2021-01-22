@@ -402,10 +402,7 @@ class firehose_client(metaclass=LogBase):
             self.__logger.error("Error: Couldn't detect footer partition.")
             return False
         elif cmd == "rs":
-            if options["--lun"] != 'None':
-                lun = int(options["--lun"])
-            else:
-                lun = 0
+            lun = int(options["--lun"])
             if not self.check_param(["<filename>", "<sectors>", "<start_sector>"]):
                 return False
             start = int(options["<start_sector>"])
@@ -552,23 +549,31 @@ class firehose_client(metaclass=LogBase):
                 return False
             partitionname = options["<partitionname>"]
             filename = options["<filename>"]
+            lun=options["--lun"]
             if not os.path.exists(filename):
                 self.__logger.error(f"Error: Couldn't find file: {filename}")
                 return False
-            res = self.firehose.detect_partition(options, partitionname)
+            if partitionname.lower()=="gpt":
+                sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                res=[True,lun,sectors]
+                startsector=0
+            else:
+                res = self.firehose.detect_partition(options, partitionname)
             if res[0]:
                 lun = res[1]
-                partition = res[2]
                 sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
                 if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                     sectors += 1
-                if sectors > partition.sectors:
-                    self.__logger.error(
-                        f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                    return False
+                if partitionname.lower() != "gpt":
+                    partition = res[2]
+                    if sectors > partition.sectors:
+                        self.__logger.error(
+                            f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                        return False
+                    startsector=partition.sector
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
-                if self.firehose.cmd_program(lun, partition.sector, filename):
+                if self.firehose.cmd_program(lun, startsector, filename):
                     self.printer(f"Wrote {filename} to sector {str(partition.sector)}.")
                     return True
                 else:
@@ -634,10 +639,7 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "ws":
             if not self.check_param(["<start_sector>"]):
                 return False
-            if options["--lun"] is None:
-                lun = 0
-            else:
-                lun = int(options["--lun"])
+            lun = int(options["--lun"])
             start = int(options["<start_sector>"])
             filename = options["<filename>"]
             if not os.path.exists(filename):
@@ -654,10 +656,7 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "wf":
             if not self.check_param(["<filename>"]):
                 return False
-            if options["--lun"] is None:
-                lun = 0
-            else:
-                lun = int(options["--lun"])
+            lun = int(options["--lun"])
             start = 0
             filename = options["<filename>"]
             if not os.path.exists(filename):
@@ -728,10 +727,7 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "es":
             if not self.check_param(["<start_sector>", "<sectors>"]):
                 return False
-            if options["--lun"] is None:
-                lun = 0
-            else:
-                lun = int(options["--lun"])
+            lun = int(options["--lun"])
             start = int(options["<start_sector>"])
             sectors = int(options["<sectors>"])
             if self.firehose.modules is not None:
