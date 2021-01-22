@@ -61,6 +61,7 @@ Windows:
 - ```./edl.py r boot_a,boot_b boot_a.img,boot_b.img``` -> to dump multiple partitions to multiple filenames
 - ```./edl.py footer footer.bin``` -> to dump the crypto footer for Androids with emmc flash
 - ```./edl.py w boot_a boot.img``` -> to write boot.img to the "boot" partition on lun 0 on the device with emmc flash
+- ```./edl.py w gpt gpt.img``` -> to write gpt partition table from gpt.img to the first sector on the device with emmc flash
 - ```./edl.py wl dumps``` -> to write all files from "dumps" folder to according partitions to flash
 - ```./edl.py wf dump.bin``` -> to write the rawimage dump.bin to flash
 - ```./edl.py e misc``` -> to erase the partition misc on emmc flash
@@ -81,6 +82,7 @@ Windows:
 - ```./edl.py r boot_a,boot_b boot_a.img,boot_b.img --memory=ufs``` -> to dump multiple partitions to multiple filenames
 - ```./edl.py footer footer.bin --memory=ufs``` -> to dump the crypto footer
 - ```./edl.py w boot boot.img --memory=ufs --lun=4``` -> to write boot.img to the "boot" partition on lun 4 on the device with ufs flash
+- ```./edl.py w gpt gpt.img --memory=ufs --lun=4``` -> to write gpt partition table from gpt.img to the lun 4 on the device with ufs flash
 - ```./edl.py wl dumps --memory=ufs --lun=0``` -> to write all files from "dumps" folder to according partitions to flash lun 0
 - ```./edl.py wl dumps --memory=ufs``` -> to write all files from "dumps" folder to according partitions to flash and try to autodetect lun
 - ```./edl.py wf dump.bin --memory=ufs --lun=0``` -> to write the rawimage dump.bin to flash lun 0
