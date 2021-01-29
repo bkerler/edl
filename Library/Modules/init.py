@@ -24,11 +24,7 @@ class modules(metaclass=LogBase):
             self.__logger.addHandler(fh)
         self.options = {}
         self.devicemodel = devicemodel
-        self.generic = None
-        try:
-            self.generic = generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=self.__logger.level)
-        except Exception as e:
-            pass
+        self.generic = generic(fh=self.fh, serial=self.serial, args=self.args, logger=self.__logger)
         self.ops = None
         self.xiaomi=None
         try:
