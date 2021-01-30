@@ -1,9 +1,16 @@
-class generic():
-    def __init__(self, fh, serial, args, logger):
+import logging
+from Library.utils import LogBase
+
+class generic(metaclass=LogBase):
+    def __init__(self, fh, serial, args, loglevel):
         self.fh=fh
-        self.log=logger
         self.serial=serial
         self.args=args
+        self.__logger.setLevel(loglevel)
+        if loglevel==logging.DEBUG:
+            logfilename = "log.txt"
+            fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(fh)
 
     def oem_unlock(self,enable):
         res = self.fh.detect_partition(self.args, "config")
@@ -88,10 +95,10 @@ class generic():
                 return False
             else:
                 fpartitions = res[1]
-                self.log.error(f"Error: Couldn't detect partition: \"devinfo\"\nAvailable partitions:")
+                self.__logger.error(f"Error: Couldn't detect partition: \"devinfo\"\nAvailable partitions:")
                 for lun in fpartitions:
                     for rpartition in fpartitions[lun]:
                         if self.args["--memory"].lower() == "emmc":
-                            self.log.error("\t" + rpartition)
+                            self.__logger.error("\t" + rpartition)
                         else:
-                            self.log.error(lun + ":\t" + rpartition)
+                            self.__logger.error(lun + ":\t" + rpartition)
