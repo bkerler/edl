@@ -408,15 +408,9 @@ class firehose_client(metaclass=LogBase):
             start = int(options["<start_sector>"])
             sectors = int(options["<sectors>"])
             filename = options["<filename>"]
-            data = self.firehose.cmd_read_buffer(lun, start, sectors, False)
-            try:
-                with open(filename, "wb") as write_handle:
-                    write_handle.write(data)
-                    self.printer(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
-                    return True
-            except Exception as error:
-                self.__logger.error(f"Error: Couldn't open {filename} for writing: %s" % str(error))
-            return False
+            if self.firehose.cmd_read(lun, start, sectors, filename,True):
+                self.printer(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
+                return True
         elif cmd == "peek":
             if not self.check_param(["<offset>", "<length>", "<filename>"]):
                 return False
@@ -766,47 +760,58 @@ class firehose_client(metaclass=LogBase):
                 return self.firehose.modules.run(command=mcommand, args=moptions)
         elif cmd == "qfil":
             self.__logger.info("[qfil] raw programming...")
-            rawprogram = options["<rawprogram>"]
+            rawprogram = options["<rawprogram>"].split(",")
             imagedir = options["<imagedir>"]
-            patch = options["<patch>"]
+            patch = options["<patch>"].split(",")
             for xml in rawprogram:
-                self.__logger.info("[qfil] programming %s" % xml)
-                fl = open(xml, "r")
-                for evt, elem in ET.iterparse(fl, events=["end"]):
-                    if elem.tag == "program":
-                        if elem.get("filename", ""):
-                            filename = os.path.join(imagedir, elem.get("filename"))
-                            if not os.path.isfile(filename):
-                                self.__logger.error("[ERROR] %s not existed!" % filename)
-                                sys.exit(1)
-                            partition_number = elem.get("physical_partition_number")
-                            start_sector = elem.get("start_sector")
-                            self.__logger.info("[qfil] programming {filename} to partition({partition})" +
-                                    "@sector({start_sector})...".format(
-                                    filename=filename, partition=partition_number, start_sector=start_sector))
-                            self.firehose.cmd_program(partition_number, start_sector, filename)
+                if os.path.exists(xml):
+                    self.__logger.info("[qfil] programming %s" % xml)
+                    fl = open(xml, "r")
+                    for evt, elem in ET.iterparse(fl, events=["end"]):
+                        if elem.tag == "program":
+                            if elem.get("filename", ""):
+                                filename = os.path.join(imagedir, elem.get("filename"))
+                                if not os.path.isfile(filename):
+                                    self.__logger.error("%s doesn't exist!" % filename)
+                                    continue
+                                partition_number = int(elem.get("physical_partition_number"))
+                                NUM_DISK_SECTORS=self.firehose.getlunsize(partition_number)
+                                start_sector = elem.get("start_sector")
+                                if "NUM_DISK_SECTORS" in start_sector:
+                                    start_sector=start_sector.replace("NUM_DISK_SECTORS",str(NUM_DISK_SECTORS))
+                                if "-" in start_sector or "*" in start_sector or "/" in start_sector or "+" in start_sector:
+                                    start_sector=start_sector.replace(".","")
+                                    start_sector=eval(start_sector)
+                                self.__logger.info(f"[qfil] programming {filename} to partition({partition_number})" +
+                                        f"@sector({start_sector})...")
+
+                                self.firehose.cmd_program(int(partition_number), int(start_sector), filename)
+                else:
+                    self.__logger.warning(f"File : {xml} not found.")
             self.__logger.info("[qfil] raw programming ok.")
 
             self.__logger.info("[qfil] patching...")
             for xml in patch:
                 self.__logger.info("[qfil] patching with %s" % xml)
-                fl = open(xml, "r")
-                for evt, elem in ET.iterparse(fl, events=["end"]):
-                    if elem.tag == "patch":
-                        filename = elem.get("filename")
-                        if filename != "DISK":
-                            continue
-                        start_sector = elem.get("start_sector")
-                        size_in_bytes = elem.get("size_in_bytes")
-                        self.__logger.info(
-                            "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
-                                filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
-                        content = ElementTree.tostring(elem).decode("utf-8")
-                        CMD = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
-                            content=content)
-                        print(CMD)
-                        self.firehose.xmlsend(CMD)
-
+                if os.path.exists(xml):
+                    fl = open(xml, "r")
+                    for evt, elem in ET.iterparse(fl, events=["end"]):
+                        if elem.tag == "patch":
+                            filename = elem.get("filename")
+                            if filename != "DISK":
+                                continue
+                            start_sector = elem.get("start_sector")
+                            size_in_bytes = elem.get("size_in_bytes")
+                            self.__logger.info(
+                                "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
+                                    filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
+                            content = ElementTree.tostring(elem).decode("utf-8")
+                            CMD = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
+                                content=content)
+                            print(CMD)
+                            self.firehose.xmlsend(CMD)
+                else:
+                    self.__logger.warning(f"File : {xml} not found.")
             self.__logger.info("[qfil] patching ok")
             bootable = self.find_bootable_partition(rawprogram)
             if bootable != -1:

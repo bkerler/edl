@@ -171,7 +171,7 @@ class gpt(metaclass=LogBase):
 
         for idx in range(0, num_part_entries):
             data = gptdata[start + (idx * entrysize):start + (idx * entrysize) + entrysize]
-            if int(hexlify(data[0:16]), 16) == 0:
+            if int(hexlify(data[16:32]), 16) == 0:
                 break
             partentry = read_object(data, self.gpt_partition)
             pa = partf()
@@ -191,7 +191,7 @@ class gpt(metaclass=LogBase):
                 pa.type = hex(type)
             pa.name = partentry["name"].replace(b"\x00\x00", b"").decode('utf-16')
             if pa.type == "EFI_UNUSED":
-                break
+                continue
             self.partentries.append(pa)
             self.totalsectors = self.header["last_usable_lba"]
         return True

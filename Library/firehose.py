@@ -137,6 +137,7 @@ class firehose(metaclass=LogBase):
         self.skipresponse = skipresponse
         self.luns = luns
         self.supported_functions = []
+        self.lunsizes={}
 
         self.__logger.setLevel(loglevel)
         if loglevel == logging.DEBUG:
@@ -272,7 +273,7 @@ class firehose(metaclass=LogBase):
     def cmd_nop(self):
         data = "<?xml version=\"1.0\" ?><data><nop /></data>"
         val = self.xmlsend(data)
-        if val[0]:
+        if val[0] and val[1]!={}:
             self.__logger.info("Nop succeeded.")
             return self.xml.getlog(val[2])
         else:
@@ -817,7 +818,7 @@ class firehose(metaclass=LogBase):
                     if self.modules.edlauth():
                         rsp = self.xmlsend(connectcmd)
         if len(rsp) > 1:
-            if rsp[0]:  # On Ack
+            if rsp[0] and rsp[1]!={}:  # On Ack
                 self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if "MemoryName" not in rsp[1]:
                     # print(rsp[1])
@@ -900,6 +901,19 @@ class firehose(metaclass=LogBase):
         self.luns = self.getluns(self.args)
         return True
 
+    def getlunsize(self,lun):
+        if not lun in self.lunsizes:
+            try:
+                data, guid_gpt = self.get_gpt(lun, int(self.args["--gpt-num-part-entries"]),
+                                                   int(self.args["--gpt-part-entry-size"]),
+                                                   int(self.args["--gpt-part-entry-start-lba"]))
+                self.lunsizes[lun]=guid_gpt.totalsectors
+            except Exception as e:
+                self.__logger.error(e)
+                return -1
+        else:
+            return self.lunsizes[lun]
+        return guid_gpt.totalsectors
 
     def connect(self):
         v = b'-1'
@@ -974,7 +988,10 @@ class firehose(metaclass=LogBase):
             if storageinfo is not None:
                 for info in storageinfo:
                     if "storage_info" in info:
-                        si = json.loads(info)["storage_info"]
+                        try:
+                            si = json.loads(info)["storage_info"]
+                        except:
+                            continue
                         self.__logger.info("Storage report:")
                         for sii in si:
                             self.__logger.info(f"{sii}:{si[sii]}")
