@@ -20,7 +20,7 @@ class nand_partition:
     partentries = []
 
     def __init__(self, parent, printer=None):
-        if printer == None:
+        if printer is None:
             self.printer = print
         else:
             self.printer = printer
@@ -126,7 +126,7 @@ class firehose(metaclass=LogBase):
     def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
         self.lasterror = b""
-        self.loglevel=loglevel
+        self.loglevel = loglevel
         self.args = args
         self.xml = xml
         self.cfg = cfg
@@ -137,7 +137,11 @@ class firehose(metaclass=LogBase):
         self.skipresponse = skipresponse
         self.luns = luns
         self.supported_functions = []
-        self.lunsizes={}
+        self.lunsizes = {}
+        self.info = self.__logger.info
+        self.error = self.__logger.error
+        self.debug = self.__logger.debug
+        self.warning = self.__logger.warning
 
         self.__logger.setLevel(loglevel)
         if loglevel == logging.DEBUG:
@@ -184,7 +188,7 @@ class firehose(metaclass=LogBase):
                         except:
                             rdata += hexlify(line).decode('utf-8') + "\n"
                     return rdata
-                except:
+                except Exception as e:
                     pass
         return data
 
@@ -210,27 +214,27 @@ class firehose(metaclass=LogBase):
                             break
                     rdata += tmp
                 except Exception as e:
-                    self.__logger.error(e)
+                    self.error(e)
                     return [False, resp, data]
             try:
                 if b"raw hex token" in rdata:
                     rdata = rdata
                 try:
                     resp = self.xml.getresponse(rdata)
-                except:
+                except Exception as e:
                     rdata = bytes(self.decoder(rdata), 'utf-8')
                     resp = self.xml.getresponse(rdata)
                 status = self.getstatus(resp)
             except Exception as e:
                 status = True
-                self.__logger.debug(str(e))
+                self.debug(str(e))
                 if isinstance(rdata, bytes) or isinstance(rdata, bytearray):
                     try:
-                        self.__logger.debug("Error on getting xml response:" + rdata.decode('utf-8'))
+                        self.debug("Error on getting xml response:" + rdata.decode('utf-8'))
                     except:
-                        self.__logger.debug("Error on getting xml response:" + hexlify(rdata).decode('utf-8'))
+                        self.debug("Error on getting xml response:" + hexlify(rdata).decode('utf-8'))
                 elif isinstance(rdata, str):
-                    self.__logger.debug("Error on getting xml response:" + rdata)
+                    self.debug("Error on getting xml response:" + rdata)
                 return [status, {"value": "NAK"}, rdata]
         else:
             status = True
@@ -250,13 +254,13 @@ class firehose(metaclass=LogBase):
                     break
                 print(resp)
         except Exception as err:
-            self.__logger.error(str(err))
+            self.error(str(err))
             pass
         if val[0]:
-            self.__logger.info("Reset succeeded.")
+            self.info("Reset succeeded.")
             return True
         else:
-            self.__logger.error("Reset failed.")
+            self.error("Reset failed.")
             return False
 
     def cmd_xml(self, filename):
@@ -264,20 +268,20 @@ class firehose(metaclass=LogBase):
             data = rf.read()
             val = self.xmlsend(data)
             if val[0]:
-                self.__logger.info("Command succeeded." + str(val[2]))
+                self.info("Command succeeded." + str(val[2]))
                 return val[2]
             else:
-                self.__logger.error("Command failed:" + str(val[2]))
+                self.error("Command failed:" + str(val[2]))
                 return val[2]
 
     def cmd_nop(self):
         data = "<?xml version=\"1.0\" ?><data><nop /></data>"
         val = self.xmlsend(data)
-        if val[0] and val[1]!={}:
-            self.__logger.info("Nop succeeded.")
+        if val[0] and val[1] != {}:
+            self.info("Nop succeeded.")
             return self.xml.getlog(val[2])
         else:
-            self.__logger.error("Nop failed.")
+            self.error("Nop failed.")
             return False
 
     def cmd_getsha256digest(self, physical_partition_number, start_sector, num_partition_sectors):
@@ -290,23 +294,23 @@ class firehose(metaclass=LogBase):
         if val[0]:
             res = self.xml.getlog(val[2])
             for line in res:
-                self.__logger.info(line)
+                self.info(line)
             if "Digest " in res:
                 return res.split("Digest ")[1]
             else:
                 return res
         else:
-            self.__logger.error("GetSha256Digest failed.")
+            self.error("GetSha256Digest failed.")
             return False
 
     def cmd_setbootablestoragedrive(self, partition_number):
         data = f"<?xml version=\"1.0\" ?><data>\n<setbootablestoragedrive value=\"{str(partition_number)}\" /></data>"
         val = self.xmlsend(data)
         if val[0]:
-            self.__logger.info("Setbootablestoragedrive succeeded.")
+            self.info("Setbootablestoragedrive succeeded.")
             return True
         else:
-            self.__logger.error("Setbootablestoragedrive failed: %s" % val[2])
+            self.error("Setbootablestoragedrive failed: %s" % val[2])
             return False
 
     def cmd_send(self, content, response=True):
@@ -316,8 +320,8 @@ class firehose(metaclass=LogBase):
             if val[0] and b"log value=\"ERROR\"" not in val[1]:
                 return val[2]
             else:
-                self.__logger.error(f"{content} failed.")
-                self.__logger.error(f"{val[2]}")
+                self.error(f"{content} failed.")
+                self.error(f"{val[2]}")
                 return val[1]
         else:
             self.xmlsend(data, True)
@@ -344,11 +348,11 @@ class firehose(metaclass=LogBase):
         rsp = self.xmlsend(data)
         if rsp[0]:
             if display:
-                self.__logger.info(f"Patch:\n--------------------\n")
-                self.__logger.info(rsp[1])
+                self.info(f"Patch:\n--------------------\n")
+                self.info(rsp[1])
             return True
         else:
-            self.__logger.error(f"Error:{rsp}")
+            self.error(f"Error:{rsp}")
             return False
 
     def wait_for_data(self):
@@ -366,7 +370,7 @@ class firehose(metaclass=LogBase):
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
         size = os.stat(filename).st_size
-        sparse = QCSparse(filename,self.loglevel)
+        sparse = QCSparse(filename, self.loglevel)
         sparseformat = False
         if sparse.readheader():
             sparseformat = True
@@ -378,8 +382,8 @@ class firehose(metaclass=LogBase):
             if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
                 num_partition_sectors += 1
             if display:
-                self.__logger.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
-                                   f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+                self.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
+                          f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
             data = f"<?xml version=\"1.0\" ?><data>\n" + \
                    f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
@@ -400,9 +404,9 @@ class firehose(metaclass=LogBase):
                 total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 old = 0
                 while fsize > 0:
-                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES
-                    if fsize < wlen:
-                        wlen = fsize
+                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES \
+                           * self.cfg.SECTOR_SIZE_IN_BYTES
+                    wlen = min(fsize, wlen)
                     if sparseformat:
                         wdata = sparse.read(wlen)
                     else:
@@ -423,7 +427,8 @@ class firehose(metaclass=LogBase):
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
-                                    % (pos // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                                           % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                           bar_length=50)
 
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 # time.sleep(0.2)
@@ -433,12 +438,12 @@ class firehose(metaclass=LogBase):
                 rsp = self.xml.getresponse(wd)
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
-                        self.__logger.error(f"Error:")
+                        self.error(f"Error:")
                         for line in log:
-                            self.__logger.error(line)
+                            self.error(line)
                         return False
                 else:
-                    self.__logger.error(f"Error:{rsp}")
+                    self.error(f"Error:{rsp}")
                     return False
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
@@ -451,8 +456,8 @@ class firehose(metaclass=LogBase):
         if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
             num_partition_sectors += 1
         if display:
-            self.__logger.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
-                               f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            self.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
+                      f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
         data = f"<?xml version=\"1.0\" ?><data>\n" + \
                f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
@@ -476,9 +481,9 @@ class firehose(metaclass=LogBase):
             fpos = 0
             fsize = len(wfdata)
             while fsize > 0:
-                wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES
-                if fsize < wlen:
-                    wlen = fsize
+                wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES \
+                       * self.cfg.SECTOR_SIZE_IN_BYTES
+                wlen = min(fsize, wlen)
                 wdata = wfdata[fpos:fpos + wlen]
                 bytesToWrite -= wlen
                 fsize -= wlen
@@ -494,23 +499,22 @@ class firehose(metaclass=LogBase):
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Written (Sector %d)'
-                                                                             % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
-                                       bar_length=50)
+                                       % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),bar_length=50)
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
             self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
             # time.sleep(0.2)
-            wd=self.wait_for_data()
+            wd = self.wait_for_data()
             info = self.xml.getlog(wd)
             rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
-                    self.__logger.error(f"Error:")
+                    self.error(f"Error:")
                     for line in info:
-                        self.__logger.error(line)
+                        self.error(line)
                     return False
         else:
-            self.__logger.error(f"Error:{rsp}")
+            self.error(f"Error:{rsp}")
             return False
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -518,8 +522,8 @@ class firehose(metaclass=LogBase):
 
     def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         if display:
-            self.__logger.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
-                               f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
+            self.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
+                      f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
         data = f"<?xml version=\"1.0\" ?><data>\n" + \
                f"<program SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
@@ -549,25 +553,24 @@ class firehose(metaclass=LogBase):
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Erased (Sector %d)'
-                                                                             % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
-                                       bar_length=50)
+                                       % (pos // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
                 bytesToWrite -= wlen
                 pos += wlen
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
             self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
             # time.sleep(0.2)
-            res=self.wait_for_data()
+            res = self.wait_for_data()
             info = self.xml.getlog(res)
             rsp = self.xml.getresponse(res)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
-                    self.__logger.error(f"Error:")
+                    self.error(f"Error:")
                     for line in info:
-                        self.__logger.error(line)
+                        self.error(line)
                         return False
             else:
-                self.__logger.error(f"Error:{rsp}")
+                self.error(f"Error:{rsp}")
                 return False
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -577,7 +580,7 @@ class firehose(metaclass=LogBase):
         self.lasterror = b""
         prog = 0
         if display:
-            self.__logger.info(
+            self.info(
                 f"\nReading from physical partition {str(physical_partition_number)}, " +
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -595,7 +598,7 @@ class firehose(metaclass=LogBase):
                 if "value" in rsp[1]:
                     if rsp[1]["value"] == "NAK":
                         if display:
-                            self.__logger.error(rsp[2].decode('utf-8'))
+                            self.error(rsp[2].decode('utf-8'))
                         return b""
                 bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = bytesToRead
@@ -613,7 +616,8 @@ class firehose(metaclass=LogBase):
                         prog = int(float(dataread) / float(total) * float(100))
                         if prog > old:
                             print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                                           % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                           bar_length=50)
                             old = prog
                 if display and prog != 100:
                     print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
@@ -623,14 +627,14 @@ class firehose(metaclass=LogBase):
                 rsp = self.xml.getresponse(wd)
                 if "value" in rsp:
                     if rsp["value"] != "ACK":
-                        self.__logger.error(f"Error:")
+                        self.error(f"Error:")
                         for line in info:
-                            self.__logger.error(line)
+                            self.error(line)
                             self.lasterror += bytes(line + "\n", "utf-8")
                         return False
                 else:
                     if display:
-                        self.__logger.error(f"Error:{rsp[2]}")
+                        self.error(f"Error:{rsp[2]}")
                         return False
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -640,7 +644,7 @@ class firehose(metaclass=LogBase):
         self.lasterror = b""
         prog = 0
         if display:
-            self.__logger.info(
+            self.info(
                 f"\nReading from physical partition {str(physical_partition_number)}, " +
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -656,7 +660,7 @@ class firehose(metaclass=LogBase):
             if "value" in rsp[1]:
                 if rsp[1]["value"] == "NAK":
                     if display:
-                        self.__logger.error(rsp[2].decode('utf-8'))
+                        self.error(rsp[2].decode('utf-8'))
                         return -1
             bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
             total = bytesToRead
@@ -674,27 +678,28 @@ class firehose(metaclass=LogBase):
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                                       % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                       bar_length=50)
                     old = prog
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-            wd=self.wait_for_data()
+            wd = self.wait_for_data()
             info = self.xml.getlog(wd)
             rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
-                    self.__logger.error(f"Error:")
+                    self.error(f"Error:")
                     for line in info:
-                        self.__logger.error(line)
+                        self.error(line)
                     return resData
             else:
                 if len(rsp) > 1:
                     if b"Failed to open the UFS Device" in rsp[2]:
-                        self.__logger.error(f"Error:{rsp[2]}")
+                        self.error(f"Error:{rsp[2]}")
                 self.lasterror = rsp[2]
                 return resData
-        if len(rsp)>2 and not rsp[0]:
+        if len(rsp) > 2 and not rsp[0]:
             self.lasterror = rsp[2]
         if display and prog != 100:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -704,7 +709,7 @@ class firehose(metaclass=LogBase):
         try:
             data = self.cmd_read_buffer(lun, 0, 2, False)
         except Exception as err:
-            self.__logger.debug(str(err))
+            self.debug(str(err))
             self.skipresponse = True
             data = self.cmd_read_buffer(lun, 0, 2, False)
 
@@ -712,7 +717,7 @@ class firehose(metaclass=LogBase):
             return None, None
         magic = unpack("<I", data[0:4])[0]
         if magic == 0x844bdcd1:
-            self.__logger.info("Nand storage detected. Trying to find partition table")
+            self.info("Nand storage detected. Trying to find partition table")
 
             if self.nandpart.partitiontblsector is None:
                 for sector in range(0, 1024):
@@ -749,7 +754,7 @@ class firehose(metaclass=LogBase):
                 else:
                     return None, None
             except Exception as err:
-                self.__logger.debug(str(err))
+                self.debug(str(err))
                 return None, None
 
     def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
@@ -814,24 +819,24 @@ class firehose(metaclass=LogBase):
         if len(rsp) > 1:
             if not rsp[0]:
                 if b"Only nop and sig tag can be" in rsp[2]:
-                    self.__logger.info("Xiaomi EDL Auth detected.")
+                    self.info("Xiaomi EDL Auth detected.")
                     if self.modules.edlauth():
                         rsp = self.xmlsend(connectcmd)
         if len(rsp) > 1:
-            if rsp[0] and rsp[1]!={}:  # On Ack
+            if rsp[0] and rsp[1] != {}:  # On Ack
                 self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if "MemoryName" not in rsp[1]:
                     # print(rsp[1])
                     rsp[1]["MemoryName"] = "eMMC"
                 if "MaxXMLSizeInBytes" not in rsp[1]:
                     rsp[1]["MaxXMLSizeInBytes"] = "4096"
-                    self.__logger.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+                    self.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
                 if "MaxPayloadSizeToTargetInBytes" not in rsp[1]:
                     rsp[1]["MaxPayloadSizeToTargetInBytes"] = "1038576"
                 if "MaxPayloadSizeToTargetInBytesSupported" not in rsp[1]:
                     rsp[1]["MaxPayloadSizeToTargetInBytesSupported"] = "1038576"
                 if rsp[1]["MemoryName"] != self.cfg.MemoryName:
-                    self.__logger.warning(
+                    self.warning(
                         "Memory type was set as " + self.cfg.MemoryName + " but device reported it is " + rsp[1][
                             "MemoryName"] + " instead.")
                 self.cfg.MemoryName = rsp[1]["MemoryName"]
@@ -842,22 +847,22 @@ class firehose(metaclass=LogBase):
                     self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp[1]["MaxPayloadSizeFromTargetInBytes"])
                 else:
                     self.cfg.MaxPayloadSizeFromTargetInBytes = self.cfg.MaxXMLSizeInBytes
-                    self.__logger.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
+                    self.warning("Couldn't detect MaxPayloadSizeFromTargetinBytes")
                 if "TargetName" in rsp[1]:
                     self.cfg.TargetName = rsp[1]["TargetName"]
                     if "MSM" not in self.cfg.TargetName:
                         self.cfg.TargetName = "MSM" + self.cfg.TargetName
                 else:
                     self.cfg.TargetName = "Unknown"
-                    self.__logger.warning("Couldn't detect TargetName")
+                    self.warning("Couldn't detect TargetName")
                 if "Version" in rsp[1]:
                     self.cfg.Version = rsp[1]["Version"]
                 else:
                     self.cfg.Version = 0
-                    self.__logger.warning("Couldn't detect Version")
+                    self.warning("Couldn't detect Version")
             else:  # on NAK
                 if b"ERROR" in rsp[2]:
-                    self.__logger.error(rsp[2].decode('utf-8'))
+                    self.error(rsp[2].decode('utf-8'))
                     sys.exit()
                 if "MaxPayloadSizeToTargetInBytes" in rsp[1]:
                     try:
@@ -874,23 +879,23 @@ class firehose(metaclass=LogBase):
                         if lvl == 0:
                             return self.configure(lvl + 1)
                         else:
-                            self.__logger.error(f"Error:{rsp}")
+                            self.error(f"Error:{rsp}")
                             sys.exit()
-                    except:
+                    except Exception as e:
                         pass
-        self.__logger.info(f"TargetName={self.cfg.TargetName}")
-        self.__logger.info(f"MemoryName={self.cfg.MemoryName}")
-        self.__logger.info(f"Version={self.cfg.Version}")
+        self.info(f"TargetName={self.cfg.TargetName}")
+        self.info(f"MemoryName={self.cfg.MemoryName}")
+        self.info(f"Version={self.cfg.Version}")
 
         rsp = self.cmd_read_buffer(0, 1, 1, False)
         if rsp == b"" and self.args["--memory"] is None:
             if b"Failed to open the SDCC Device" in self.lasterror:
-                self.__logger.warning(
+                self.warning(
                     "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
                 self.cfg.MemoryName = "UFS"
                 return self.configure(0)
             if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
-                self.__logger.warning(
+                self.warning(
                     "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                 self.cfg.MemoryName = "eMMC"
                 return self.configure(0)
@@ -901,15 +906,15 @@ class firehose(metaclass=LogBase):
         self.luns = self.getluns(self.args)
         return True
 
-    def getlunsize(self,lun):
-        if not lun in self.lunsizes:
+    def getlunsize(self, lun):
+        if lun not in self.lunsizes:
             try:
                 data, guid_gpt = self.get_gpt(lun, int(self.args["--gpt-num-part-entries"]),
-                                                   int(self.args["--gpt-part-entry-size"]),
-                                                   int(self.args["--gpt-part-entry-start-lba"]))
-                self.lunsizes[lun]=guid_gpt.totalsectors
+                                              int(self.args["--gpt-part-entry-size"]),
+                                              int(self.args["--gpt-part-entry-start-lba"]))
+                self.lunsizes[lun] = guid_gpt.totalsectors
             except Exception as e:
-                self.__logger.error(e)
+                self.error(e)
                 return -1
         else:
             return self.lunsizes[lun]
@@ -938,7 +943,7 @@ class firehose(metaclass=LogBase):
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
             info = self.cmd_nop()
         if not info:
-            self.__logger.info("No supported functions detected, configuring qc generic commands")
+            self.info("No supported functions detected, configuring qc generic commands")
             self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
@@ -946,12 +951,12 @@ class firehose(metaclass=LogBase):
             self.supported_functions = []
             for line in info:
                 if "chip serial num" in line.lower():
-                    self.__logger.info(line)
+                    self.info(line)
                     try:
                         serial = line.split("0x")[1][:-1]
                         self.serial = int(serial, 16)
                     except Exception as e:
-                        self.__logger.debug(str(e))
+                        self.debug(str(e))
                         serial = line.split(": ")[2]
                         self.serial = int(serial.split(" ")[0])
                 if supfunc and "end of supported functions" not in line.lower():
@@ -966,7 +971,7 @@ class firehose(metaclass=LogBase):
                 info = "Supported Functions: "
                 for line in self.supported_functions:
                     info += line + ","
-                self.__logger.info(info[:-1])
+                self.info(info[:-1])
         try:
             self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
                                    loglevel=self.__logger.level, devicemodel=self.devicemodel, args=self.args)
@@ -974,7 +979,7 @@ class firehose(metaclass=LogBase):
             self.modules = None
         data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
         try:
-            self.__logger.info(data.decode('utf-8'))
+            self.info(data.decode('utf-8'))
         except:
             pass
 
@@ -990,11 +995,11 @@ class firehose(metaclass=LogBase):
                     if "storage_info" in info:
                         try:
                             si = json.loads(info)["storage_info"]
-                        except:
+                        except Exception as e:
                             continue
-                        self.__logger.info("Storage report:")
+                        self.info("Storage report:")
                         for sii in si:
-                            self.__logger.info(f"{sii}:{si[sii]}")
+                            self.info(f"{sii}:{si[sii]}")
                         if "total_blocks" in si:
                             self.cfg.total_blocks = si["total_blocks"]
 
@@ -1008,15 +1013,15 @@ class firehose(metaclass=LogBase):
                             self.cfg.prod_name = si["prod_name"]
                     if "UFS Inquiry Command Output:" in info:
                         self.cfg.prod_name = info.split("Output: ")[1]
-                        self.__logger.info(info)
+                        self.info(info)
                     if "UFS Erase Block Size:" in info:
                         self.cfg.block_size = int(info.split("Size: ")[1], 16)
-                        self.__logger.info(info)
+                        self.info(info)
                     if "UFS Boot" in info:
                         self.cfg.MemoryName = "UFS"
                         self.cfg.SECTOR_SIZE_IN_BYTES = 4096
                     if "UFS Boot Partition Enabled: " in info:
-                        self.__logger.info(info)
+                        self.info(info)
                     if "UFS Total Active LU: " in info:
                         self.cfg.maxlun = int(info.split("LU: ")[1], 16)
         return self.supported_functions
@@ -1025,38 +1030,41 @@ class firehose(metaclass=LogBase):
 
     def cmd_writeimei(self, imei):
         if len(imei) != 16:
-            self.__logger.info("IMEI must be 16 digits")
+            self.info("IMEI must be 16 digits")
             return False
         data = "<?xml version=\"1.0\" ?><data><writeIMEI len=\"16\"/></data>"
         val = self.xmlsend(data)
         if val[0]:
-            self.__logger.info("writeIMEI succeeded.")
+            self.info("writeIMEI succeeded.")
             return True
         else:
-            self.__logger.error("writeIMEI failed.")
+            self.error("writeIMEI failed.")
             return False
 
     def cmd_getstorageinfo(self):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val = self.xmlsend(data)
         if val[0]:
-            data = self.xml.getlog(val[2])
-            return data
+            try:
+                data = self.xml.getlog(val[2])
+                return data
+            except:
+                return None
         else:
-            self.__logger.warning("GetStorageInfo command isn't supported.")
+            self.warning("GetStorageInfo command isn't supported.")
             return None
 
     def cmd_getstorageinfo_string(self):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
         val = self.xmlsend(data)
         if val[0]:
-            self.__logger.info(f"GetStorageInfo:\n--------------------\n")
+            self.info(f"GetStorageInfo:\n--------------------\n")
             data = self.xml.getlog(val[2])
             for line in data:
-                self.__logger.info(line)
+                self.info(line)
             return True
         else:
-            self.__logger.warning("GetStorageInfo command isn't supported.")
+            self.warning("GetStorageInfo command isn't supported.")
             return False
 
     def cmd_poke(self, address, data, filename="", info=False):
@@ -1067,7 +1075,7 @@ class firehose(metaclass=LogBase):
         else:
             SizeInBytes = len(data)
         if info:
-            self.__logger.info(f"Poke: Address({hex(address)}),Size({hex(SizeInBytes)})")
+            self.info(f"Poke: Address({hex(address)}),Size({hex(SizeInBytes)})")
         '''
         <?xml version="1.0" ?><data><poke address64="1048576" SizeInBytes="90112" value="0x22 0x00 0x00"/></data>
         '''
@@ -1102,7 +1110,7 @@ class firehose(metaclass=LogBase):
             try:
                 self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
             except Exception as e:
-                self.__logger.debug(str(e))
+                self.debug(str(e))
                 pass
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
             if b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo:
@@ -1114,13 +1122,13 @@ class firehose(metaclass=LogBase):
                 self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
                 addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                 if (b'<response' in addrinfo and 'NAK' in addrinfo) or b"Invalid parameters" in addrinfo:
-                    self.__logger.error(f"Error:{addrinfo}")
+                    self.error(f"Error:{addrinfo}")
                     return False
             if b"address" in addrinfo and b"can\'t" in addrinfo:
                 tmp = b""
                 while b"NAK" not in tmp and b"ACK" not in tmp:
                     tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                self.__logger.error(f"Error:{addrinfo}")
+                self.error(f"Error:{addrinfo}")
                 return False
 
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -1136,12 +1144,12 @@ class firehose(metaclass=LogBase):
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     old = prog
             if info:
-                self.__logger.info("Done writing.")
+                self.info("Done writing.")
         return True
 
     def cmd_peek(self, address, SizeInBytes, filename="", info=False):
         if info:
-            self.__logger.info(f"Peek: Address({hex(address)}),Size({hex(SizeInBytes)})")
+            self.info(f"Peek: Address({hex(address)}),Size({hex(SizeInBytes)})")
         wf = None
         if filename != "":
             wf = open(filename, "wb")
@@ -1162,7 +1170,7 @@ class firehose(metaclass=LogBase):
         try:
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
         except Exception as err:
-            self.__logger.debug(str(err))
+            self.debug(str(err))
             pass
         addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
         if b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo:
@@ -1174,13 +1182,13 @@ class firehose(metaclass=LogBase):
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
             if (b'<response' in addrinfo and 'NAK' in addrinfo) or b"Invalid parameters" in addrinfo:
-                self.__logger.error(f"Error:{addrinfo}")
+                self.error(f"Error:{addrinfo}")
                 return False
         if b"address" in addrinfo and b"can\'t" in addrinfo:
             tmp = b""
             while b"NAK" not in tmp and b"ACK" not in tmp:
                 tmp += self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-            self.__logger.error(f"Error:{addrinfo}")
+            self.error(f"Error:{addrinfo}")
             return False
 
         resp = b""
@@ -1214,10 +1222,10 @@ class firehose(metaclass=LogBase):
             wf.close()
             if b'<response' in tmp and b'ACK' in tmp:
                 if info:
-                    self.__logger.info(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
+                    self.info(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
                 return True
             else:
-                self.__logger.error(f"Error:{addrinfo}")
+                self.error(f"Error:{addrinfo}")
                 return False
         else:
             return resp
@@ -1233,11 +1241,11 @@ class firehose(metaclass=LogBase):
         if response:
             val = self.xmlsend(data)
             if val[0]:
-                self.__logger.info(f"{data} succeeded.")
+                self.info(f"{data} succeeded.")
                 return val[2]
             else:
-                self.__logger.error(f"{data} failed.")
-                self.__logger.error(f"{val[2]}")
+                self.error(f"{data} failed.")
+                self.error(f"{val[2]}")
                 return False
         else:
             self.xmlsend(data, False)

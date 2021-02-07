@@ -16,14 +16,15 @@ except ImportError:
     import xml.etree.ElementTree as ET
     from xml.etree import ElementTree
 
-
-
 class firehose_client(metaclass=LogBase):
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
         self.sahara = sahara
         self.arguments = arguments
         self.printer = printer
+        self.info=self.__logger.info
+        self.error=self.__logger.error
+        self.warning=self.__logger.warning
         self.__logger.setLevel(loglevel)
         if loglevel==logging.DEBUG:
             logfilename = "log.txt"
@@ -59,7 +60,7 @@ class firehose_client(metaclass=LogBase):
                 socid = ((sahara.hwid >> 32) >> 16)
                 if hwid in msmids:
                     self.target_name = msmids[hwid]
-                    self.__logger.info(f"Target detected: {self.target_name}")
+                    self.info(f"Target detected: {self.target_name}")
                     if self.cfg.MemoryName=="":
                         if self.target_name in memory_type.preferred_memory:
                             type=memory_type.preferred_memory[self.target_name]
@@ -71,13 +72,13 @@ class firehose_client(metaclass=LogBase):
                                 self.cfg.MemoryName = "eMMC"
                             elif type==memory_type.ufs:
                                 self.cfg.MemoryName = "UFS"
-                            self.__logger.info("Based on the chipset, we assume "+self.cfg.MemoryName+" as default memory type...")
+                            self.info("Based on the chipset, we assume "+self.cfg.MemoryName+" as default memory type...")
                 elif socid in sochw:
                     self.target_name = sochw[socid].split(",")[0]
 
         # We assume ufs is fine (hopefully), set it as default
         if self.cfg.MemoryName=="":
-            self.__logger.info("No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
+            self.info("No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
             self.cfg.MemoryName="eMMC"
 
         if self.firehose.configure(0):
@@ -85,7 +86,7 @@ class firehose_client(metaclass=LogBase):
             for function in self.firehose.supported_functions:
                 funcs += function + ","
             funcs = funcs[:-1]
-            self.__logger.info(funcs)
+            self.info(funcs)
             self.target_name = self.firehose.cfg.TargetName
             self.connected=True
 
@@ -106,13 +107,13 @@ class firehose_client(metaclass=LogBase):
                         label = elem.get("label")
                         if label in ['xbl', 'xbl_a', 'sbl1']:
                             if part != -1:
-                                self.__logger.error("[FIREHOSE] multiple bootloader found!")
+                                self.error("[FIREHOSE] multiple bootloader found!")
                                 return -1
                             part = elem.get("physical_partition_number")
         return part
 
     def getluns(self, argument):
-        if argument["--lun"] != "0":
+        if argument["--lun"] != "":
             return [int(argument["--lun"])]
 
         luns = []
@@ -185,7 +186,7 @@ class firehose_client(metaclass=LogBase):
             filenames = filename.split(",")
             partitions = partitionname.split(",")
             if len(partitions) != len(filenames):
-                self.__logger.error("You need to gives as many filenames as given partitions.")
+                self.error("You need to gives as many filenames as given partitions.")
                 return False
             i = 0
             for partition in partitions:
@@ -201,13 +202,13 @@ class firehose_client(metaclass=LogBase):
                             f"as {partfilename}.")
                 else:
                     fpartitions = res[1]
-                    self.__logger.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
+                    self.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                     for lun in fpartitions:
                         for rpartition in fpartitions[lun]:
                             if self.cfg.MemoryName == "emmc":
-                                self.__logger.error("\t" + rpartition)
+                                self.error("\t" + rpartition)
                             else:
-                                self.__logger.error(lun + ":\t" + rpartition)
+                                self.error(lun + ":\t" + rpartition)
                     return False
             return True
         elif cmd == "rl":
@@ -255,11 +256,11 @@ class firehose_client(metaclass=LogBase):
                     if partition.name in skip:
                         continue
                     filename = os.path.join(storedir, partitionname + ".bin")
-                    self.__logger.info(
+                    self.info(
                         f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} " +
                         f"as {filename}.")
                     if self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename):
-                        self.__logger.info(f"Dumped partition {str(partition.name)} with sector count " +
+                        self.info(f"Dumped partition {str(partition.name)} with sector count " +
                         f"{str(partition.sectors)} as {filename}.")
             return True
         elif cmd == "rf":
@@ -274,7 +275,7 @@ class firehose_client(metaclass=LogBase):
                 if guid_gpt is None:
                     break
                 if len(luns) > 1:
-                    sfilename = f"lun{str(lun)}_" + filename
+                    sfilename = filename+ f"_lun{str(lun)}"
                 else:
                     sfilename = filename
                 self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
@@ -285,7 +286,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<filename>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 filename = options["<filename>"]
@@ -296,21 +297,21 @@ class firehose_client(metaclass=LogBase):
                             self.printer(f"Dumped pbl at offset {hex(target_name[0][0])} as {filename}.")
                             return True
                     else:
-                        self.__logger.error("No known pbl offset for this chipset")
+                        self.error("No known pbl offset for this chipset")
                 else:
-                    self.__logger.error("Unknown target chipset")
-                self.__logger.error("Error on dumping pbl")
+                    self.error("Unknown target chipset")
+                self.error("Error on dumping pbl")
             return False
         elif cmd == "qfp":
             if not self.check_param(["<filename>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 filename = options["<filename>"]
                 if self.target_name not in infotbl:
-                    self.__logger.error("Unknown target chipset")
+                    self.error("Unknown target chipset")
                 else:
                     target_name = infotbl[self.target_name]
                     if len(target_name[1]) > 0:
@@ -318,12 +319,12 @@ class firehose_client(metaclass=LogBase):
                             self.printer(f"Dumped qfprom at offset {hex(target_name[1][0])} as {filename}.")
                             return True
                     else:
-                        self.__logger.error("No known qfprom offset for this chipset")
-                self.__logger.error("Error on dumping qfprom")
+                        self.error("No known qfprom offset for this chipset")
+                self.error("Error on dumping qfprom")
             return False
         elif cmd == "secureboot":
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 if self.target_name in secureboottbl:
@@ -349,13 +350,13 @@ class firehose_client(metaclass=LogBase):
                         self.printer("Secure boot disabled.")
                     return True
                 else:
-                    self.__logger.error("Unknown target chipset")
+                    self.error("Unknown target chipset")
                     return False
         elif cmd == "memtbl":
             if not self.check_param(["<filename>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 filename = options["<filename>"]
@@ -366,10 +367,10 @@ class firehose_client(metaclass=LogBase):
                             self.printer(f"Dumped memtbl at offset {hex(self.target_name[2][0])} as {filename}.")
                             return True
                     else:
-                        self.__logger.error("No known memtbl offset for this chipset")
+                        self.error("No known memtbl offset for this chipset")
                 else:
-                    self.__logger.error("Unknown target chipset")
-                self.__logger.error("Error on dumping memtbl")
+                    self.error("Unknown target chipset")
+                self.error("Error on dumping memtbl")
             return False
         elif cmd == "footer":
             if not self.check_param(["<filename>"]):
@@ -399,7 +400,7 @@ class firehose_client(metaclass=LogBase):
                                 write_handle.write(data)
                                 self.printer(f"Dumped footer from {partition.name} as {filename}.")
                                 return True
-            self.__logger.error("Error: Couldn't detect footer partition.")
+            self.error("Error: Couldn't detect footer partition.")
             return False
         elif cmd == "rs":
             lun = int(options["--lun"])
@@ -415,21 +416,21 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>", "<length>", "<filename>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
                 length = getint(options["<length>"])
                 filename = options["<filename>"]
                 self.firehose.cmd_peek(offset, length, filename, True)
-                self.__logger.info(
+                self.info(
                     f"Peek data from offset {hex(offset)} and length {hex(length)} was written to {filename}")
                 return True
         elif cmd == "peekhex":
             if not self.check_param(["<offset>", "<length>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -442,7 +443,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -454,7 +455,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>"]):
                 return False
             if not self.check_cmd("peek"):
-                self.__logger.error("Peek command isn't supported by edl loader")
+                self.error("Peek command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -466,7 +467,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>", "<filename>"]):
                 return False
             if not self.check_cmd("poke"):
-                self.__logger.error("Poke command isn't supported by edl loader")
+                self.error("Poke command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -476,7 +477,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>", "<data>"]):
                 return False
             if not self.check_cmd("poke"):
-                self.__logger.error("Poke command isn't supported by edl loader")
+                self.error("Poke command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -486,7 +487,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>", "<data>"]):
                 return False
             if not self.check_cmd("poke"):
-                self.__logger.error("Poke command isn't supported by edl loader")
+                self.error("Poke command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -496,7 +497,7 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<offset>", "<data>"]):
                 return False
             if not self.check_cmd("poke"):
-                self.__logger.error("Poke command isn't supported by edl loader")
+                self.error("Poke command isn't supported by edl loader")
                 return False
             else:
                 offset = getint(options["<offset>"])
@@ -520,7 +521,7 @@ class firehose_client(metaclass=LogBase):
             return self.firehose.cmd_reset()
         elif cmd == "nop":
             if not self.check_cmd("nop"):
-                self.__logger.error("Nop command isn't supported by edl loader")
+                self.error("Nop command isn't supported by edl loader")
                 return False
             else:
                 return self.firehose.cmd_nop()
@@ -528,13 +529,13 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<lun>"]):
                 return False
             if not self.check_cmd("setbootablestoragedrive"):
-                self.__logger.error("setbootablestoragedrive command isn't supported by edl loader")
+                self.error("setbootablestoragedrive command isn't supported by edl loader")
                 return False
             else:
                 return self.firehose.cmd_setbootablestoragedrive(int(options["<lun>"]))
         elif cmd == "getstorageinfo":
             if not self.check_cmd("getstorageinfo"):
-                self.__logger.error("getstorageinfo command isn't supported by edl loader")
+                self.error("getstorageinfo command isn't supported by edl loader")
                 return False
             else:
                 return self.firehose.cmd_getstorageinfo_string()
@@ -545,7 +546,7 @@ class firehose_client(metaclass=LogBase):
             filename = options["<filename>"]
             lun=options["--lun"]
             if not os.path.exists(filename):
-                self.__logger.error(f"Error: Couldn't find file: {filename}")
+                self.error(f"Error: Couldn't find file: {filename}")
                 return False
             if partitionname.lower()=="gpt":
                 sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
@@ -561,27 +562,27 @@ class firehose_client(metaclass=LogBase):
                 if partitionname.lower() != "gpt":
                     partition = res[2]
                     if sectors > partition.sectors:
-                        self.__logger.error(
+                        self.error(
                             f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                         return False
                     startsector=partition.sector
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
                 if self.firehose.cmd_program(lun, startsector, filename):
-                    self.printer(f"Wrote {filename} to sector {str(partition.sector)}.")
+                    self.printer(f"Wrote {filename} to sector {str(startsector)}.")
                     return True
                 else:
-                    self.printer(f"Error writing {filename} to sector {str(partition.sector)}.")
+                    self.printer(f"Error writing {filename} to sector {str(startsector)}.")
                     return False
             else:
                 fpartitions = res[1]
-                self.__logger.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+                self.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
                 for lun in fpartitions:
                     for partition in fpartitions[lun]:
                         if self.cfg.MemoryName == "emmc":
-                            self.__logger.error("\t" + partition)
+                            self.error("\t" + partition)
                         else:
-                            self.__logger.error(lun + ":\t" + partition)
+                            self.error(lun + ":\t" + partition)
             return False
         elif cmd == "wl":
             if not self.check_param(["<directory>"]):
@@ -594,7 +595,7 @@ class firehose_client(metaclass=LogBase):
             luns = self.getluns(options)
 
             if not os.path.exists(directory):
-                self.__logger.error(f"Error: Couldn't find directory: {directory}")
+                self.error(f"Error: Couldn't find directory: {directory}")
                 sys.exit()
             filenames = []
             if self.firehose.modules is not None:
@@ -621,7 +622,7 @@ class firehose_client(metaclass=LogBase):
                                 if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                                     sectors += 1
                                 if sectors > partition.sectors:
-                                    self.__logger.error(f"Error: {filename} has {sectors} sectors but partition " +
+                                    self.error(f"Error: {filename} has {sectors} sectors but partition " +
                                                       f"only has {partition.sectors}.")
                                     return False
                                 self.printer(f"Writing {filename} to partition {str(partition.name)}.")
@@ -637,7 +638,7 @@ class firehose_client(metaclass=LogBase):
             start = int(options["<start_sector>"])
             filename = options["<filename>"]
             if not os.path.exists(filename):
-                self.__logger.error(f"Error: Couldn't find file: {filename}")
+                self.error(f"Error: Couldn't find file: {filename}")
                 return False
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
@@ -645,7 +646,7 @@ class firehose_client(metaclass=LogBase):
                 self.printer(f"Wrote {filename} to sector {str(start)}.")
                 return True
             else:
-                self.__logger.error(f"Error on writing {filename} to sector {str(start)}")
+                self.error(f"Error on writing {filename} to sector {str(start)}")
                 return False
         elif cmd == "wf":
             if not self.check_param(["<filename>"]):
@@ -654,7 +655,7 @@ class firehose_client(metaclass=LogBase):
             start = 0
             filename = options["<filename>"]
             if not os.path.exists(filename):
-                self.__logger.error(f"Error: Couldn't find file: {filename}")
+                self.error(f"Error: Couldn't find file: {filename}")
                 return False
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
@@ -662,7 +663,7 @@ class firehose_client(metaclass=LogBase):
                 self.printer(f"Wrote {filename} to sector {str(start)}.")
                 return True
             else:
-                self.__logger.error(f"Error on writing {filename} to sector {str(start)}")
+                self.error(f"Error on writing {filename} to sector {str(start)}")
                 return False
         elif cmd == "e":
             if not self.check_param(["<partitionname>"]):
@@ -688,7 +689,7 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
                     return False
-            self.__logger.error(f"Error: Couldn't detect partition: {partitionname}")
+            self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False
         elif cmd == "ep":
             if not self.check_param(["<partitionname>","<sectors>"]):
@@ -716,7 +717,7 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
                     return False
-            self.__logger.error(f"Error: Couldn't detect partition: {partitionname}")
+            self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False
         elif cmd == "es":
             if not self.check_param(["<start_sector>", "<sectors>"]):
@@ -754,25 +755,26 @@ class firehose_client(metaclass=LogBase):
             mcommand = options["<command>"]
             moptions = options["<options>"]
             if self.firehose.modules is None:
-                self.__logger.error("Feature is not supported")
+                self.error("Feature is not supported")
                 return False
             else:
                 return self.firehose.modules.run(command=mcommand, args=moptions)
         elif cmd == "qfil":
-            self.__logger.info("[qfil] raw programming...")
+            self.info("[qfil] raw programming...")
             rawprogram = options["<rawprogram>"].split(",")
             imagedir = options["<imagedir>"]
             patch = options["<patch>"].split(",")
             for xml in rawprogram:
-                if os.path.exists(xml):
-                    self.__logger.info("[qfil] programming %s" % xml)
-                    fl = open(xml, "r")
+                filename=os.path.join(imagedir,xml)
+                if os.path.exists(filename):
+                    self.info("[qfil] programming %s" % xml)
+                    fl = open(filename, "r")
                     for evt, elem in ET.iterparse(fl, events=["end"]):
                         if elem.tag == "program":
                             if elem.get("filename", ""):
                                 filename = os.path.join(imagedir, elem.get("filename"))
                                 if not os.path.isfile(filename):
-                                    self.__logger.error("%s doesn't exist!" % filename)
+                                    self.error("%s doesn't exist!" % filename)
                                     continue
                                 partition_number = int(elem.get("physical_partition_number"))
                                 NUM_DISK_SECTORS=self.firehose.getlunsize(partition_number)
@@ -782,19 +784,20 @@ class firehose_client(metaclass=LogBase):
                                 if "-" in start_sector or "*" in start_sector or "/" in start_sector or "+" in start_sector:
                                     start_sector=start_sector.replace(".","")
                                     start_sector=eval(start_sector)
-                                self.__logger.info(f"[qfil] programming {filename} to partition({partition_number})" +
+                                self.info(f"[qfil] programming {filename} to partition({partition_number})" +
                                         f"@sector({start_sector})...")
 
                                 self.firehose.cmd_program(int(partition_number), int(start_sector), filename)
                 else:
-                    self.__logger.warning(f"File : {xml} not found.")
-            self.__logger.info("[qfil] raw programming ok.")
+                    self.warning(f"File : {filename} not found.")
+            self.info("[qfil] raw programming ok.")
 
-            self.__logger.info("[qfil] patching...")
+            self.info("[qfil] patching...")
             for xml in patch:
-                self.__logger.info("[qfil] patching with %s" % xml)
-                if os.path.exists(xml):
-                    fl = open(xml, "r")
+                filename = os.path.join(imagedir, xml)
+                self.info("[qfil] patching with %s" % xml)
+                if os.path.exists(filename):
+                    fl = open(filename, "r")
                     for evt, elem in ET.iterparse(fl, events=["end"]):
                         if elem.tag == "patch":
                             filename = elem.get("filename")
@@ -802,7 +805,7 @@ class firehose_client(metaclass=LogBase):
                                 continue
                             start_sector = elem.get("start_sector")
                             size_in_bytes = elem.get("size_in_bytes")
-                            self.__logger.info(
+                            self.info(
                                 "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                             content = ElementTree.tostring(elem).decode("utf-8")
@@ -811,16 +814,16 @@ class firehose_client(metaclass=LogBase):
                             print(CMD)
                             self.firehose.xmlsend(CMD)
                 else:
-                    self.__logger.warning(f"File : {xml} not found.")
-            self.__logger.info("[qfil] patching ok")
+                    self.warning(f"File : {filename} not found.")
+            self.info("[qfil] patching ok")
             bootable = self.find_bootable_partition(rawprogram)
             if bootable != -1:
                 if self.firehose.cmd_setbootablestoragedrive(bootable):
-                    self.__logger.info("[qfil] partition({partition}) is now bootable\n".format(partition=bootable))
+                    self.info("[qfil] partition({partition}) is now bootable\n".format(partition=bootable))
                 else:
-                    self.__logger.info(
+                    self.info(
                         "[qfil] set partition({partition}) as bootable failed\n".format(partition=bootable))
 
         else:
-            self.__logger.error("Unknown/Missing command, a command is required.")
+            self.error("Unknown/Missing command, a command is required.")
             return False

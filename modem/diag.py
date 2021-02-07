@@ -18,6 +18,7 @@ default_vid_pid = [
 ]
 
 import sys
+import os
 import argparse
 import json
 import logging
@@ -87,6 +88,13 @@ diagerror = {
 
 nvitem_type = [
     ('item', 'H'),
+    ('rawdata', '128s'),
+    ('status', 'H')
+]
+
+subnvitem_type = [
+    ('item', 'H'),
+    ('index', 'H'),
     ('rawdata', '128s'),
     ('status', 'H')
 ]
@@ -166,10 +174,12 @@ class nvitem():
     item = 0x0
     data = b""
     status = 0x0
+    index = 0x0
     name = ""
 
-    def __init__(self, item, data, status, name):
+    def __init__(self, item, index, data, status, name):
         self.item = item
+        self.index = index
         self.data = data
         self.status = status
         self.name = name
@@ -418,8 +428,12 @@ class qcdiag(metaclass=LogBase):
     def enter_saharamode(self):
         self.hdlc.receive_reply()
         res = self.send(b"\x4b\x65\x01\x00")
+        if res[0]=="\x4b":
+            print("Done, switched to edl")
+        else:
+            print("Error switching to edl. Try again.")
         self.disconnect()
-        print("Done")
+
 
     def send_sp(self, sp="FFFFFFFFFFFFFFFFFFFE"):
         if type(sp) == str:
@@ -486,12 +500,31 @@ class qcdiag(metaclass=LogBase):
 
     def print_nvitem(self, item):
         res, nvitem = self.read_nvitem(item)
+        if res:
+            info = self.DecodeNVItems(nvitem)
+            if res != False:
+                if nvitem.name != "":
+                    ItemNumber = f"{hex(item)} ({nvitem.name}): "
+                else:
+                    ItemNumber = hex(item) + ": "
+                returnanswer = "NVItem " + ItemNumber + info
+                print(returnanswer)
+                if nvitem.status == 0:
+                    print("-----------------------------------------")
+                    print(self.prettyprint(nvitem.data))
+            else:
+                print(nvitem)
+        else:
+            print(nvitem)
+
+    def print_nvitemsub(self, item, index):
+        res, nvitem = self.read_nvitemsub(item,index)
         info = self.DecodeNVItems(nvitem)
         if res != False:
             if nvitem.name != "":
-                ItemNumber = f"{hex(item)} ({nvitem.name}): "
+                ItemNumber = f"{hex(item),hex(index)} ({nvitem.name}): "
             else:
-                ItemNumber = hex(item) + ": "
+                ItemNumber = hex(item)+","+hex(index) + ": "
             returnanswer = "NVItem " + ItemNumber + info
             print(returnanswer)
             if nvitem.status == 0:
@@ -530,6 +563,16 @@ class qcdiag(metaclass=LogBase):
                 write_handle.write(errors)
         print("Done.")
 
+    def unpackdata(self,data):
+        rlen = len(data)
+        idx = rlen - 1
+        for i in range(0, rlen):
+            byte = data[rlen - i - 1]
+            if byte != 0:
+                break
+            idx = rlen - i - 1
+        return data[:idx]
+
     def read_nvitem(self, item):
         rawdata = 128 * b'\x00'
         status = 0x0000
@@ -543,18 +586,58 @@ class qcdiag(metaclass=LogBase):
                 name = ""
                 if item in self.nvlist:
                     name = self.nvlist[item]
-                data = bytearray()
-                for byte in res["rawdata"]:
-                    if byte == 0:
-                        break
-                    data.append(byte)
-                res = nvitem(res["item"], data, res["status"], name)
+                data=self.unpackdata(res["rawdata"])
+                res = nvitem(res["item"],0, data, res["status"], name)
                 return [True, res]
             elif data[0] == 0x14:
                 return [False, f"Error 0x14 trying to read nvitem {hex(item)}."]
             else:
                 return [False, f"Error {hex(data[0])} trying to read nvitem {hex(item)}."]
         return [False, f"Empty request for nvitem {hex(item)}"]
+
+    def read_nvitemsub(self, item, index):
+        rawdata = 128 * b'\x00'
+        status = 0x0000
+        nvrequest = b'\x4B\x30\x01\x00' + write_object(subnvitem_type, item, index, rawdata, status)['raw_data']
+        data = self.send(nvrequest)
+        if len(data) == 0:
+            data = self.send(nvrequest)
+        if len(data) > 0:
+            if data[0] == 0x4B:
+                res = read_object(data[4:], subnvitem_type)
+                name = ""
+                if item in self.nvlist:
+                    name = self.nvlist[item]
+                data=self.unpackdata(res["rawdata"])
+                res = nvitem(res["item"], index, data, res["status"], name)
+                return [True, res]
+            elif data[0] == 0x14:
+                return [False, f"Error 0x14 trying to read nvitem {hex(item)}."]
+            else:
+                return [False, f"Error {hex(data[0])} trying to read nvitem {hex(item)}."]
+        return [False, f"Empty request for nvitem {hex(item)}"]
+
+    def convertimei(self,imei):
+        data=imei[0]+"A"
+        for i in range(1,len(imei),2):
+            data+=imei[i+1]
+            data+=imei[i]
+        return unhexlify("08"+data)
+
+    def write_imei(self,imeis):
+        if "," in imeis:
+            imeis=imeis.split(",")
+        else:
+            imeis=[imeis]
+        index=0
+        for imei in imeis:
+            data=self.convertimei(imei)
+            if index==0:
+                if not self.write_nvitem(550,data):
+                    self.write_nvitemsub(550,index,data)
+            else:
+                self.write_nvitemsub(550,index,data)
+            index+=1
 
     def write_nvitem(self, item, data):
         rawdata = bytes(data)
@@ -577,6 +660,28 @@ class qcdiag(metaclass=LogBase):
                 return False
             else:
                 print(f"Error while writing nvitem {hex(item)} data, %s" % data)
+
+    def write_nvitemsub(self, item, index, data):
+        rawdata = bytes(data)
+        while len(rawdata) < 128:
+            rawdata += b"\x00"
+        status = 0x0000
+        nvrequest = b"\x4B\x30\x02\x00" + write_object(subnvitem_type, item, index, rawdata, status)['raw_data']
+        res = self.send(nvrequest)
+        if len(res) > 0:
+            if res[0] == 0x4B:
+                res, nvitem = self.read_nvitemsub(item,index)
+                if res == False:
+                    print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, %s" % data)
+                else:
+                    if nvitem.data != data:
+                        print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, verified data doesn't match")
+                    else:
+                        print(f"Successfully wrote nvitem {hex(item)} index {hex(index)}.")
+                        return True
+                return False
+            else:
+                print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, %s" % data)
 
     def efsread(self, filename):
         alternateefs = b"\x4B\x3E\x19\x00"
@@ -791,11 +896,11 @@ class qcdiag(metaclass=LogBase):
             if len(resp) > 0:
                 [dirp, seqno, diag_errno, entry_type, mode, size, atime, mtime, ctime] = unpack("<Iiiiiiiii",
                                                                                                 resp[4:4 + (9 * 4)])
-                entry_name = resp[4 + (9 * 4):-1]
-                if entry_name == b'':
+                if entry_type==1:
+                    entry_name = resp[4 + (9 * 4):-1]
+                    info += f"\"{path}{entry_name.decode('utf-8')}\" mode:{hex(mode)}, size:{hex(size)}, atime:{hex(atime)}, mtime:{hex(mtime)}, ctime:{hex(ctime)}\n"
+                elif entry_type==0:
                     break
-                info += f"\"{path}{entry_name.decode('utf-8')}\" mode:{hex(mode)}, size:{hex(size)}, atime:{hex(atime)}, mtime:{hex(mtime)}, ctime:{hex(ctime)}\n"
-
         if self.efs_closedir(efsmethod, dirp) == 0:
             print("Successfully listed directory")
         else:
@@ -1092,12 +1197,32 @@ class DiagTools(metaclass=LogBase):
                 diag.enforce_crash()
             elif args.efslistdir:
                 print(diag.efslistdir(args.efslistdir))
+            elif args.efsreadfile:
+                if args.src=="" or args.dst=="":
+                    print("Usage: -efsreadfile -src srcfile -dst dstfile")
+                    sys.exit()
+                print(diag.efsreadfile(args.src,args.dst))
             elif args.nvread:
                 if "0x" in args.nvread:
                     nvitem = int(args.nvread, 16)
                 else:
                     nvitem = int(args.nvread)
                 diag.print_nvitem(nvitem)
+            elif args.nvreadsub:
+                if not "," in args.nvreadsub:
+                    print("NvReadSub usage: item,index")
+                    sys.exit()
+                nv = args.nvreadsub.split(",")
+                if len(nv)>1:
+                    if "0x" in nv[0]:
+                        nvitem = int(nv[0], 16)
+                    else:
+                        nvitem = int(nv[0])
+                    if "0x" in nv[1]:
+                        nvindex = int(nv[1], 16)
+                    else:
+                        nvindex = int(nv[1])
+                diag.print_nvitemsub(nvitem,nvindex)
             elif args.nvwrite:
                 if not "," in args.nvwrite:
                     print("NvWrite requires data to write")
@@ -1109,8 +1234,28 @@ class DiagTools(metaclass=LogBase):
                     nvitem = int(nv[0])
                 data = unhexlify(nv[1])
                 diag.write_nvitem(nvitem, data)
+            elif args.nvwritesub:
+                if not "," in args.nvwritesub:
+                    print("NvWriteSub requires item, index and data to write")
+                    sys.exit()
+                nv = args.nvwritesub.split(",")
+                if len(nv)<3:
+                    print("NvWriteSub requires item, index and data to write")
+                    sys.exit()
+                if "0x" in args.nvwritesub:
+                    nvitem = int(nv[0], 16)
+                else:
+                    nvitem = int(nv[0])
+                if "0x" in args.nvwritesub:
+                    nvindex = int(nv[1], 16)
+                else:
+                    nvindex = int(nv[1])
+                data = unhexlify(nv[2])
+                diag.write_nvitemsub(nvitem, nvindex, data)
             elif args.nvbackup:
                 diag.backup_nvitems(args.nvbackup, "error.log")
+            elif args.writeimei:
+                diag.write_imei(args.writeimei)
             elif args.efsread:
                 diag.efsread(args.efsread)
             else:
@@ -1138,9 +1283,15 @@ def main():
     parser.add_argument('-spc', metavar=("<SPC>"), help='[Option] Security code to send, default: 303030303030',
                         default="", const='303030303030', nargs="?")
     parser.add_argument('-nvread', metavar=("<nvitem>"), help='[Option] Read nvitem', default="")
+    parser.add_argument('-nvreadsub', metavar=("<nvitem,nvindex>"), help='[Option] Read nvitem using subsystem', default="")
     parser.add_argument('-nvwrite', metavar=("<nvitem,data>"), help='[Option] Write nvitem', default="")
+    parser.add_argument('-writeimei', metavar=("<imei1,imei2,...>"), help='[Option] Write imei', default="")
+    parser.add_argument('-nvwritesub', metavar=("<nvitem,nvindex,data>"), help='[Option] Write nvitem using subsystem', default="")
     parser.add_argument('-nvbackup', metavar=("<filename>"), help='[Option] Make nvitem backup as json', default="")
     parser.add_argument('-efsread', metavar=("<filename>"), help='[Option] Read efs', default="")
+    parser.add_argument('-efsreadfile', help='[Option] Read efs file', action='store_true')
+    parser.add_argument('-src', metavar=("<filename>"), help='[Option] Source filename', default="")
+    parser.add_argument('-dst', metavar=("<filename>"), help='[Option] Destination filename', default="")
     parser.add_argument('-efslistdir', metavar=("<path>"), help='[Option] List efs directory', default="")
     parser.add_argument('-download', help='[Option] Switch to sahara mode', action='store_true')
     parser.add_argument('-sahara', help='[Option] Switch to sahara mode', action='store_true')
@@ -1154,3 +1305,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -192,84 +192,14 @@ class main(metaclass=LogBase):
         return options
 
     def parse_cmd(self,args):
-        cmd=""
-        if args["server"]:
-            cmd = "server"
-        elif args["printgpt"]:
-            cmd = "printgpt"
-        elif args["gpt"]:
-            cmd = "gpt"
-        elif args["r"]:
-            cmd = "r"
-        elif args["rl"]:
-            cmd = "rl"
-        elif args["rf"]:
-            cmd = "rf"
-        elif args["rs"]:
-            cmd = "rs"
-        elif args["w"]:
-            cmd = "w"
-        elif args["wl"]:
-            cmd = "wl"
-        elif args["wf"]:
-            cmd = "wf"
-        elif args["ws"]:
-            cmd = "ws"
-        elif args["e"]:
-            cmd = "e"
-        elif args["es"]:
-            cmd = "es"
-        elif args["ep"]:
-            cmd = "ep"
-        elif args["footer"]:
-            cmd = "footer"
-        elif args["peek"]:
-            cmd = "peek"
-        elif args["peekhex"]:
-            cmd = "peekhex"
-        elif args["peekdword"]:
-            cmd = "peekdword"
-        elif args["peekqword"]:
-            cmd = "peekqword"
-        elif args["memtbl"]:
-            cmd = "memtbl"
-        elif args["poke"]:
-            cmd = "poke"
-        elif args["pokehex"]:
-            cmd = "pokehex"
-        elif args["pokedword"]:
-            cmd = "pokedword"
-        elif args["pokeqword"]:
-            cmd = "pokeqword"
-        elif args["memcpy"]:
-            cmd = "memcpy"
-        elif args["secureboot"]:
-            cmd = "secureboot"
-        elif args["pbl"]:
-            cmd = "pbl"
-        elif args["qfp"]:
-            cmd = "qfp"
-        elif args["getstorageinfo"]:
-            cmd = "getstorageinfo"
-        elif args["setbootablestoragedrive"]:
-            cmd = "setbootablestoragedrive"
-        elif args["send"]:
-            cmd = "send"
-        elif args["xml"]:
-            cmd = "xml"
-        elif args["rawxml"]:
-            cmd = "rawxml"
-        elif args["reset"]:
-            cmd = "reset"
-        elif args["nop"]:
-            cmd = "nop"
-        elif args["modules"]:
-            cmd = "modules"
-        elif args["memorydump"]:
-            cmd = "memorydump"
-        elif args["qfil"]:
-            cmd = "qfil"
-        return cmd
+        cmds=["server","printgpt","gpt","r","rl","rf","rs","w","wl","wf","ws","e","es","ep","footer","peek","peekhex",
+              "peekdword","peekqword","memtbl","poke","pokehex","pokedword","pokeqword","memcpy","secureboot","pbl",
+              "qfp","getstorageinfo","setbootablestoragedrive","send","xml","rawxml","reset","nop","modules",
+              "memorydump","qfil"]
+        for cmd in cmds:
+            if args[cmd]:
+                return cmd
+        return ""
 
     def console_cmd(self,cmd):
         read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, \
