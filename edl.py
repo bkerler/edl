@@ -94,7 +94,7 @@ Options:
     --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
     --vid=vid                          Set usb vendor id used for EDL [default: -1]
     --pid=pid                          Set usb product id used for EDL [default: -1]
-    --lun=lun                          Set lun to read/write from (UFS memory only) [default: 0]
+    --lun=lun                          Set lun to read/write from (UFS memory only)
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
     --sectorsize=bytes                 Set default sector size
     --memory=memtype                   Set memory type ("NAND", "eMMC", "UFS", "spinor")

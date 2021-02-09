@@ -783,7 +783,7 @@ class firehose(metaclass=LogBase):
         return sector, offset
 
     def getluns(self, argument):
-        if argument["--lun"] != "0":
+        if argument["--lun"] is not None:
             return [int(argument["--lun"])]
 
         luns = []
