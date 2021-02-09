@@ -403,7 +403,10 @@ class firehose_client(metaclass=LogBase):
             self.error("Error: Couldn't detect footer partition.")
             return False
         elif cmd == "rs":
-            lun = int(options["--lun"])
+            if options["--lun"] is not None:
+                lun = int(options["--lun"])
+            else:
+                lun = 0
             if not self.check_param(["<filename>", "<sectors>", "<start_sector>"]):
                 return False
             start = int(options["<start_sector>"])
@@ -544,7 +547,10 @@ class firehose_client(metaclass=LogBase):
                 return False
             partitionname = options["<partitionname>"]
             filename = options["<filename>"]
-            lun=options["--lun"]
+            if options["--lun"] is not None:
+                lun = int(options["--lun"])
+            else:
+                lun = 0
             if not os.path.exists(filename):
                 self.error(f"Error: Couldn't find file: {filename}")
                 return False
@@ -634,7 +640,10 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "ws":
             if not self.check_param(["<start_sector>"]):
                 return False
-            lun = int(options["--lun"])
+            if options["--lun"] is not None:
+                lun = int(options["--lun"])
+            else:
+                lun = 0
             start = int(options["<start_sector>"])
             filename = options["<filename>"]
             if not os.path.exists(filename):
@@ -651,7 +660,10 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "wf":
             if not self.check_param(["<filename>"]):
                 return False
-            lun = int(options["--lun"])
+            if options["--lun"] is not None:
+                lun = int(options["--lun"])
+            else:
+                lun = 0
             start = 0
             filename = options["<filename>"]
             if not os.path.exists(filename):
@@ -722,7 +734,10 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "es":
             if not self.check_param(["<start_sector>", "<sectors>"]):
                 return False
-            lun = int(options["--lun"])
+            if options["--lun"] is not None:
+                lun = int(options["--lun"])
+            else:
+                lun = 0
             start = int(options["<start_sector>"])
             sectors = int(options["<sectors>"])
             if self.firehose.modules is not None:
