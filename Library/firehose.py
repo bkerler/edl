@@ -3,6 +3,7 @@ import platform
 import time
 import json
 from struct import unpack
+from binascii import hexlify
 from Library.utils import *
 from Library.gpt import gpt
 from Library.sparse import QCSparse

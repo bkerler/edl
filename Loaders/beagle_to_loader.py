@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Beagle to EDL Loader (c) B.Kerler 2021
 
-import os,sys
+import sys
 from struct import unpack
 
 def main():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import binascii
+from binascii import hexlify
 from Library.utils import *
 
 
@@ -179,7 +179,7 @@ class gpt(metaclass=LogBase):
             guid2 = struct.unpack("<H", partentry["unique"][0x4:0x6])[0]
             guid3 = struct.unpack("<H", partentry["unique"][0x6:0x8])[0]
             guid4 = struct.unpack("<H", partentry["unique"][0x8:0xA])[0]
-            guid5 = binascii.hexlify(partentry["unique"][0xA:0x10]).decode('utf-8')
+            guid5 = hexlify(partentry["unique"][0xA:0x10]).decode('utf-8')
             pa.unique = "{:08x}-{:04x}-{:04x}-{:04x}-{}".format(guid1, guid2, guid3, guid4, guid5)
             pa.sector = partentry["first_lba"]
             pa.sectors = partentry["last_lba"] - partentry["first_lba"] + 1

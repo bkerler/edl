@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-import os
 import sys
 from os import walk
 import hashlib
-from struct import unpack, pack
+from struct import unpack
 from shutil import copyfile
 try:
     from Library.utils import elf
