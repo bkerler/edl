@@ -120,7 +120,7 @@ class hdlc:
 
     def receive_reply(self,timeout=None):
         replybuf = bytearray()
-        if timeout==None:
+        if timeout is None:
             timeout=self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
@@ -155,7 +155,7 @@ class hdlc:
 
     def receive_reply_nocrc(self,timeout=None):
         replybuf = bytearray()
-        if timeout==None:
+        if timeout is None:
             timeout=self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():

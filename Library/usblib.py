@@ -6,6 +6,7 @@ import usb.util
 import time
 import inspect
 from Library.utils import *
+from binascii import hexlify
 
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host

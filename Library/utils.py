@@ -8,7 +8,6 @@ import shutil
 import stat
 import colorama
 import copy
-from binascii import hexlify
 
 try:
     from capstone import *

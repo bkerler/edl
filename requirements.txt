@@ -6,4 +6,7 @@ pylzma>=0.5.0
 pycryptodome
 lxml>=4.6.1
 colorama
+usb
+capstone
+keystone-engine
 

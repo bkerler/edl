@@ -254,7 +254,7 @@ class main(metaclass=LogBase):
                 self.exit()
         # print((mode, resp))
         if mode == "sahara":
-            if resp==None:
+            if resp is None:
                 if mode=="sahara":
                     print("Sahara in error state, resetting ...")
                     self.sahara.cmd_reset()
