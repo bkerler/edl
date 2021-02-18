@@ -228,7 +228,7 @@ class gpt(metaclass=LogBase):
                         f"file_sector_offset=\"0\" filename=\"{filename}\" " + \
                         f"label=\"{partition.name}\" num_partition_sectors=\"{partition.sectors}\" " + \
                         f"partofsingleimage=\"{partofsingleimage}\" physical_partition_number=\"{str(lun)}\" " + \
-                        f"readbackverify=\"{readbackverify}\" size_in_KB=\"{(partition.sector * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" " + \
+                        f"readbackverify=\"{readbackverify}\" size_in_KB=\"{(partition.sectors * sectorsize / 1024):.1f}\" sparse=\"{sparse}\" " + \
                         f"start_byte_hex=\"{hex(partition.sector * sectorsize)}\" start_sector=\"{partition.sector}\"/>\n"
             partofsingleimage = "true"
             sectors = self.header["first_usable_lba"]
