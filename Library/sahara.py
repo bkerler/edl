@@ -7,11 +7,12 @@ from struct import unpack, pack
 from Library.utils import read_object, print_progress, rmrf, LogBase
 from Config.qualcomm_config import sochw, msmids, root_cert_hash
 
+
 def convertmsmid(msmid):
-    msmiddb=[]
-    if int(msmid,16)&0xFF==0xe1 or msmid=='00000000':
+    msmiddb = []
+    if int(msmid, 16) & 0xFF == 0xe1 or msmid == '00000000':
         return [msmid]
-    socid=(int(msmid, 16)>>16)
+    socid = int(msmid, 16) >> 16
     if socid in sochw:
         names = sochw[socid].split(",")
         for name in names:
@@ -277,7 +278,7 @@ class sahara(metaclass=LogBase):
     def __init__(self, cdc, loglevel):
         self.cdc = cdc
         self.init_loader_db()
-        self.version=2.1
+        self.version = 2.1
         self.programmer = None
         self.mode = ""
         self.serial = None
@@ -292,18 +293,26 @@ class sahara(metaclass=LogBase):
         self.model_id = None
         self.oem_str = None
         self.msm_str = None
+        self.loaderdb = None
+        self.bit64 = False
+        self.pktsize = None
+
+        self.info = self.__logger.info
+        self.debug = self.__logger.debug
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
+
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
-
 
     def get_rsp(self):
         data = []
         try:
             v = self.cdc.read()
-            if v==b'':
+            if v == b'':
                 return [-1, -1]
             if b"<?xml" in v:
                 return ["firehose", None]
@@ -336,9 +345,8 @@ class sahara(metaclass=LogBase):
                     return None
             return [pkt, data]
         except Exception as e:
-            self.__logger.error(str(e))
+            self.error(str(e))
             return None
-
 
     def cmd_hello(self, mode, version_min=1, max_cmd_len=0):  # CMD 0x1, RSP 0x2
         cmd = self.cmd.SAHARA_HELLO_RSP
@@ -349,7 +357,7 @@ class sahara(metaclass=LogBase):
             self.cdc.write(responsedata)
             return True
         except Exception as e:
-            self.__logger.error(str(e))
+            self.error(str(e))
             return False
 
     def connect(self):
@@ -361,19 +369,19 @@ class sahara(metaclass=LogBase):
                     if cmd['cmd'] == self.cmd.SAHARA_HELLO_REQ:
                         data = read_object(v[0x0:0xC * 0x4], self.pkt_hello_req)
                         self.pktsize = data['max_cmd_len']
-                        self.version = float(str(data['version'])+"."+str(data['version_min']))
+                        self.version = float(str(data['version']) + "." + str(data['version_min']))
                         return ["sahara", data]
                 elif v[0] == self.cmd.SAHARA_END_TRANSFER:
                     return ["sahara", None]
                 elif b"<?xml" in v:
                     return ["firehose", None]
-                elif v[0]==0x7E:
+                elif v[0] == 0x7E:
                     return ["nandprg", None]
             else:
                 data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
                 self.cdc.write(data, 0x80)
                 res = self.cdc.read()
-                if res==b"":
+                if res == b"":
                     try:
                         data = b"\x7E\x06\x4E\x95\x7E"  # Streaming nop
                         self.cdc.write(data, 0x80)
@@ -383,11 +391,11 @@ class sahara(metaclass=LogBase):
                         else:
                             return ["", None]
                     except Exception as e:
-                        self.__logger.error(str(e))
+                        self.error(str(e))
                         return ["", None]
                 if b"<?xml" in res:
                     return ["firehose", None]
-                elif len(res)>0 and res[0] == self.cmd.SAHARA_END_TRANSFER:
+                elif len(res) > 0 and res[0] == self.cmd.SAHARA_END_TRANSFER:
                     print("Device is in Sahara error state, please reboot the device.")
                     return ["sahara", None]
                 else:
@@ -401,12 +409,12 @@ class sahara(metaclass=LogBase):
                         return ["sahara", None]
 
         except Exception as e:
-            self.__logger.error(str(e))
+            self.error(str(e))
 
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
         cmd, pkt = self.get_rsp()
-        if cmd==-1 and pkt==-1:
-            return ["",None]
+        if cmd == -1 and pkt == -1:
+            return ["", None]
         return ["sahara", pkt]
 
     def enter_command_mode(self):
@@ -416,7 +424,7 @@ class sahara(metaclass=LogBase):
         if cmd["cmd"] == self.cmd.SAHARA_CMD_READY:
             return True
         elif "status" in pkt:
-            self.__logger.error(self.get_error_desc(pkt["status"]))
+            self.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -440,7 +448,7 @@ class sahara(metaclass=LogBase):
             res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
             return binascii.hexlify(res).decode('utf-8')
         except Exception as e:
-            self.__logger.error(str(e))
+            self.error(str(e))
             return None
 
     def cmdexec_get_sbl_version(self):
@@ -465,7 +473,7 @@ class sahara(metaclass=LogBase):
             self.serials = "{:08x}".format(self.serial)
             self.hwid = self.cmdexec_get_msm_hwid()
             self.pkhash = self.cmdexec_get_pkhash()
-            #if self.version>=2.4:
+            # if self.version>=2.4:
             #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
             if self.hwid is not None:
                 self.hwidstr = "{:016x}".format(self.hwid)
@@ -476,12 +484,12 @@ class sahara(metaclass=LogBase):
                 self.model_id = "{:04x}".format(self.model_id)
                 self.msm_str = "{:08x}".format(self.msm_id)
                 if self.msm_id in msmids:
-                    cpustr=f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
+                    cpustr = f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
                 else:
-                    cpustr="Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
+                    cpustr = "Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
                 """
                 if self.version >= 2.4:
-                    self.__logger.info(f"\n------------------------\n" +
+                    self.info(f"\n------------------------\n" +
                                 f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
                                 f"OEM_ID:0x{self.oem_str}," +
                                 f"MODEL_ID:0x{self.model_id})\n" +
@@ -490,59 +498,59 @@ class sahara(metaclass=LogBase):
                                 f"SBL Version:       0x{self.sblversion}\n")
                 else:
                 """
-                self.__logger.info(f"\n------------------------\n" +
-                                f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
-                                f"OEM_ID:0x{self.oem_str}," +
-                                f"MODEL_ID:0x{self.model_id})\n" +
-                                cpustr +
-                                f"PK_HASH:           0x{self.pkhash}\n" +
-                                f"Serial:            0x{self.serials}\n")
+                self.info(f"\n------------------------\n" +
+                                   f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                                   f"OEM_ID:0x{self.oem_str}," +
+                                   f"MODEL_ID:0x{self.model_id})\n" +
+                                   cpustr +
+                                   f"PK_HASH:           0x{self.pkhash}\n" +
+                                   f"Serial:            0x{self.serials}\n")
             if self.programmer == "":
                 if self.hwidstr in self.loaderdb:
                     mt = self.loaderdb[self.hwidstr]
-                    unfused=False
+                    unfused = False
                     for rootcert in root_cert_hash:
                         if self.pkhash[0:16] in root_cert_hash[rootcert]:
-                            unfused=True
+                            unfused = True
                     if unfused:
-                        self.__logger.info("Possibly unfused device detected, so any loader should be fine...")
+                        self.info("Possibly unfused device detected, so any loader should be fine...")
                         if self.pkhash[0:16] in mt:
                             self.programmer = mt[self.pkhash[0:16]]
-                            self.__logger.info(f"Trying loader: {self.programmer}")
+                            self.info(f"Trying loader: {self.programmer}")
                         else:
                             for loader in mt:
                                 self.programmer = mt[loader]
-                                self.__logger.info(f"Possible loader available: {self.programmer}")
+                                self.info(f"Possible loader available: {self.programmer}")
                             for loader in mt:
                                 self.programmer = mt[loader]
-                                self.__logger.info(f"Trying loader: {self.programmer}")
+                                self.info(f"Trying loader: {self.programmer}")
                                 break
                     elif self.pkhash[0:16] in mt:
                         self.programmer = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        self.__logger.info(f"Detected loader: {self.programmer}")
+                        self.info(f"Detected loader: {self.programmer}")
                     else:
                         for loader in self.loaderdb[self.hwidstr]:
                             self.programmer = self.loaderdb[self.hwidstr][loader]
-                            self.__logger.info(f"Trying loader: {self.programmer}")
+                            self.info(f"Trying loader: {self.programmer}")
                             break
                         # print("Couldn't find a loader for given hwid and pkhash :(")
                         # exit(0)
-                elif self.hwidstr!=None and self.pkhash!=None:
-                    msmid=self.hwidstr[:8]
+                elif self.hwidstr != None and self.pkhash != None:
+                    msmid = self.hwidstr[:8]
                     for hwidstr in self.loaderdb:
-                        if msmid==hwidstr[:8]:
+                        if msmid == hwidstr[:8]:
                             for pkhash in self.loaderdb[hwidstr]:
-                                if self.pkhash[0:16]==pkhash:
+                                if self.pkhash[0:16] == pkhash:
                                     self.programmer = self.loaderdb[hwidstr][pkhash]
-                                    self.__logger.info(f"Trying loader: {self.programmer}")
+                                    self.info(f"Trying loader: {self.programmer}")
                                     self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                                     return True
-                    self.__logger.error(
+                    self.error(
                         f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
                         "_[FHPRG/ENPRG].bin) :(")
                     return False
                 else:
-                    self.__logger.error(f"Couldn't find a suitable loader :(")
+                    self.error(f"Couldn't find a suitable loader :(")
                     return False
 
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
@@ -552,7 +560,7 @@ class sahara(metaclass=LogBase):
     def streaminginfo(self):
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
-            self.__logger.info(f"Device serial : {hex(self.serial)}")
+            self.info(f"Device serial : {hex(self.serial)}")
             self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
             return True
         return False
@@ -565,7 +573,7 @@ class sahara(metaclass=LogBase):
                 return True
             elif cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
                 if pkt["status"] == self.status.SAHARA_NAK_INVALID_CMD:
-                    self.__logger.error("Invalid Transfer command received.")
+                    self.error("Invalid Transfer command received.")
                     return False
             return True
         return False
@@ -579,7 +587,7 @@ class sahara(metaclass=LogBase):
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
         elif "status" in pkt:
-            self.__logger.error(self.get_error_desc(pkt["status"]))
+            self.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -602,7 +610,7 @@ class sahara(metaclass=LogBase):
                 pass
             if self.bit64:
                 if not self.cdc.write(pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
-                                                  length)):
+                                           length)):
                     return None
             else:
                 if not self.cdc.write(
@@ -649,7 +657,7 @@ class sahara(metaclass=LogBase):
                 if self.read_memory(mem_base, length, True, wf):
                     print("Done dumping memory")
                 else:
-                    self.__logger.error("Error dumping memory")
+                    self.error("Error dumping memory")
         self.cmd_reset()
         return True
 
@@ -715,7 +723,7 @@ class sahara(metaclass=LogBase):
                         self.dump_partitions(partitions)
                     return True
         elif "status" in pkt:
-            self.__logger.error(self.get_error_desc(pkt["status"]))
+            self.error(self.get_error_desc(pkt["status"]))
             return False
         return False
 
@@ -723,11 +731,11 @@ class sahara(metaclass=LogBase):
         if self.programmer == "":
             return ""
         try:
-            self.__logger.info(f"Uploading loader {self.programmer} ...")
+            self.info(f"Uploading loader {self.programmer} ...")
             with open(self.programmer, "rb") as rf:
                 programmer = rf.read()
         except Exception as e:
-            self.__logger.error(str(e))
+            self.error(str(e))
             sys.exit()
 
         if not self.cmd_hello(self.sahara_mode.SAHARA_MODE_IMAGE_TX_PENDING):
@@ -738,11 +746,11 @@ class sahara(metaclass=LogBase):
             done = False
             while datalen > 0 or done == True:
                 cmd, pkt = self.get_rsp()
-                if cmd==-1 or pkt==-1:
+                if cmd == -1 or pkt == -1:
                     if self.cmd_done():
                         return self.mode  # Do NOT remove
                     else:
-                        self.__logger.error("Timeout while uploading loader. Wrong loader ?")
+                        self.error("Timeout while uploading loader. Wrong loader ?")
                         return ""
                 if cmd["cmd"] == self.cmd.SAHARA_64BIT_MEMORY_READ_DATA:
                     self.bit64 = True
@@ -755,10 +763,10 @@ class sahara(metaclass=LogBase):
                     else:
                         return ""
                 elif "status" in pkt:
-                    self.__logger.error(self.get_error_desc(pkt["status"]))
+                    self.error(self.get_error_desc(pkt["status"]))
                     return ""
                 else:
-                    self.__logger.error("Unexpected error on uploading")
+                    self.error("Unexpected error on uploading")
                     return ""
                 self.id = pkt["id"]
                 if self.id == 0x7:
@@ -770,13 +778,13 @@ class sahara(metaclass=LogBase):
 
                 data_offset = pkt["data_offset"]
                 data_len = pkt["data_len"]
-                if data_offset+data_len>len(programmer):
-                    while len(programmer)<data_offset+data_len:
-                        programmer+=b"\xFF"
+                if data_offset + data_len > len(programmer):
+                    while len(programmer) < data_offset + data_len:
+                        programmer += b"\xFF"
                 data_to_send = programmer[data_offset:data_offset + data_len]
                 self.cdc.write(data_to_send, self.pktsize)
                 datalen -= data_len
-            self.__logger.info("Loader uploaded.")
+            self.info("Loader uploaded.")
             cmd, pkt = self.get_rsp()
             if cmd["cmd"] == self.cmd.SAHARA_END_TRANSFER:
                 if pkt["status"] == self.status.SAHARA_STATUS_SUCCESS:
@@ -784,7 +792,7 @@ class sahara(metaclass=LogBase):
                     return self.mode
             return ""
         except Exception as e:
-            self.__logger.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
+            self.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
 
     def cmd_modeswitch(self, mode):
@@ -804,6 +812,6 @@ class sahara(metaclass=LogBase):
             payload = self.cdc.read(pkt["data_len"])
             return payload
         elif "status" in pkt:
-            self.__logger.error(self.get_error_desc(pkt["status"]))
+            self.error(self.get_error_desc(pkt["status"]))
             return None
         return [cmd, pkt]

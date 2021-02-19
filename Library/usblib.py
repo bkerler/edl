@@ -52,50 +52,61 @@ class usb_class(metaclass=LogBase):
         self.timeout = None
         self.vid = None
         self.pid = None
+        self.debug = self.__logger.debug
+        self.error = self.__logger.error
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
+        self.EP_OUT = None
+        self.EP_IN = None
+        self.baudrate = None
+        self.device = None
+        self.configuration = None
+        self.stopbits = None
+        self.databits = None
+        self.interface = None
+        self.parity = None
 
     def verify_data(self, data, pre="RX:"):
-        self.__logger.debug("",stack_info=True)
+        self.debug("", stack_info=True)
         if isinstance(data, bytes) or isinstance(data, bytearray):
             if data[:5] == b"<?xml":
                 try:
                     rdata = b""
                     for line in data.split(b"\n"):
                         try:
-                            self.__logger.debug(pre + line.decode('utf-8'))
+                            self.debug(pre + line.decode('utf-8'))
                             rdata += line + b"\n"
-                        except:
+                        except UnicodeError:
                             v = hexlify(line)
-                            self.__logger.debug(pre + v.decode('utf-8'))
+                            self.debug(pre + v.decode('utf-8'))
                     return rdata
                 except:
                     pass
             if logging.DEBUG >= self.__logger.level:
-                self.__logger.debug(pre + hexlify(data).decode('utf-8'))
+                self.debug(pre + hexlify(data).decode('utf-8'))
         else:
             if logging.DEBUG >= self.__logger.level:
-                self.__logger.debug(pre + data)
+                self.debug(pre + data)
         return data
 
     def getInterfaceCount(self):
         if self.vid is not None:
             self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
             if self.device is None:
-                self.__logger.debug("Couldn't detect the device. Is it connected ?")
+                self.debug("Couldn't detect the device. Is it connected ?")
                 return False
             try:
                 self.device.set_configuration()
             except:
                 pass
             self.configuration = self.device.get_active_configuration()
-            self.__logger.debug(2, self.configuration)
+            self.debug(2, self.configuration)
             return self.configuration.bNumInterfaces
         else:
-            self.__logger.error("No device detected. Is it connected ?")
+            self.error("No device detected. Is it connected ?")
         return 0
 
     def setLineCoding(self, baudrate=None, parity=None, databits=None, stopbits=None):
@@ -155,7 +166,7 @@ class usb_class(metaclass=LogBase):
         wlen = self.device.ctrl_transfer(
             req_type, CDC_CMDS["SET_LINE_CODING"],
             data_or_wLength=data, wIndex=1)
-        self.__logger.debug("Linecoding set, {}b sent".format(wlen))
+        self.debug("Linecoding set, {}b sent".format(wlen))
 
     def connect(self, EP_IN=-1, EP_OUT=-1):
         if self.connected:
@@ -173,7 +184,7 @@ class usb_class(metaclass=LogBase):
                 break
 
         if self.device is None:
-            self.__logger.debug("Couldn't detect the device. Is it connected ?")
+            self.debug("Couldn't detect the device. Is it connected ?")
             return False
         # try:
         #    self.device.set_configuration()
@@ -191,7 +202,7 @@ class usb_class(metaclass=LogBase):
                     self.interface = interfacenum
                     break
 
-        self.__logger.debug(self.configuration)
+        self.debug(self.configuration)
         if self.interface > self.configuration.bNumInterfaces:
             print("Invalid interface, max number is %d" % self.configuration.bNumInterfaces)
             return False
@@ -199,10 +210,10 @@ class usb_class(metaclass=LogBase):
             itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
             try:
                 if self.device.is_kernel_driver_active(self.interface):
-                    self.__logger.debug("Detaching kernel driver")
+                    self.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except:
-                self.__logger.debug("No kernel driver supported.")
+            except AssertionError:
+                self.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
             if EP_OUT == -1:
@@ -231,7 +242,7 @@ class usb_class(metaclass=LogBase):
             self.connected = False
             return False
 
-    def close(self,reset=False):
+    def close(self, reset=False):
         if self.connected:
             usb.util.dispose_resources(self.device)
             try:
@@ -239,7 +250,7 @@ class usb_class(metaclass=LogBase):
                     self.device.attach_kernel_driver(self.interface)
                 if reset:
                     self.device.reset()
-            except:
+            except AssertionError:
                 pass
 
     def write(self, command, pktsize=64):
@@ -264,7 +275,7 @@ class usb_class(metaclass=LogBase):
                 try:
                     self.device.write(self.EP_OUT, command[pos:pos + pktsize])
                     pos += pktsize
-                except:
+                except TimeoutError:
                     # print("Error while writing")
                     time.sleep(0.01)
                     i += 1
@@ -276,7 +287,7 @@ class usb_class(metaclass=LogBase):
 
     def read(self, length=0x80, timeout=None):
         tmp = b''
-        self.__logger.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
+        self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
         if timeout is None:
             timeout = self.timeout
         while bytearray(tmp) == b'':
@@ -288,11 +299,11 @@ class usb_class(metaclass=LogBase):
                     # if platform.system()=='Windows':
                     # time.sleep(0.05)
                     # print("Waiting...")
-                    self.__logger.debug("Timed out")
-                    self.__logger.debug(tmp)
+                    self.debug("Timed out")
+                    self.debug(tmp)
                     return bytearray(tmp)
                 elif "Overflow" in error:
-                    self.__logger.error("USB Overflow")
+                    self.error("USB Overflow")
                     sys.exit(0)
                 elif e.errno is not None:
                     print(repr(e), type(e), e.errno)
@@ -356,6 +367,7 @@ command_status_wrapper = [
 ]
 command_status_wrapper_len = 13
 
+
 class scsi:
     """
     FIHTDC, PCtool
@@ -390,15 +402,16 @@ class scsi:
         self.interface = interface
         self.Debug = False
         self.usb = None
-        self.loglevel=loglevel
+        self.loglevel = loglevel
 
     def connect(self):
-        self.usb = usb_class(loglevel=self.loglevel,portconfig=[self.vid, self.pid,self.interface], devclass=8)
+        self.usb = usb_class(loglevel=self.loglevel, portconfig=[self.vid, self.pid, self.interface], devclass=8)
         if self.usb.connect():
             return True
         return False
 
-    # htcadb = "55534243123456780002000080000616687463800100000000000000000000"; // Len 0x6, Command 0x16, "HTC" 01 = Enable, 02 = Disable
+    # htcadb = "55534243123456780002000080000616687463800100000000000000000000";
+    # Len 0x6, Command 0x16, "HTC" 01 = Enable, 02 = Disable
     def send_mass_storage_command(self, lun, cdb, direction, data_length):
         global tag
         cmd = cdb[0]
@@ -423,8 +436,8 @@ class scsi:
             print("Error, invalid data packet length, should be max of 31 bytes.")
             return 0
         else:
-            data = write_object(command_block_wrapper, b"USBC", tag, data_length, direction, lun, cdb_len, cdb)[
-                'raw_data']
+            data = write_object(command_block_wrapper, b"USBC", tag, data_length,
+                                direction, lun, cdb_len, cdb)['raw_data']
             print(hexlify(data))
             if len(data) != 31:
                 print("Error, invalid data packet length, should be 31 bytes, but length is %d" % len(data))
@@ -496,8 +509,8 @@ class scsi:
         if self.usb.connect():
             print("Sending FIH adb enable command")
             datasize = 0x24
-            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + struct.pack("<H",
-                                                                              datasize)  # reserve_cmd + 'FI' + flag + len + none
+            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + struct.pack("<H",datasize)
+            # reserve_cmd + 'FI' + flag + len + none
             '''
             Flag values:
                 common_cmnd[3]->1: Enable adb daemon from mass_storage
@@ -519,7 +532,7 @@ class scsi:
             print("Sending alcatel adb enable command")
             datasize = 0x24
             common_cmnd = b"\x16\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            lun=0
+            lun = 0
             timeout = 5000
             ret_tag = self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
             if datasize > 0:
@@ -528,13 +541,14 @@ class scsi:
             print("Sent alcatel adb enable command")
             self.usb.close()
 
-    def send_fih_root(
-            self):  # motorola xt560, nokia 3.1, huawei u8850, huawei Ideos X6, lenovo s2109, triumph M410, viewpad 7, #f_mass_storage.c
+    def send_fih_root(self):
+        # motorola xt560, nokia 3.1, huawei u8850, huawei Ideos X6, lenovo s2109, triumph M410,
+        # viewpad 7, #f_mass_storage.c
         if self.usb.connect():
             print("Sending FIH root command")
             datasize = 0x24
-            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + struct.pack("<H",
-                                                                              datasize)  # reserve_cmd + 'FIH' + len + flag + none
+            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + struct.pack("<H",datasize)
+            # reserve_cmd + 'FIH' + len + flag + none
             lun = 0
             # datasize = common_cmnd[4]
             timeout = 5000

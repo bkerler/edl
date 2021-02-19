@@ -189,7 +189,7 @@ class firehose(metaclass=LogBase):
                         except:
                             rdata += hexlify(line).decode('utf-8') + "\n"
                     return rdata
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-except
                     pass
         return data
 
@@ -222,7 +222,7 @@ class firehose(metaclass=LogBase):
                     rdata = rdata
                 try:
                     resp = self.xml.getresponse(rdata)
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-except
                     rdata = bytes(self.decoder(rdata), 'utf-8')
                     resp = self.xml.getresponse(rdata)
                 status = self.getstatus(resp)
@@ -763,10 +763,10 @@ class firehose(metaclass=LogBase):
         if data == b"":
             return None
         guid_gpt = gpt(
-            num_part_entries=gpt_num_part_entries,
-            part_entry_size=gpt_part_entry_size,
-            part_entry_start_lba=gpt_part_entry_start_lba,
-            loglevel=self.__logger.level
+            num_part_entries = gpt_num_part_entries,
+            part_entry_size = gpt_part_entry_size,
+            part_entry_start_lba = gpt_part_entry_start_lba,
+            loglevel = self.__logger.level
         )
         header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
         if "backup_lba" in header:
@@ -938,7 +938,7 @@ class firehose(metaclass=LogBase):
                     info.append(data[0])
                 if not info:
                     break
-            except Exception as err:
+            except Exception as err: # pylint: disable=broad-except
                 pass
         supfunc = False
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
@@ -976,12 +976,12 @@ class firehose(metaclass=LogBase):
         try:
             self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
                                    loglevel=self.__logger.level, devicemodel=self.devicemodel, args=self.args)
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.modules = None
         data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
         try:
             self.info(data.decode('utf-8'))
-        except:
+        except: # pylint: disable=broad-except
             pass
 
         if not self.supported_functions:
@@ -1049,7 +1049,7 @@ class firehose(metaclass=LogBase):
             try:
                 data = self.xml.getlog(val[2])
                 return data
-            except:
+            except: # pylint: disable=broad-except
                 return None
         else:
             self.warning("GetStorageInfo command isn't supported.")

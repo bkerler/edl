@@ -1,0 +1,19 @@
+<!--
+Summary of the DPInst XML Elements:
+  http://msdn.microsoft.com/en-us/library/windows/hardware/ff553383%28v=vs.85%29.aspx
+  
+Enabling Language Customization:
+  http://msdn.microsoft.com/en-us/library/windows/hardware/ff544886%28v=vs.85%29.aspx
+
+Customizing the Items That Appear on the Wizard Pages:
+  http://msdn.microsoft.com/en-us/library/windows/hardware/ff540265%28v=vs.85%29.aspx
+  
+Dpinst.xml Example:
+  http://msdn.microsoft.com/en-us/library/windows/hardware/ff544778%28v=vs.85%29.aspx
+-->
+
+<?xml version="1.0"?>
+<dpinst>
+	<forceIfDriverIsNotBetter>1</forceIfDriverIsNotBetter>
+	<installAllOrNone>1</installAllOrNone>
+</dpinst>

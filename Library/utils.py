@@ -11,17 +11,22 @@ import copy
 
 try:
     from capstone import *
+except ImportError:
+    print("Capstone library is missing.")
+try:
     from keystone import *
-except:
-    print("Capstone and Keystone libraries missing.")
+except ImportError:
+    print("Keystone library is missing.")
 
-def do_tcp_server(client,arguments, handler):
+
+def do_tcp_server(client, arguments, handler):
     def tcpprint(arg):
         if isinstance(arg, bytes) or isinstance(arg, bytearray):
             return connection.sendall(arg)
         else:
             return connection.sendall(bytes(str(arg), 'utf-8'))
-    client.printer=tcpprint
+
+    client.printer = tcpprint
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port = int(arguments["--tcpport"])
@@ -59,6 +64,7 @@ def do_tcp_server(client,arguments, handler):
                             connection.sendall(bytes(response, 'utf-8'))
         finally:
             connection.close()
+
 
 def parse_args(cmd, args, mainargs):
     options = {}
@@ -142,14 +148,16 @@ def parse_args(cmd, args, mainargs):
         options["<xmlstring>"] = opts[0]
     return options
 
+
 def getint(valuestr):
     try:
         return int(valuestr)
     except:
         try:
-            return int(valuestr,16)
+            return int(valuestr, 16)
         except:
             return 0
+
 
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
@@ -177,8 +185,9 @@ class ColorFormatter(logging.Formatter):
         # now we can let standart formatting take care of the rest
         return super(ColorFormatter, self).format(new_record, *args, **kwargs)
 
+
 class LogBase(type):
-    debuglevel=logging.root.level
+    debuglevel = logging.root.level
 
     def __init__(cls, *args):
         super().__init__(*args)
@@ -196,7 +205,7 @@ class LogBase(type):
             },
             "handlers": {
                 "root": {
-                    #"level": cls.__logger.level,
+                    # "level": cls.__logger.level,
                     "formatter": "root",
                     "class": "logging.StreamHandler",
                     "stream": "ext://sys.stdout",
@@ -205,13 +214,13 @@ class LogBase(type):
             "loggers": {
                 "": {
                     "handlers": ["root"],
-                    #"level": cls.debuglevel,
+                    # "level": cls.debuglevel,
                     "propagate": False
                 }
             },
         }
         logging.config.dictConfig(LOG_CONFIG)
-        logger=logging.getLogger(logger_name)
+        logger = logging.getLogger(logger_name)
 
         setattr(cls, logger_attribute_name, logger)
         setattr(cls, logger_debuglevel_name, cls.debuglevel)

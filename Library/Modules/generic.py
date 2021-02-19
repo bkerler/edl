@@ -1,20 +1,22 @@
 import logging
 from Library.utils import LogBase
 
+
 class generic(metaclass=LogBase):
     def __init__(self, fh, serial, args, loglevel):
-        self.fh=fh
-        self.serial=serial
-        self.args=args
+        self.fh = fh
+        self.serial = serial
+        self.args = args
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        self.error=self.__logger.error
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-    def oem_unlock(self,enable):
+    def oem_unlock(self, enable):
         res = self.fh.detect_partition(self.args, "config")
-        if res[0] == True:
+        if res[0]:
             lun = res[1]
             rpartition = res[2]
             offsettopatch = 0x7FFFF
@@ -26,11 +28,11 @@ class generic(metaclass=LogBase):
                 value = 0x0
             size_in_bytes = 1
             if self.fh.cmd_patch(lun, sector, offset, value, size_in_bytes, True):
-                print(
-                    f"Patched sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
+                print(f"Patched sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, " +
+                      f"size in bytes {size_in_bytes}.")
             else:
-                print(
-                    f"Error on writing sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, size in bytes {size_in_bytes}.")
+                print(f"Error on writing sector {str(rpartition.sector)}, offset {str(offset)} with value {value}, " +
+                      f"size in bytes {size_in_bytes}.")
         else:
             """
             #define DEVICE_MAGIC "ANDROID-BOOT!"
@@ -66,7 +68,7 @@ class generic(metaclass=LogBase):
             #endif
             """
             res = self.fh.detect_partition(self.args, "devinfo")
-            if res[0] == True:
+            if res[0]:
                 lun = res[1]
                 rpartition = res[2]
                 offsettopatch1 = 0x10  # is_unlocked
@@ -82,23 +84,26 @@ class generic(metaclass=LogBase):
                 if self.fh.cmd_patch(lun, sector1, offset1, 0x1, size_in_bytes, True):
                     if self.fh.cmd_patch(lun, sector2, offset2, 0x1, size_in_bytes, True):
                         print(
-                            f"Patched sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, size in bytes {size_in_bytes}.")
+                            f"Patched sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, " +
+                            f"size in bytes {size_in_bytes}.")
                         data = self.fh.cmd_read_buffer(lun, rpartition.sector, rpartition.sectors)
                         if (len(data) > 0x7FFE20) and data[0x7FFE00:0x7FFE10] == b"ANDROID-BOOT!\x00\x00\x00":
                             if self.fh.cmd_patch(lun, sector3, offset3, value, size_in_bytes, True):
                                 if self.fh.cmd_patch(lun, sector4, offset4, value, size_in_bytes, True):
                                     print(
-                                        f"Patched sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, size in bytes {size_in_bytes}.")
+                                        f"Patched sector {str(rpartition.sector)}, offset {str(offset1)} with " +
+                                        f"value {value}, size in bytes {size_in_bytes}.")
                         return True
                 print(
-                    f"Error on writing sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, size in bytes {size_in_bytes}.")
+                    f"Error on writing sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, " +
+                    f"size in bytes {size_in_bytes}.")
                 return False
             else:
                 fpartitions = res[1]
-                self.__logger.error(f"Error: Couldn't detect partition: \"devinfo\"\nAvailable partitions:")
+                self.error(f"Error: Couldn't detect partition: \"devinfo\"\nAvailable partitions:")
                 for lun in fpartitions:
                     for rpartition in fpartitions[lun]:
                         if self.args["--memory"].lower() == "emmc":
-                            self.__logger.error("\t" + rpartition)
+                            self.error("\t" + rpartition)
                         else:
-                            self.__logger.error(lun + ":\t" + rpartition)
+                            self.error(lun + ":\t" + rpartition)
