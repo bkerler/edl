@@ -1,19 +1,19 @@
 import ctypes
 from enum import Enum
-from struct import unpack, pack
-from Config.qualcomm_config import secgen,secureboottbl
+from Config.qualcomm_config import secgen, secureboottbl
+
 c_uint8 = ctypes.c_uint8
 
 # nandbase MSM_NAND_BASE
 # qfprom SECURITY_CONTROL_BASE_PHYS
-config_tbl={
+config_tbl = {
     #           bam nandbase bcraddr    secureboot          pbl                   qfprom                memtbl
-    3:  ["9x25",1,0xf9af0000,0xfc401a40,secureboottbl["MDM9x25"],secgen[2][0],secgen[2][1],secgen[2][2]],
-    8:  ["9x35",1,0xf9af0000,0xfc401a40,secureboottbl["MDM9x35"],secgen[2][0],secgen[2][1],secgen[2][2]],
-    10: ["9x45",1,0x79B0000,0x183f000,secureboottbl["MDM9x45"],secgen[2][0],secgen[2][1],secgen[2][2]],
-    16: ["9x55",0,0x79B0000,0x183f000,secureboottbl["MDM9x45"],secgen[5][0],secgen[5][1],secgen[5][2]],
-    17: ["9x60",0,0x79B0000,0x183f000,secureboottbl["MDM9x60"],secgen[5][0],secgen[5][1],secgen[5][2]],
-    12: ["9x07",0,0x79B0000,0x183f000,secureboottbl["MDM9607"],secgen[5][0],secgen[5][1],secgen[5][2]]
+    3: ["9x25", 1, 0xf9af0000, 0xfc401a40, secureboottbl["MDM9x25"], secgen[2][0], secgen[2][1], secgen[2][2]],
+    8: ["9x35", 1, 0xf9af0000, 0xfc401a40, secureboottbl["MDM9x35"], secgen[2][0], secgen[2][1], secgen[2][2]],
+    10: ["9x45", 1, 0x79B0000, 0x183f000, secureboottbl["MDM9x45"], secgen[2][0], secgen[2][1], secgen[2][2]],
+    16: ["9x55", 0, 0x79B0000, 0x183f000, secureboottbl["MDM9x45"], secgen[5][0], secgen[5][1], secgen[5][2]],
+    17: ["9x60", 0, 0x79B0000, 0x183f000, secureboottbl["MDM9x60"], secgen[5][0], secgen[5][1], secgen[5][2]],
+    12: ["9x07", 0, 0x79B0000, 0x183f000, secureboottbl["MDM9607"], secgen[5][0], secgen[5][1], secgen[5][2]]
 }
 
 supported_flash = {
@@ -232,6 +232,7 @@ samsung_tbl = {
     0xD5: [False, -1, 16384]
 }
 
+
 class SettingsOpt:
     def __init__(self, parent, chipset):
         self.PAGESIZE = 4096
@@ -265,23 +266,25 @@ class SettingsOpt:
         self.BAD_BLOCK_IN_SPARE_AREA = 0
         self.ECC_MODE = 0
         self.bad_loader = 1
-        self.secureboot=secureboottbl["MDM9607"]
-        self.pbl=secgen[5][0]
-        self.qfprom=secgen[5][1]
-        self.memtbl=secgen[5][2]
+        self.secureboot = secureboottbl["MDM9607"]
+        self.pbl = secgen[5][0]
+        self.qfprom = secgen[5][1]
+        self.memtbl = secgen[5][2]
         self.chipname = "Unknown"
         if chipset in config_tbl:
-            self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl=config_tbl[chipset]
+            self.chipname, self.bam, self.nandbase, self.bcraddr, \
+                self.secureboot, self.pbl, self.qfprom, self.memtbl = config_tbl[chipset]
             self.bad_loader = 0
         else:
             loadername = parent.sahara.programmer.lower()
             for chipid in config_tbl:
                 if config_tbl[chipid][0] in loadername:
-                    self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, self.qfprom, self.memtbl = \
-                    config_tbl[chipid]
+                    self.chipname, self.bam, self.nandbase, self.bcraddr, \
+                        self.secureboot, self.pbl, self.qfprom, self.memtbl = config_tbl[chipid]
                     self.bad_loader = 0
-        if chipset==0xFF:
-            self.bad_loader=0
+        if chipset == 0xFF:
+            self.bad_loader = 0
+
 
 class nand_toshiba_ids(ctypes.LittleEndianStructure):
     _fields_ = [
@@ -582,7 +585,7 @@ class NandDevice:
                 self.settings.ecc_bit = 8
         elif pid == 0xEC:  # Samsung
             self.samsung_config(nandid)
-        elif pid == 0x2C: # Micron
+        elif pid == 0x2C:  # Micron
             self.generic_config(nandid, chipsize)
             # MT29AZ5A3CHHWD
             if nandid == 0x2690AC2C or nandid == 0x26D0A32C:

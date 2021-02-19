@@ -118,10 +118,10 @@ class hdlc:
             return None
         return out
 
-    def receive_reply(self,timeout=None):
+    def receive_reply(self, timeout=None):
         replybuf = bytearray()
         if timeout is None:
-            timeout=self.timeout
+            timeout = self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
@@ -153,10 +153,10 @@ class hdlc:
                 return data
         return data[:-3]
 
-    def receive_reply_nocrc(self,timeout=None):
+    def receive_reply_nocrc(self, timeout=None):
         replybuf = bytearray()
         if timeout is None:
-            timeout=self.timeout
+            timeout = self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
@@ -197,8 +197,8 @@ class hdlc:
         # FlushFileBuffers(ser)
 
     def send_cmd_base(self, outdata, prefixflag, nocrc=False):
-        if isinstance(outdata,str):
-            outdata=bytes(outdata,'utf-8')
+        if isinstance(outdata, str):
+            outdata = bytes(outdata, 'utf-8')
         packet = self.convert_cmdbuf(bytearray(outdata))
         if self.send_unframed_buf(packet, prefixflag):
             if nocrc:

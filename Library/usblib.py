@@ -53,13 +53,13 @@ class usb_class(metaclass=LogBase):
         self.vid = None
         self.pid = None
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
     def verify_data(self, data, pre="RX:"):
-        self.__logger.debug("",stack_info=True)
+        self.__logger.debug("", stack_info=True)
         if isinstance(data, bytes) or isinstance(data, bytearray):
             if data[:5] == b"<?xml":
                 try:
@@ -68,11 +68,11 @@ class usb_class(metaclass=LogBase):
                         try:
                             self.__logger.debug(pre + line.decode('utf-8'))
                             rdata += line + b"\n"
-                        except:
+                        except Exception:
                             v = hexlify(line)
                             self.__logger.debug(pre + v.decode('utf-8'))
                     return rdata
-                except:
+                except Exception:
                     pass
             if logging.DEBUG >= self.__logger.level:
                 self.__logger.debug(pre + hexlify(data).decode('utf-8'))
@@ -89,7 +89,7 @@ class usb_class(metaclass=LogBase):
                 return False
             try:
                 self.device.set_configuration()
-            except:
+            except Exception:
                 pass
             self.configuration = self.device.get_active_configuration()
             self.__logger.debug(2, self.configuration)
@@ -201,7 +201,7 @@ class usb_class(metaclass=LogBase):
                 if self.device.is_kernel_driver_active(self.interface):
                     self.__logger.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except:
+            except Exception:
                 self.__logger.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
@@ -231,7 +231,7 @@ class usb_class(metaclass=LogBase):
             self.connected = False
             return False
 
-    def close(self,reset=False):
+    def close(self, reset=False):
         if self.connected:
             usb.util.dispose_resources(self.device)
             try:
@@ -239,7 +239,7 @@ class usb_class(metaclass=LogBase):
                     self.device.attach_kernel_driver(self.interface)
                 if reset:
                     self.device.reset()
-            except:
+            except Exception:
                 pass
 
     def write(self, command, pktsize=64):
@@ -255,7 +255,7 @@ class usb_class(metaclass=LogBase):
                     time.sleep(0.01)
                     try:
                         self.device.write(self.EP_OUT, b'')
-                    except:
+                    except Exception:
                         return False
                 return True
         else:
@@ -264,7 +264,7 @@ class usb_class(metaclass=LogBase):
                 try:
                     self.device.write(self.EP_OUT, command[pos:pos + pktsize])
                     pos += pktsize
-                except:
+                except Exception:
                     # print("Error while writing")
                     time.sleep(0.01)
                     i += 1
@@ -356,6 +356,7 @@ command_status_wrapper = [
 ]
 command_status_wrapper_len = 13
 
+
 class scsi:
     """
     FIHTDC, PCtool
@@ -390,15 +391,16 @@ class scsi:
         self.interface = interface
         self.Debug = False
         self.usb = None
-        self.loglevel=loglevel
+        self.loglevel = loglevel
 
     def connect(self):
-        self.usb = usb_class(loglevel=self.loglevel,portconfig=[self.vid, self.pid,self.interface], devclass=8)
+        self.usb = usb_class(loglevel=self.loglevel, portconfig=[self.vid, self.pid, self.interface], devclass=8)
         if self.usb.connect():
             return True
         return False
 
-    # htcadb = "55534243123456780002000080000616687463800100000000000000000000"; // Len 0x6, Command 0x16, "HTC" 01 = Enable, 02 = Disable
+    # Len 0x6, Command 0x16, "HTC" 01 = Enable, 02 = Disable
+    # htcadb = "55534243123456780002000080000616687463800100000000000000000000";
     def send_mass_storage_command(self, lun, cdb, direction, data_length):
         global tag
         cmd = cdb[0]
@@ -496,8 +498,9 @@ class scsi:
         if self.usb.connect():
             print("Sending FIH adb enable command")
             datasize = 0x24
-            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + struct.pack("<H",
-                                                                              datasize)  # reserve_cmd + 'FI' + flag + len + none
+            # reserve_cmd + 'FI' + flag + len + none
+            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + \
+                                                         struct.pack("<H", datasize)
             '''
             Flag values:
                 common_cmnd[3]->1: Enable adb daemon from mass_storage
@@ -519,7 +522,7 @@ class scsi:
             print("Sending alcatel adb enable command")
             datasize = 0x24
             common_cmnd = b"\x16\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            lun=0
+            lun = 0
             timeout = 5000
             ret_tag = self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
             if datasize > 0:
@@ -528,13 +531,13 @@ class scsi:
             print("Sent alcatel adb enable command")
             self.usb.close()
 
-    def send_fih_root(
-            self):  # motorola xt560, nokia 3.1, huawei u8850, huawei Ideos X6, lenovo s2109, triumph M410, viewpad 7, #f_mass_storage.c
+    # motorola xt560, nokia 3.1, huawei u8850, huawei Ideos X6, lenovo s2109, triumph M410, viewpad 7, #f_mass_storage.c
+    def send_fih_root(self):
         if self.usb.connect():
             print("Sending FIH root command")
             datasize = 0x24
-            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + struct.pack("<H",
-                                                                              datasize)  # reserve_cmd + 'FIH' + len + flag + none
+            # reserve_cmd + 'FIH' + len + flag + none
+            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + struct.pack("<H", datasize)
             lun = 0
             # datasize = common_cmnd[4]
             timeout = 5000

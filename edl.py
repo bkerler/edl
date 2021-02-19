@@ -120,20 +120,6 @@ import subprocess
 import re
 from docopt import docopt
 
-
-args = docopt(__doc__, version='3')
-
-default_ids = [
-    [0x05c6,0x9008,-1],
-    [0x05c6,0x900e,-1] ,
-    [0x05c6,0x9025,-1],
-    [0x1199,0x9062,-1],
-    [0x1199,0x9070,-1],
-    [0x1199,0x9090,-1],
-    [0x0846,0x68e0,-1],
-    [0x19d2,0x0076,-1]
-]
-
 from Library.utils import LogBase
 from Library.usblib import usb_class
 from Library.sahara import sahara
@@ -141,7 +127,21 @@ from Library.streaming_client import streaming_client
 from Library.firehose_client import firehose_client
 from Library.streaming import Streaming
 
+args = docopt(__doc__, version='3')
+
+default_ids = [
+    [0x05c6, 0x9008, -1],
+    [0x05c6, 0x900e, -1],
+    [0x05c6, 0x9025, -1],
+    [0x1199, 0x9062, -1],
+    [0x1199, 0x9070, -1],
+    [0x1199, 0x9090, -1],
+    [0x0846, 0x68e0, -1],
+    [0x19d2, 0x0076, -1]
+]
+
 print("Qualcomm Sahara / Firehose Client V3.2 (c) B.Kerler 2018-2021.")
+
 
 class main(metaclass=LogBase):
     def doconnect(self, loop, mode, resp):
@@ -167,7 +167,7 @@ class main(metaclass=LogBase):
                 self.__logger.info("Device detected :)")
                 try:
                     mode, resp = self.sahara.connect()
-                except Exception as e:
+                except Exception:
                     if mode == "" or resp == -1:
                         mode, resp = self.sahara.connect()
                 if mode == -1:
@@ -184,25 +184,25 @@ class main(metaclass=LogBase):
         self.cdc.close()
         sys.exit()
 
-    def parse_option(self,args):
-        options={}
+    def parse_option(self, args):
+        options = {}
         for arg in args:
             if "--" in arg or "<" in arg:
-                options[arg]=args[arg]
+                options[arg] = args[arg]
         return options
 
-    def parse_cmd(self,args):
-        cmds=["server","printgpt","gpt","r","rl","rf","rs","w","wl","wf","ws","e","es","ep","footer","peek","peekhex",
-              "peekdword","peekqword","memtbl","poke","pokehex","pokedword","pokeqword","memcpy","secureboot","pbl",
-              "qfp","getstorageinfo","setbootablestoragedrive","send","xml","rawxml","reset","nop","modules",
-              "memorydump","qfil"]
+    def parse_cmd(self, args):
+        cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
+                "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
+                "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "send", "xml",
+                "rawxml", "reset", "nop", "modules", "memorydump", "qfil"]
         for cmd in cmds:
             if args[cmd]:
                 return cmd
         return ""
 
-    def console_cmd(self,cmd):
-        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, \
+    def console_cmd(self, cmd):
+        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
         output = read.stdout.read().decode()
         return output
@@ -218,7 +218,7 @@ class main(metaclass=LogBase):
         vid = int(args["--vid"], 16)
         pid = int(args["--pid"], 16)
         interface = -1
-        if vid!=-1 and pid!=-1:
+        if vid != -1 and pid != -1:
             portconfig = [[vid, pid, interface]]
         else:
             portconfig = default_ids
@@ -232,8 +232,8 @@ class main(metaclass=LogBase):
         else:
             self.__logger.setLevel(logging.INFO)
 
-        self.cdc = usb_class(portconfig=portconfig,loglevel=self.__logger.level)
-        self.sahara = sahara(self.cdc,loglevel=self.__logger.level)
+        self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level)
+        self.sahara = sahara(self.cdc, loglevel=self.__logger.level)
 
         if args["--loader"] == 'None':
             self.__logger.info("Trying with no loader given ...")
@@ -255,10 +255,10 @@ class main(metaclass=LogBase):
         # print((mode, resp))
         if mode == "sahara":
             if resp is None:
-                if mode=="sahara":
+                if mode == "sahara":
                     print("Sahara in error state, resetting ...")
                     self.sahara.cmd_reset()
-                    data=self.cdc.read(5)
+                    data = self.cdc.read(5)  # fixme variable data is not used
                     self.exit()
             elif "mode" in resp:
                 mode = resp["mode"]
@@ -280,7 +280,7 @@ class main(metaclass=LogBase):
                                     mode = "load_enandprg"
                                 elif "nprg" in self.sahara.programmer.lower():
                                     mode = "load_nandprg"
-                                elif mode!="":
+                                elif mode != "":
                                     mode = "load_" + mode
                                 if "load_" in mode:
                                     time.sleep(0.3)
@@ -327,13 +327,13 @@ class main(metaclass=LogBase):
 
         if mode == "firehose":
             self.cdc.timeout = None
-            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level,print)
-            cmd=self.parse_cmd(args)
-            options=self.parse_option(args)
-            if cmd!="":
-                fh.handle_firehose(cmd,options)
+            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
+            cmd = self.parse_cmd(args)
+            options = self.parse_option(args)
+            if cmd != "":
+                fh.handle_firehose(cmd, options)
         elif mode == "nandprg" or mode == "enandprg" or mode == "load_nandprg" or mode == "load_enandprg":
-            sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level,print)
+            sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level, print)
             cmd = self.parse_cmd(args)
             options = self.parse_option(args)
             if "load_" in mode:
@@ -348,5 +348,5 @@ class main(metaclass=LogBase):
 
 
 if __name__ == '__main__':
-    base=main()
+    base = main()
     base.run()

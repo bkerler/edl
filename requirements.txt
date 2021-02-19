@@ -9,4 +9,5 @@ colorama
 usb
 capstone
 keystone-engine
+crypto
 

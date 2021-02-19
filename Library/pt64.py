@@ -61,7 +61,7 @@ def parse_pt(data, base, tnsz, level=1):
             i += 8
             continue
         va = get_va_for_level(base, int(i / 8), level)
-        if (f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.xn == 0):
+        if f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.xn == 0:
             print("%016x %s - WX !!" % (va, f))
         else:
             print("%016x %s" % (va, f))
@@ -86,6 +86,7 @@ def get_fld(fld, level):
     if s == 3:
         return table_entry4k(fld, level)
     return None
+
 
 class descriptor(object):
     def get_name(self):

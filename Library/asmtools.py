@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from capstone import *
-from keystone import *
+# noinspection PyPackageRequirements
+from keystone import *  # package name: keystone-engine
 from binascii import unhexlify
 import argparse
 

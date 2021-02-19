@@ -9,9 +9,9 @@ from Library.gpt import gpt
 from Library.sparse import QCSparse
 
 try:
-    from Library.Modules.init import modules
-except Exception as e:
-    pass
+    from Library.Modules.init import modules as init_modules
+except ImportError as e:
+    init_modules = None
 
 from queue import Queue
 from threading import Thread
@@ -89,7 +89,7 @@ def writefile(wf, q, stop):
             break
 
 
-class asyncwriter():
+class asyncwriter:
     def __init__(self, wf):
         self.writequeue = Queue()
         self.worker = Thread(target=writefile, args=(wf, self.writequeue, lambda: self.stopthreads,))
@@ -186,10 +186,10 @@ class firehose(metaclass=LogBase):
                     for line in data.split(b"\n"):
                         try:
                             rdata += line.decode('utf-8') + "\n"
-                        except:
+                        except Exception:
                             rdata += hexlify(line).decode('utf-8') + "\n"
                     return rdata
-                except Exception as e:
+                except Exception:
                     pass
         return data
 
@@ -203,7 +203,6 @@ class firehose(metaclass=LogBase):
         counter = 0
         timeout = 30
         resp = {"value": "NAK"}
-        status = False
         if not skipresponse:
             while b"<response" not in rdata:
                 try:
@@ -222,7 +221,7 @@ class firehose(metaclass=LogBase):
                     rdata = rdata
                 try:
                     resp = self.xml.getresponse(rdata)
-                except Exception as e:
+                except Exception:
                     rdata = bytes(self.decoder(rdata), 'utf-8')
                     resp = self.xml.getresponse(rdata)
                 status = self.getstatus(resp)
@@ -232,7 +231,7 @@ class firehose(metaclass=LogBase):
                 if isinstance(rdata, bytes) or isinstance(rdata, bytearray):
                     try:
                         self.debug("Error on getting xml response:" + rdata.decode('utf-8'))
-                    except:
+                    except Exception:
                         self.debug("Error on getting xml response:" + hexlify(rdata).decode('utf-8'))
                 elif isinstance(rdata, str):
                     self.debug("Error on getting xml response:" + rdata)
@@ -427,8 +426,8 @@ class firehose(metaclass=LogBase):
                     prog = int(float(pos) / float(total) * float(100))
                     if prog > old:
                         if display:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
-                                           % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                            print_progress(prog, 100, prefix='Progress:',
+                                           suffix='Complete (Sector %d)' % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
                                            bar_length=50)
 
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -499,8 +498,9 @@ class firehose(metaclass=LogBase):
                 prog = int(float(pos) / float(total) * float(100))
                 if prog > old:
                     if display:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Written (Sector %d)'
-                                       % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:',
+                                       suffix='Written (Sector %d)' % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                       bar_length=50)
             if display and prog != 100:
                 print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
             self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -553,8 +553,9 @@ class firehose(metaclass=LogBase):
                 prog = int(float(pos) / float(total) * float(100))
                 if prog > old:
                     if display:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Erased (Sector %d)'
-                                       % (pos // self.cfg.SECTOR_SIZE_IN_BYTES), bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:',
+                                       suffix='Erased (Sector %d)' % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                       bar_length=50)
                 bytesToWrite -= wlen
                 pos += wlen
             if display and prog != 100:
@@ -616,8 +617,8 @@ class firehose(metaclass=LogBase):
                     if display:
                         prog = int(float(dataread) / float(total) * float(100))
                         if prog > old:
-                            print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                           % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
+                            print_progress(prog, 100, prefix='Progress:',
+                                           suffix='Read (Sector %d)' % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
                                            bar_length=50)
                             old = prog
                 if display and prog != 100:
@@ -678,8 +679,8 @@ class firehose(metaclass=LogBase):
                 prog = int(float(dataread) / float(total) * float(100))
                 if prog > old:
                     if display:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                       % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
+                        print_progress(prog, 100, prefix='Progress:',
+                                       suffix='Read (Sector %d)' % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
                                        bar_length=50)
                     old = prog
             if display and prog != 100:
@@ -882,7 +883,7 @@ class firehose(metaclass=LogBase):
                         else:
                             self.error(f"Error:{rsp}")
                             sys.exit()
-                    except Exception as e:
+                    except Exception:
                         pass
         self.info(f"TargetName={self.cfg.TargetName}")
         self.info(f"MemoryName={self.cfg.MemoryName}")
@@ -938,7 +939,7 @@ class firehose(metaclass=LogBase):
                     info.append(data[0])
                 if not info:
                     break
-            except Exception as err:
+            except Exception:
                 pass
         supfunc = False
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
@@ -974,14 +975,17 @@ class firehose(metaclass=LogBase):
                     info += line + ","
                 self.info(info[:-1])
         try:
-            self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
-                                   loglevel=self.__logger.level, devicemodel=self.devicemodel, args=self.args)
-        except Exception as e:
+            if init_modules is not None:
+                self.modules = init_modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
+                                            loglevel=self.__logger.level, devicemodel=self.devicemodel, args=self.args)
+            else:
+                self.modules = None
+        except Exception:
             self.modules = None
         data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
         try:
             self.info(data.decode('utf-8'))
-        except:
+        except Exception:
             pass
 
         if not self.supported_functions:
@@ -996,7 +1000,7 @@ class firehose(metaclass=LogBase):
                     if "storage_info" in info:
                         try:
                             si = json.loads(info)["storage_info"]
-                        except Exception as e:
+                        except Exception:
                             continue
                         self.info("Storage report:")
                         for sii in si:
@@ -1049,7 +1053,7 @@ class firehose(metaclass=LogBase):
             try:
                 data = self.xml.getlog(val[2])
                 return data
-            except:
+            except Exception:
                 return None
         else:
             self.warning("GetStorageInfo command isn't supported.")
@@ -1205,7 +1209,7 @@ class firehose(metaclass=LogBase):
             tmp2 = b""
             try:
                 tmp2 = binascii.unhexlify(rdata)
-            except:
+            except Exception:
                 print(rdata)
                 exit(0)
             dataread += len(tmp2)

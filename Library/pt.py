@@ -86,20 +86,18 @@ class fld(descriptor):
 
 
 class fault_desc(fld):
-
     def get_name(self):
         return "FAULT"
 
 
 class reserved_desc(fld):
-
     def get_name(self):
         return "RESERVED"
 
 
 class pt_desc(fld):
-
     def __init__(self, desc):
+        super().__init__(desc)
         self.coarse_base = (desc >> 10) << 10
         self.p = (desc >> 9) & 1
         self.domain = (desc >> 5) & 15
@@ -113,6 +111,7 @@ class pt_desc(fld):
 
 class section_desc(fld):
     def __init__(self, desc):
+        super().__init__(desc)
         self.section_base = (desc >> 20) << 20
         self.ns = (desc >> 19) & 1
         self.zero = ns = (desc >> 18) & 1
@@ -136,8 +135,8 @@ class sld(descriptor):
 
 
 class sld_lp(sld):
-
     def __init__(self, desc):
+        super().__init__(desc)
         self.page_base = (desc >> 16) << 16
         self.nx = (desc >> 15) & 1
         self.tex = (desc >> 12) & 7
@@ -154,8 +153,8 @@ class sld_lp(sld):
 
 
 class sld_xsp(sld):
-
     def __init__(self, desc):
+        super().__init__(desc)
         self.desc = desc
         self.page_base = (desc >> 12) << 12
         self.ng = (desc >> 11) & 1

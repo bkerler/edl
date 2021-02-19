@@ -4,12 +4,13 @@ from Library.utils import *
 from Library.hdlc import *
 from Library.nand_config import BadFlags, SettingsOpt, nand_ids, nand_manuf_ids, nandregs, NandDevice
 
+
 class Streaming(metaclass=LogBase):
     def __init__(self, cdc, sahara, loglevel=logging.INFO):
         self.cdc = cdc
         self.hdlc = hdlc(self.cdc)
         self.mode = sahara.mode
-        self.sahara=sahara
+        self.sahara = sahara
         self.settings = None
         self.flashinfo = None
         self.bbtbl = {}
@@ -19,7 +20,7 @@ class Streaming(metaclass=LogBase):
         self.Qualcomm = 0
         self.Patched = 1
 
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
@@ -39,9 +40,9 @@ class Streaming(metaclass=LogBase):
         dev_cfg1 = self.regs.NAND_DEV0_CFG1
         dev_ecc_cfg = self.regs.NAND_DEV0_ECC_CFG
 
-        #dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
-        #dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
-        #dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
+        # dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
+        # dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
+        # dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
 
         """
         self.nand_reset()
@@ -78,7 +79,7 @@ class Streaming(metaclass=LogBase):
         self.regs.NAND_EBI2_ECC_BUF_CFG = 1 << self.nanddevice.ECC_CFG_ECC_DISABLE
         self.regs.NAND_DEV_CMD_VLD = self.regs.NAND_DEV_CMD_VLD & ~(1 << self.nanddevice.READ_START_VLD)
         self.regs.NAND_DEV_CMD1 = (self.regs.NAND_DEV_CMD1 & ~(
-                    0xFF << self.nanddevice.READ_ADDR)) | self.nanddevice.NAND_CMD_PARAM << self.nanddevice.READ_ADDR
+                0xFF << self.nanddevice.READ_ADDR)) | self.nanddevice.NAND_CMD_PARAM << self.nanddevice.READ_ADDR
         self.regs.NAND_EXEC_CMD = 1
         self.regs.NAND_DEV_CMD1_RESTORE = cmd1
         self.regs.DEV_CMD_VLD_RESTORE = vld
@@ -157,7 +158,7 @@ class Streaming(metaclass=LogBase):
     def enter_flash_mode(self, ptable=None):
         self.secure_mode()
         self.qclose(0)
-        if ptable != None:
+        if ptable is not None:
             self.send_ptable(ptable, 0)  # 1 for fullflash
 
     def write_flash(self, partname, filename):
@@ -181,8 +182,8 @@ class Streaming(metaclass=LogBase):
                 self.__logger.error("Error on closing data stream")
                 return False
 
-    def read_sectors(self,sector,sectors,filename, info=False):
-        old=0
+    def read_sectors(self, sector, sectors, filename, info=False):
+        old = 0
         sectorsize = self.settings.PAGESIZE // self.settings.sectors_per_page
         if info:
             print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -197,7 +198,7 @@ class Streaming(metaclass=LogBase):
                 else:
                     sectorstoread = self.settings.sectors_per_page
                 data, extra = self.flash_read(curblock, curpage, sectorstoread,
-                                                        self.settings.UD_SIZE_BYTES)
+                                              self.settings.UD_SIZE_BYTES)
                 if sector % self.settings.sectors_per_page != 0:
                     data = data[sectorsize * sector:]
                 write_handle.write(data)
@@ -205,7 +206,8 @@ class Streaming(metaclass=LogBase):
                 if info:
                     prog = int(float(sector) / float(sectors) * float(100))
                     if prog > old:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % sector, bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % sector,
+                                       bar_length=50)
                         old = prog
         self.nand_post()
         if info:
@@ -225,19 +227,19 @@ class Streaming(metaclass=LogBase):
 
     def qc_memread(self, address, length):
         self.__logger.debug("memread %08X:%08X" % (address, length))
-        data=bytearray()
-        cmdbuf=b"\x03"
-        toread=length
+        data = bytearray()
+        cmdbuf = b"\x03"
+        toread = length
         for i in range(0, length, 512):
-            size=512
-            if toread<size:
-                size=toread
-            tmp = self.send(cmdbuf + pack("<I", address+i) + pack("<H", size), True)
+            size = 512
+            if toread < size:
+                size = toread
+            tmp = self.send(cmdbuf + pack("<I", address + i) + pack("<H", size), True)
             if tmp[1] == 0x04:
                 data.extend(tmp[6:])
             else:
                 return b""
-            toread-=size
+            toread -= size
         return data
 
     def patched_memread(self, address, length):
@@ -256,8 +258,8 @@ class Streaming(metaclass=LogBase):
         ADD             R4, R4, #4
         BX              LR
         """
-        readt=unhexlify("24309fe524409fe51200a0e3040081e4040083e0042093e4042081e4000053e1fbffff3a044084e21eff2fe1")
-        cmdbuf = b"\x11\x00"+readt
+        readt = unhexlify("24309fe524409fe51200a0e3040081e4040083e0042093e4042081e4000053e1fbffff3a044084e21eff2fe1")
+        cmdbuf = b"\x11\x00" + readt
         errcount = 0
         blklen = 1000
         for i in range(0, length, 1000):
@@ -311,7 +313,8 @@ class Streaming(metaclass=LogBase):
         MOV             R4, #1
         BX              LR
         """
-        writet=unhexlify("380080e224309fe524409fe5044083e0042090e4042083e4040053e1fbffff3a1200a0e30000c1e50140a0e31eff2fe1")
+        writet = unhexlify(
+            "380080e224309fe524409fe5044083e0042090e4042083e4040053e1fbffff3a1200a0e30000c1e50140a0e31eff2fe1")
         cmdbuf = b"\x11\x00" + writet
         if len(data) > 1000:
             data = data[0:1000]
@@ -453,7 +456,6 @@ class Streaming(metaclass=LogBase):
         return 1
     """
 
-
     def flash_read(self, block, page, sectors, cwsize=None):
         buffer = bytearray()
         spare = bytearray()
@@ -588,8 +590,8 @@ class Streaming(metaclass=LogBase):
     def disable_bam(self):
         nandcstate = {}
         for i in range(0, 0xec, 4):
-            value=self.mempeek(self.nanddevice.NAND_FLASH_CMD + i)
-            nandcstate[i]=value
+            value = self.mempeek(self.nanddevice.NAND_FLASH_CMD + i)
+            nandcstate[i] = value
         self.mempoke(self.settings.bcraddr, 1)
         self.mempoke(self.settings.bcraddr, 0)
         for i in nandcstate:
@@ -613,9 +615,9 @@ class Streaming(metaclass=LogBase):
                 return buffer
         return -1
 
-    def get_partitions(self,filename=""):
+    def get_partitions(self, filename=""):
         partitions = {}
-        if filename=="":
+        if filename == "":
             partdata = self.read_partition_table()
         else:
             with open(filename, "rb") as rf:
@@ -672,7 +674,7 @@ class Streaming(metaclass=LogBase):
     def hello(self):
         info = b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20"
         resp = self.send(info, True)
-        if resp==b"":
+        if resp == b"":
             return False
         if resp[1] != b'\x02':
             resp = self.send(info, True)
@@ -681,40 +683,40 @@ class Streaming(metaclass=LogBase):
         if b"Unrecognized flash device" in resp:
             self.__logger.error("Unrecognized flash device, patch loader to match flash or use different loader!")
             self.reset()
-            return False,None
+            return False, None
         resp = bytearray(resp)
         try:
             class hellopacket:
-                command=0
-                magic=b""
-                version=0
-                compatibleVersion=0
-                maxPreferredBlockSize=0
-                baseFlashAddress=0
-                flashIdLength=0
-                flashId=b""
-                windowSize=0
-                numberOfSectors=0
-                sectorSizes=0
-                featureBits=0
+                command = 0
+                magic = b""
+                version = 0
+                compatibleVersion = 0
+                maxPreferredBlockSize = 0
+                baseFlashAddress = 0
+                flashIdLength = 0
+                flashId = b""
+                windowSize = 0
+                numberOfSectors = 0
+                sectorSizes = 0
+                featureBits = 0
 
             hp = hellopacket()
-            hp.command=resp[1]
-            hp.magic=resp[2:2+32]
-            hp.version=resp[2+32]
-            hp.compatibleVersion=resp[3+32]
-            hp.maxPreferredBlockSize=unpack("I",resp[4+32:4+32+4])[0]
-            hp.baseFlashAddress=unpack("I",resp[4+4+32:4+32+4+4])[0]
-            hp.flashIdLength=resp[44]
-            offset=45
-            hp.flashId=resp[offset:offset+hp.flashIdLength]
-            offset+=hp.flashIdLength
-            data=unpack("HH",resp[offset:offset+4])
-            hp.windowSize=data[0]
-            hp.numberOfSectors=data[1]
-            data=unpack(str(hp.numberOfSectors)+"I",resp[offset+4:offset+4+(4*hp.numberOfSectors)])
-            hp.sectorSizes=data
-            hp.featureBits=resp[offset+4+hp.numberOfSectors*4:offset+4+hp.numberOfSectors*4+1]
+            hp.command = resp[1]
+            hp.magic = resp[2:2 + 32]
+            hp.version = resp[2 + 32]
+            hp.compatibleVersion = resp[3 + 32]
+            hp.maxPreferredBlockSize = unpack("I", resp[4 + 32:4 + 32 + 4])[0]
+            hp.baseFlashAddress = unpack("I", resp[4 + 4 + 32:4 + 32 + 4 + 4])[0]
+            hp.flashIdLength = resp[44]
+            offset = 45
+            hp.flashId = resp[offset:offset + hp.flashIdLength]
+            offset += hp.flashIdLength
+            data = unpack("HH", resp[offset:offset + 4])
+            hp.windowSize = data[0]
+            hp.numberOfSectors = data[1]
+            data = unpack(str(hp.numberOfSectors) + "I", resp[offset + 4:offset + 4 + (4 * hp.numberOfSectors)])
+            hp.sectorSizes = data
+            hp.featureBits = resp[offset + 4 + hp.numberOfSectors * 4:offset + 4 + hp.numberOfSectors * 4 + 1]
             """
             self.settings.PAGESIZE=512
             self.settings.UD_SIZE_BYTES=512
@@ -755,16 +757,16 @@ class Streaming(metaclass=LogBase):
                     self.memread = self.qc_memread
                     self.settings = SettingsOpt(self, 0xFF)
                     return True
-        resp=self.hello()
-        if resp[0]:
+        success, hp = self.hello()
+        if success:
             if mode == 2:
-                self.__logger.info("Detected flash memory: %s" % resp[1].flashId.decode('utf-8'))
+                self.__logger.info("Detected flash memory: %s" % hp.flashId.decode('utf-8'))
                 return True
             self.streaming_mode = self.Patched
             chipset = self.identify_chipset()
-            if chipset==0xFF:
+            if chipset == 0xFF:
                 self.streaming_mode = self.Qualcomm
-            if self.streaming_mode==self.Qualcomm:
+            if self.streaming_mode == self.Qualcomm:
                 self.__logger.info("Unpatched loader detected. Using standard QC mode. Limited methods supported: peek")
                 self.settings = SettingsOpt(self, chipset)
                 self.memread = self.qc_memread
@@ -772,13 +774,14 @@ class Streaming(metaclass=LogBase):
                 self.memread = self.patched_memread
                 self.settings = SettingsOpt(self, chipset)
                 if self.settings.bad_loader:
-                    self.__logger.error("Loader id doesn't match device, please fix config and patch loader. Rebooting.")
+                    self.__logger.error(
+                        "Loader id doesn't match device, please fix config and patch loader. Rebooting.")
                     self.reset()
                     return False
                 self.nanddevice = NandDevice(self.settings)
                 self.setupregs()
 
-                if self.cdc.pid == 0x900e or self.cdc.pid==0x0076:
+                if self.cdc.pid == 0x900e or self.cdc.pid == 0x0076:
                     print("Boot to 0x9008")
                     self.mempoke(0x193d100, 1)
                     # dload-mode-addr, TCSR_BOOT_MISC_DETECT, iomap.h
@@ -794,21 +797,23 @@ class Streaming(metaclass=LogBase):
                 cfg0 = self.mempeek(self.nanddevice.NAND_DEV0_CFG0)
                 sectorsize = (cfg0 & (0x3ff << 9)) >> 9
                 sparebytes = (cfg0 >> 23) & 0xf
-            self.__logger.info("HELLO protocol version: %i" % resp[1].version)
-            if self.streaming_mode==self.Patched:
+            self.__logger.info("HELLO protocol version: %i" % hp.version)
+            if self.streaming_mode == self.Patched:
                 self.__logger.info("Chipset: %s" % self.settings.chipname)
                 self.__logger.info("Base address of the NAND controller: %08x" % self.settings.nandbase)
                 self.__logger.info("Sector size: %d bytes" % sectorsize)
                 self.__logger.info("Spare bytes: %d bytes" % sparebytes)
                 markerpos = "spare" if self.nanddevice.BAD_BLOCK_IN_SPARE_AREA else "user"
-                self.__logger.info("Defective block marker position: %s+%x" % (markerpos, self.nanddevice.BAD_BLOCK_BYTE_NUM))
+                self.__logger.info(
+                    "Defective block marker position: %s+%x" % (markerpos, self.nanddevice.BAD_BLOCK_BYTE_NUM))
                 self.__logger.info("The total size of the flash memory = %u blocks (%i MB)" % (self.settings.MAXBLOCK,
-                    self.settings.MAXBLOCK * self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
+                                                                                               self.settings.MAXBLOCK * self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
 
-            val = resp[1].flashId.decode('utf-8') if resp[1].flashId[0] != 0x65 else ""
+            val = hp.flashId.decode('utf-8') if hp.flashId[0] != 0x65 else ""
             self.__logger.info("Flash memory: %s %s, %s" % (self.settings.flash_mfr, val, self.settings.flash_descr))
             # self.__logger.info("Maximum packet size: %i byte",*((unsigned int*)&rbuf[0x24]))
-            self.__logger.info("Page size: %d bytes (%d sectors)" % (self.settings.PAGESIZE, self.settings.sectors_per_page))
+            self.__logger.info(
+                "Page size: %d bytes (%d sectors)" % (self.settings.PAGESIZE, self.settings.sectors_per_page))
             self.__logger.info("The number of pages in the block: %d" % self.settings.num_pages_per_blk)
             self.__logger.info("OOB size: %d bytes" % self.settings.OOBSIZE)
             ecctype = "BCH" if self.settings.cfg1_enable_bch_ecc else "R-S"
@@ -827,30 +832,31 @@ class Streaming(metaclass=LogBase):
             buffer.extend(tmp)
         return buffer
 
-    def memtofile(self,offset,length,filename, info=True):
-        old=0
-        pos=0
-        toread=length
+    def memtofile(self, offset, length, filename, info=True):
+        old = 0
+        pos = 0
+        toread = length
         if info:
             print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         with open(filename, "wb") as wf:
             while toread > 0:
                 size = 0x20000
-                if self.streaming_mode==self.Qualcomm:
+                if self.streaming_mode == self.Qualcomm:
                     size = 0x200
                 if toread < size:
                     size = toread
-                data = self.memread(offset+pos, size)
+                data = self.memread(offset + pos, size)
                 if data != b"":
                     wf.write(data)
                 else:
                     break
                 toread -= size
-                pos+=size
+                pos += size
                 if info:
                     prog = int(float(pos) / float(length) * float(100))
                     if prog > old:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Offset: %08X)' % (offset+pos), bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Offset: %08X)' % (offset + pos),
+                                       bar_length=50)
                         old = prog
         if info:
             print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -968,11 +974,11 @@ class Streaming(metaclass=LogBase):
         MOV             R4, #2
         BX              LR
         """
-        search=unhexlify("04102de50e00a0e10300c0e3ff3080e234109fe5042090e4010052e10300000a030050e1" +
-                         "faffff3a0000a0e3000000ea000090e504109de40100c1e5aa00a0e30000c1e50240a0e31eff2fe1efbeadde")
-        cmd = b"\x11\x00"+search
+        search = unhexlify("04102de50e00a0e10300c0e3ff3080e234109fe5042090e4010052e10300000a030050e1" +
+                           "faffff3a0000a0e3000000ea000090e504109de40100c1e5aa00a0e30000c1e50240a0e31eff2fe1efbeadde")
+        cmd = b"\x11\x00" + search
         resp = self.send(cmd, True)
-        resp2=self.hdlc.receive_reply(5)
+        resp2 = self.hdlc.receive_reply(5)
         if b"Power off not supported" in resp:
             self.streaming_mode = self.Qualcomm
             self.memread = self.qc_memread
@@ -989,7 +995,8 @@ class Streaming(metaclass=LogBase):
 def test_nand_config():
     class sahara:
         mode = None
-    qs = Streaming(None, sahara(),logging.INFO)
+
+    qs = Streaming(None, sahara(), logging.INFO)
     qs.settings = SettingsOpt(qs, 8)
     qs.nanddevice = NandDevice(qs.settings)
     testconfig = [
@@ -1004,12 +1011,12 @@ def test_nand_config():
         [0x1d00f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x1d80f101, 8, 128, 2048, 131072, 64, 4, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
 
-        #Sierra 9x15
+        # Sierra 9x15
         [0x1900aaec, 8, 256, 2048, 131072, 64, 8, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
-        #[0x1590aa98, 8, 256, 2048, 131072, 64, 8, 0xa8d408c0, 0x0004745c, 0x00000203, 0x42040d10, 0x000001d1],
+        # [0x1590aa98, 8, 256, 2048, 131072, 64, 8, 0xa8d408c0, 0x0004745c, 0x00000203, 0x42040d10, 0x000001d1],
         [0x1590aa98, 8, 256, 2048, 131072, 64, 8, 0x2a0408c0, 0x0804745c, 0x00000203, 0x42040700, 0x000001d1],
         [0x2690ac2c, 8, 512, 4096, 262144, 224, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
-        #End
+        # End
         [0x2690dc98, 8, 512, 4096, 262144, 128, 4, 0x2a0409c0, 0x0804645c, 0x00000203, 0x42040700, 0x00000191],
         # Sierra Wireless EM7455, MDM9x35, Quectel EC25, Toshiba KSLCMBL2VA2M2A
         [0x2690ac98, 8, 512, 4096, 262144, 256, 8, 0x290409c0, 0x08045d5c, 0x00000203, 0x42040d10, 0x00000175],
@@ -1026,15 +1033,15 @@ def test_nand_config():
         nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, cfg1, eccbufcfg, bccbchcfg, badblockbyte = test
         res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
         if cfg0 != res_cfg0 or cfg1 != res_cfg1 or eccbufcfg != res_ecc_buf_cfg or res_ecc_bch_cfg != bccbchcfg:
-            errorids.append([nandid,res_cfg0,res_cfg1,res_ecc_buf_cfg,res_ecc_bch_cfg])
+            errorids.append([nandid, res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg])
             res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
 
     if len(errorids) > 0:
         st = ""
         for id in errorids:
-            st += hex(id[0]) + f" {hex(id[1]),hex(id[2]),hex(id[3]),hex(id[4])},"
+            st += hex(id[0]) + f" {hex(id[1]), hex(id[2]), hex(id[3]), hex(id[4])},"
         st = st[:-1]
-        print("Error at: "+st)
+        print("Error at: " + st)
         assert ("Error at : " + st)
     else:
         print("Yay, all nand_config tests are ok !!!!")

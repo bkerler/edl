@@ -9,12 +9,15 @@ from Library.xmlparser import xmlparser
 from Library.utils import do_tcp_server
 from Config.qualcomm_config import memory_type
 from Library.utils import LogBase, getint
+
 try:
-    import xml.etree.cElementTree as ET
+    from xml.etree.cElementTree import iterparse
     from xml.etree import cElementTree as ElementTree
+
 except ImportError:
-    import xml.etree.ElementTree as ET
+    from xml.etree.ElementTree import iterparse
     from xml.etree import ElementTree
+
 
 class firehose_client(metaclass=LogBase):
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
@@ -22,11 +25,11 @@ class firehose_client(metaclass=LogBase):
         self.sahara = sahara
         self.arguments = arguments
         self.printer = printer
-        self.info=self.__logger.info
-        self.error=self.__logger.error
-        self.warning=self.__logger.warning
+        self.info = self.__logger.info
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
@@ -50,8 +53,8 @@ class firehose_client(metaclass=LogBase):
         if "--devicemodel" in arguments:
             if arguments["--devicemodel"] is not None:
                 devicemodel = arguments["--devicemodel"]
-        self.firehose = firehose(cdc, xmlparser(), self.cfg, self.__logger.level, devicemodel, sahara.serial, skipresponse,
-                                 self.getluns(arguments), arguments)
+        self.firehose = firehose(cdc, xmlparser(), self.cfg, self.__logger.level, devicemodel, sahara.serial,
+                                 skipresponse, self.getluns(arguments), arguments)
         self.connected = False
         self.firehose.connect()
         if "hwid" in dir(sahara):
@@ -61,25 +64,27 @@ class firehose_client(metaclass=LogBase):
                 if hwid in msmids:
                     self.target_name = msmids[hwid]
                     self.info(f"Target detected: {self.target_name}")
-                    if self.cfg.MemoryName=="":
+                    if self.cfg.MemoryName == "":
                         if self.target_name in memory_type.preferred_memory:
-                            type=memory_type.preferred_memory[self.target_name]
-                            if type==memory_type.nand:
+                            pref_mem_type = memory_type.preferred_memory[self.target_name]
+                            if pref_mem_type == memory_type.nand:
                                 self.cfg.MemoryName = "nand"
-                            if type==memory_type.spinor:
+                            if pref_mem_type == memory_type.spinor:
                                 self.cfg.MemoryName = "spinor"
-                            elif type==memory_type.emmc:
+                            elif pref_mem_type == memory_type.emmc:
                                 self.cfg.MemoryName = "eMMC"
-                            elif type==memory_type.ufs:
+                            elif pref_mem_type == memory_type.ufs:
                                 self.cfg.MemoryName = "UFS"
-                            self.info("Based on the chipset, we assume "+self.cfg.MemoryName+" as default memory type...")
+                            self.info("Based on the chipset, we assume " + self.cfg.MemoryName +
+                                      " as default memory type...")
                 elif socid in sochw:
                     self.target_name = sochw[socid].split(",")[0]
 
         # We assume ufs is fine (hopefully), set it as default
-        if self.cfg.MemoryName=="":
-            self.info("No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
-            self.cfg.MemoryName="eMMC"
+        if self.cfg.MemoryName == "":
+            self.info("No --memory option set, we assume \"eMMC\" as default..., if it fails, "
+                      "try using \"--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
+            self.cfg.MemoryName = "eMMC"
 
         if self.firehose.configure(0):
             funcs = "Supported functions:\n-----------------\n"
@@ -88,7 +93,7 @@ class firehose_client(metaclass=LogBase):
             funcs = funcs[:-1]
             self.info(funcs)
             self.target_name = self.firehose.cfg.TargetName
-            self.connected=True
+            self.connected = True
 
     def check_cmd(self, func):
         if not self.firehose.supported_functions:
@@ -102,7 +107,7 @@ class firehose_client(metaclass=LogBase):
         part = -1
         for xml in rawprogram:
             with open(xml, "r") as fl:
-                for evt, elem in ET.iterparse(fl, events=["end"]):
+                for evt, elem in iterparse(fl, events=["end"]):
                     if elem.tag == "program":
                         label = elem.get("label")
                         if label in ['xbl', 'xbl_a', 'sbl1']:
@@ -117,7 +122,7 @@ class firehose_client(metaclass=LogBase):
             return [int(argument["--lun"])]
 
         luns = []
-        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower()=="spinor":
+        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
             for i in range(0, self.cfg.maxlun):
                 luns.append(i)
         else:
@@ -198,7 +203,7 @@ class firehose_client(metaclass=LogBase):
                     rpartition = res[2]
                     if self.firehose.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename):
                         self.printer(
-                            f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} " + \
+                            f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} "
                             f"as {partfilename}.")
                 else:
                     fpartitions = res[1]
@@ -261,7 +266,7 @@ class firehose_client(metaclass=LogBase):
                         f"as {filename}.")
                     if self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename):
                         self.info(f"Dumped partition {str(partition.name)} with sector count " +
-                        f"{str(partition.sectors)} as {filename}.")
+                                  f"{str(partition.sectors)} as {filename}.")
             return True
         elif cmd == "rf":
             if not self.check_param(["<filename>"]):
@@ -275,7 +280,7 @@ class firehose_client(metaclass=LogBase):
                 if guid_gpt is None:
                     break
                 if len(luns) > 1:
-                    sfilename = filename+ f"_lun{str(lun)}"
+                    sfilename = filename + f"_lun{str(lun)}"
                 else:
                     sfilename = filename
                 self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
@@ -412,7 +417,7 @@ class firehose_client(metaclass=LogBase):
             start = int(options["<start_sector>"])
             sectors = int(options["<sectors>"])
             filename = options["<filename>"]
-            if self.firehose.cmd_read(lun, start, sectors, filename,True):
+            if self.firehose.cmd_read(lun, start, sectors, filename, True):
                 self.printer(f"Dumped sector {str(start)} with sector count {str(sectors)} as {filename}.")
                 return True
         elif cmd == "peek":
@@ -554,10 +559,10 @@ class firehose_client(metaclass=LogBase):
             if not os.path.exists(filename):
                 self.error(f"Error: Couldn't find file: {filename}")
                 return False
-            if partitionname.lower()=="gpt":
+            if partitionname.lower() == "gpt":
                 sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                res=[True,lun,sectors]
-                startsector=0
+                res = [True, lun, sectors]
+                startsector = 0
             else:
                 res = self.firehose.detect_partition(options, partitionname)
             if res[0]:
@@ -571,10 +576,10 @@ class firehose_client(metaclass=LogBase):
                         self.error(
                             f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
                         return False
-                    startsector=partition.sector
+                    startsector = partition.sector
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
-                if self.firehose.cmd_program(lun, startsector, filename):
+                if self.firehose.cmd_program(lun, startsector, filename):  # fixme startsector ref before assign
                     self.printer(f"Wrote {filename} to sector {str(startsector)}.")
                     return True
                 else:
@@ -629,7 +634,7 @@ class firehose_client(metaclass=LogBase):
                                     sectors += 1
                                 if sectors > partition.sectors:
                                     self.error(f"Error: {filename} has {sectors} sectors but partition " +
-                                                      f"only has {partition.sectors}.")
+                                               f"only has {partition.sectors}.")
                                     return False
                                 self.printer(f"Writing {filename} to partition {str(partition.name)}.")
                                 self.firehose.cmd_program(lun, partition.sector, filename)
@@ -695,8 +700,8 @@ class firehose_client(metaclass=LogBase):
                         if partition.name == partitionname:
                             self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
                             self.printer(
-                                f"Erased {partitionname} starting at sector {str(partition.sector)} with sector count " +
-                                f"{str(partition.sectors)}.")
+                                f"Erased {partitionname} starting at sector {str(partition.sector)} "
+                                f"with sector count {str(partition.sectors)}.")
                             return True
                 else:
                     self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
@@ -704,7 +709,7 @@ class firehose_client(metaclass=LogBase):
             self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False
         elif cmd == "ep":
-            if not self.check_param(["<partitionname>","<sectors>"]):
+            if not self.check_param(["<partitionname>", "<sectors>"]):
                 return False
             luns = self.getluns(options)
             partitionname = options["<partitionname>"]
@@ -723,8 +728,8 @@ class firehose_client(metaclass=LogBase):
                         if partition.name == partitionname:
                             self.firehose.cmd_erase(lun, partition.sector, sectors)
                             self.printer(
-                                f"Erased {partitionname} starting at sector {str(partition.sector)} with sector count " +
-                                f"{str(sectors)}.")
+                                f"Erased {partitionname} starting at sector {str(partition.sector)} "
+                                f"with sector count {str(sectors)}.")
                             return True
                 else:
                     self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
@@ -763,7 +768,7 @@ class firehose_client(metaclass=LogBase):
             self.printer(resp)
             return True
         elif cmd == "server":
-            return do_tcp_server(self,options,self.handle_firehose)
+            return do_tcp_server(self, options, self.handle_firehose)
         elif cmd == "modules":
             if not self.check_param(["<command>", "<options>"]):
                 return False
@@ -780,11 +785,11 @@ class firehose_client(metaclass=LogBase):
             imagedir = options["<imagedir>"]
             patch = options["<patch>"].split(",")
             for xml in rawprogram:
-                filename=os.path.join(imagedir,xml)
+                filename = os.path.join(imagedir, xml)
                 if os.path.exists(filename):
                     self.info("[qfil] programming %s" % xml)
                     fl = open(filename, "r")
-                    for evt, elem in ET.iterparse(fl, events=["end"]):
+                    for evt, elem in iterparse(fl, events=["end"]):
                         if elem.tag == "program":
                             if elem.get("filename", ""):
                                 filename = os.path.join(imagedir, elem.get("filename"))
@@ -792,15 +797,16 @@ class firehose_client(metaclass=LogBase):
                                     self.error("%s doesn't exist!" % filename)
                                     continue
                                 partition_number = int(elem.get("physical_partition_number"))
-                                NUM_DISK_SECTORS=self.firehose.getlunsize(partition_number)
+                                NUM_DISK_SECTORS = self.firehose.getlunsize(partition_number)
                                 start_sector = elem.get("start_sector")
                                 if "NUM_DISK_SECTORS" in start_sector:
-                                    start_sector=start_sector.replace("NUM_DISK_SECTORS",str(NUM_DISK_SECTORS))
-                                if "-" in start_sector or "*" in start_sector or "/" in start_sector or "+" in start_sector:
-                                    start_sector=start_sector.replace(".","")
-                                    start_sector=eval(start_sector)
+                                    start_sector = start_sector.replace("NUM_DISK_SECTORS", str(NUM_DISK_SECTORS))
+                                if "-" in start_sector or "*" in start_sector \
+                                        or "/" in start_sector or "+" in start_sector:
+                                    start_sector = start_sector.replace(".", "")
+                                    start_sector = eval(start_sector)
                                 self.info(f"[qfil] programming {filename} to partition({partition_number})" +
-                                        f"@sector({start_sector})...")
+                                          f"@sector({start_sector})...")
 
                                 self.firehose.cmd_program(int(partition_number), int(start_sector), filename)
                 else:
@@ -813,7 +819,7 @@ class firehose_client(metaclass=LogBase):
                 self.info("[qfil] patching with %s" % xml)
                 if os.path.exists(filename):
                     fl = open(filename, "r")
-                    for evt, elem in ET.iterparse(fl, events=["end"]):
+                    for evt, elem in iterparse(fl, events=["end"]):
                         if elem.tag == "patch":
                             filename = elem.get("filename")
                             if filename != "DISK":
@@ -824,8 +830,7 @@ class firehose_client(metaclass=LogBase):
                                 "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                             content = ElementTree.tostring(elem).decode("utf-8")
-                            CMD = "<?xml version=\"1.0\" ?><data>\n{content} </data>".format(
-                                content=content)
+                            CMD = "<?xml version=\"1.0\" ?><data>\n{content} </data>".format(content=content)
                             print(CMD)
                             rsp = self.firehose.xmlsend(CMD)
                             self.error(rsp[2].decode('utf-8'))
