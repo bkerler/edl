@@ -824,7 +824,7 @@ class firehose_client(metaclass=LogBase):
                                 "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                             content = ElementTree.tostring(elem).decode("utf-8")
-                            CMD = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
+                            CMD = "<?xml version=\"1.0\" ?><data>\n {content} </data>".format(
                                 content=content)
                             print(CMD)
                             self.firehose.xmlsend(CMD)
