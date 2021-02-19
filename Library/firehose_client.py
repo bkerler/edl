@@ -824,10 +824,12 @@ class firehose_client(metaclass=LogBase):
                                 "[qfil] patching {filename} sector({start_sector}), size={size_in_bytes}".format(
                                     filename=filename, start_sector=start_sector, size_in_bytes=size_in_bytes))
                             content = ElementTree.tostring(elem).decode("utf-8")
-                            CMD = "<?xml version=\"1.0\" ?><data>\n<{content} /></data>".format(
+                            CMD = "<?xml version=\"1.0\" ?><data>\n{content} </data>".format(
                                 content=content)
                             print(CMD)
-                            self.firehose.xmlsend(CMD)
+                            rsp = self.firehose.xmlsend(CMD)
+                            self.error(rsp[2].decode('utf-8'))
+
                 else:
                     self.warning(f"File : {filename} not found.")
             self.info("[qfil] patching ok")
