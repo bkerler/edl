@@ -277,7 +277,6 @@ class sahara(metaclass=LogBase):
 
     def __init__(self, cdc, loglevel):
         self.cdc = cdc
-        self.init_loader_db()
         self.version = 2.1
         self.programmer = None
         self.mode = ""
@@ -293,9 +292,11 @@ class sahara(metaclass=LogBase):
         self.model_id = None
         self.oem_str = None
         self.msm_str = None
-        self.loaderdb = None
         self.bit64 = False
         self.pktsize = None
+
+        self.loaderdb = None
+        self.init_loader_db()
 
         self.info = self.__logger.info
         self.debug = self.__logger.debug
