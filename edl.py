@@ -298,7 +298,7 @@ class main(metaclass=LogBase):
                 else:
                     print("Device is in EDL mode .. continuing.")
                     self.cdc.timeout = None
-                    sahara_info = self.sahara.info()
+                    sahara_info = self.sahara.check_info()
                     if sahara_info:
                         mode, resp = self.sahara.connect()
                         if mode == "sahara":
