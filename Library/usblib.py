@@ -79,11 +79,11 @@ class usb_class(metaclass=LogBase):
                         try:
                             self.debug(pre + line.decode('utf-8'))
                             rdata += line + b"\n"
-                        except UnicodeError:
+                        except: # pylint: disable=broad-except
                             v = hexlify(line)
                             self.debug(pre + v.decode('utf-8'))
                     return rdata
-                except:
+                except: # pylint: disable=broad-except
                     pass
             if logging.DEBUG >= self.__logger.level:
                 self.debug(pre + hexlify(data).decode('utf-8'))
@@ -100,7 +100,7 @@ class usb_class(metaclass=LogBase):
                 return False
             try:
                 self.device.set_configuration()
-            except:
+            except: # pylint: disable=broad-except
                 pass
             self.configuration = self.device.get_active_configuration()
             self.debug(2, self.configuration)
@@ -212,7 +212,7 @@ class usb_class(metaclass=LogBase):
                 if self.device.is_kernel_driver_active(self.interface):
                     self.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except AssertionError:
+            except: # pylint: disable=broad-except
                 self.debug("No kernel driver supported.")
 
             usb.util.claim_interface(self.device, self.interface)
@@ -250,7 +250,7 @@ class usb_class(metaclass=LogBase):
                     self.device.attach_kernel_driver(self.interface)
                 if reset:
                     self.device.reset()
-            except AssertionError:
+            except: # pylint: disable=broad-except
                 pass
 
     def write(self, command, pktsize=64):
@@ -266,7 +266,7 @@ class usb_class(metaclass=LogBase):
                     time.sleep(0.01)
                     try:
                         self.device.write(self.EP_OUT, b'')
-                    except:
+                    except: # pylint: disable=broad-except
                         return False
                 return True
         else:
@@ -275,7 +275,7 @@ class usb_class(metaclass=LogBase):
                 try:
                     self.device.write(self.EP_OUT, command[pos:pos + pktsize])
                     pos += pktsize
-                except TimeoutError:
+                except: # pylint: disable=broad-except
                     # print("Error while writing")
                     time.sleep(0.01)
                     i += 1

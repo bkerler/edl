@@ -10,7 +10,7 @@ from Library.sparse import QCSparse
 
 try:
     from Library.Modules.init import modules
-except Exception as e:
+except ImportError as e:
     pass
 
 from queue import Queue
@@ -956,7 +956,7 @@ class firehose(metaclass=LogBase):
                     try:
                         serial = line.split("0x")[1][:-1]
                         self.serial = int(serial, 16)
-                    except Exception as e:
+                    except Exception as e: # pylint: disable=broad-except
                         self.debug(str(e))
                         serial = line.split(": ")[2]
                         self.serial = int(serial.split(" ")[0])
@@ -996,7 +996,7 @@ class firehose(metaclass=LogBase):
                     if "storage_info" in info:
                         try:
                             si = json.loads(info)["storage_info"]
-                        except Exception as e:
+                        except Exception as e: # pylint: disable=broad-except
                             continue
                         self.info("Storage report:")
                         for sii in si:
@@ -1110,7 +1110,7 @@ class firehose(metaclass=LogBase):
                         f"SizeInBytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
             try:
                 self.cdc.write(xdata, self.cfg.MaxXMLSizeInBytes)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self.debug(str(e))
                 pass
             addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -1170,7 +1170,7 @@ class firehose(metaclass=LogBase):
             '''
         try:
             self.cdc.write(data, self.cfg.MaxXMLSizeInBytes)
-        except Exception as err:
+        except Exception as err: # pylint: disable=broad-except
             self.debug(str(err))
             pass
         addrinfo = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
@@ -1205,7 +1205,7 @@ class firehose(metaclass=LogBase):
             tmp2 = b""
             try:
                 tmp2 = binascii.unhexlify(rdata)
-            except:
+            except: # pylint: disable=broad-except
                 print(rdata)
                 exit(0)
             dataread += len(tmp2)

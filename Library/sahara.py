@@ -175,7 +175,7 @@ class sahara(metaclass=LogBase):
                             loaderdb[mhwid][pkhash] = fn
                         else:
                             loaderdb[mhwid][pkhash].append(fn)
-                except:
+                except: # pylint: disable=broad-except
                     continue
         self.loaderdb = loaderdb
         return loaderdb
@@ -344,7 +344,7 @@ class sahara(metaclass=LogBase):
                 else:
                     return None
             return [pkt, data]
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
             return None
 
@@ -356,7 +356,7 @@ class sahara(metaclass=LogBase):
         try:
             self.cdc.write(responsedata)
             return True
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
             return False
 
@@ -390,7 +390,7 @@ class sahara(metaclass=LogBase):
                             return ["nandprg", None]
                         else:
                             return ["", None]
-                    except Exception as e:
+                    except Exception as e: # pylint: disable=broad-except
                         self.error(str(e))
                         return ["", None]
                 if b"<?xml" in res:
@@ -408,7 +408,7 @@ class sahara(metaclass=LogBase):
                         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                         return ["sahara", None]
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
 
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
@@ -440,14 +440,14 @@ class sahara(metaclass=LogBase):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
         try:
             return unpack("<Q", res[0:0x8])[0]
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             return None
 
     def cmdexec_get_pkhash(self):
         try:
             res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
             return binascii.hexlify(res).decode('utf-8')
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
             return None
 
@@ -582,7 +582,7 @@ class sahara(metaclass=LogBase):
         self.cdc.write(pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))
         try:
             cmd, pkt = self.get_rsp()
-        except:
+        except: # pylint: disable=broad-except
             return False
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
@@ -606,7 +606,7 @@ class sahara(metaclass=LogBase):
             bytesread = 0
             try:
                 self.cdc.read(1, 1)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 pass
             if self.bit64:
                 if not self.cdc.write(pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
@@ -619,7 +619,7 @@ class sahara(metaclass=LogBase):
             while length > 0:
                 try:
                     tmp = self.cdc.read(length)
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-except
                     return None
                 length -= len(tmp)
                 pos += len(tmp)
@@ -734,7 +734,7 @@ class sahara(metaclass=LogBase):
             self.info(f"Uploading loader {self.programmer} ...")
             with open(self.programmer, "rb") as rf:
                 programmer = rf.read()
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
             sys.exit()
 
@@ -791,7 +791,7 @@ class sahara(metaclass=LogBase):
                     self.cmd_done()
                     return self.mode
             return ""
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
 

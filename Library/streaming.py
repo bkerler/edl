@@ -730,7 +730,7 @@ class Streaming(metaclass=LogBase):
             self.settings.sectors_per_page=hp.numberOfSectors
             """
             return True, hp
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             self.error(str(e))
             return False, hp
 

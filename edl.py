@@ -173,7 +173,7 @@ class main(metaclass=LogBase):
                 self.info("Device detected :)")
                 try:
                     mode, resp = self.sahara.connect()
-                except Exception as e:
+                except Exception as e: # pylint: disable=broad-except
                     if mode == "" or resp == -1:
                         mode, resp = self.sahara.connect()
                 if mode == -1:
