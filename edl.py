@@ -120,7 +120,7 @@ import subprocess
 import re
 from docopt import docopt
 from Library.utils import LogBase
-from Library.usblib import usb_class
+from Library.usblib import UsbClass
 from Library.sahara import sahara
 from Library.streaming_client import streaming_client
 from Library.firehose_client import firehose_client
@@ -240,7 +240,7 @@ class main(metaclass=LogBase):
         else:
             self.__logger.setLevel(logging.INFO)
 
-        self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level)
+        self.cdc = UsbClass(portconfig=portconfig, loglevel=self.__logger.level)
         self.sahara = sahara(self.cdc, loglevel=self.__logger.level)
 
         if args["--loader"] == 'None':

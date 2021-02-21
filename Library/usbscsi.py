@@ -27,7 +27,7 @@ def main():
     else:
         interface = -1
 
-    usbscsi = scsi(vid, pid, interface)
+    usbscsi = Scsi(vid, pid, interface)
     if usbscsi.connect():
         if args.nokia:
             usbscsi.send_fih_adbenable()
