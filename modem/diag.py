@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
+'''
 Licensed under MIT License, (c) B. Kerler 2018-2019
-"""
+'''
 default_vid_pid = [
     [0x2c7c, 0x0125, -1],  # Quectel EC25
     [0x1199, 0x9071, -1],  # Sierra Wireless
@@ -17,6 +17,8 @@ default_vid_pid = [
 
 ]
 
+import sys
+import os
 import argparse
 import json
 import logging
@@ -409,7 +411,7 @@ class qcdiag(metaclass=LogBase):
         if self.hdlc != None:
             return self.hdlc.send_cmd_np(cmd)
 
-    def info(self):
+    def cmd_info(self):
         reply = self.send(b"\x00")
         return self.prettyprint(reply)
 
@@ -647,7 +649,7 @@ class qcdiag(metaclass=LogBase):
         if len(res) > 0:
             if res[0] == 0x27:
                 res, nvitem = self.read_nvitem(item)
-                if not res:
+                if res == False:
                     print(f"Error while writing nvitem {hex(item)} data, %s" % data)
                 else:
                     if nvitem.data != data:
@@ -1186,7 +1188,7 @@ class DiagTools(metaclass=LogBase):
             elif args.cmd:
                 print(diag.send_cmd(args.cmd))
             elif args.info:
-                print(diag.info())
+                print(diag.cmd_info())
             elif args.download:
                 diag.enter_downloadmode()
             elif args.sahara:

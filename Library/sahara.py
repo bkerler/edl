@@ -467,7 +467,7 @@ class sahara(metaclass=LogBase):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_READ_DEBUG_DATA)
         return res
 
-    def info(self):
+    def cmd_info(self):
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
             self.serials = "{:08x}".format(self.serial)
