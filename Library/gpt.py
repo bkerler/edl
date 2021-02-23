@@ -199,7 +199,7 @@ class gpt(metaclass=LogBase):
             if pa.type == "EFI_UNUSED":
                 continue
             self.partentries.append(pa)
-            self.totalsectors = self.header["last_usable_lba"]
+        self.totalsectors = self.header["last_usable_lba"]+34
         return True
 
     def print(self):
