@@ -370,17 +370,17 @@ class firehose(metaclass=LogBase):
         return tmp
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
-        size = os.stat(filename).st_size
+        total = os.stat(filename).st_size
         sparse = QCSparse(filename, self.loglevel)
         sparseformat = False
         if sparse.readheader():
             sparseformat = True
-            size = sparse.getsize()
-        fsize = size
+            total = sparse.getsize()
+        bytestowrite = total
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
-            num_partition_sectors = size // self.cfg.SECTOR_SIZE_IN_BYTES
-            if (size % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
+            num_partition_sectors = total // self.cfg.SECTOR_SIZE_IN_BYTES
+            if (total % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
                 num_partition_sectors += 1
             if display:
                 self.info(f"\nWriting to physical partition {str(physical_partition_number)}, " +
@@ -395,28 +395,22 @@ class firehose(metaclass=LogBase):
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data, self.skipresponse)
-            pos = 0
             prog = 0
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % start_sector,
                                bar_length=50)
             if rsp[0]:
-                bytesToWrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 old = 0
-                while fsize > 0:
-                    wlen = self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES \
-                           * self.cfg.SECTOR_SIZE_IN_BYTES
-                    wlen = min(fsize, wlen)
+                while bytestowrite > 0:
+                    wlen = min(bytestowrite, self.cfg.MaxPayloadSizeToTargetInBytes // self.cfg.SECTOR_SIZE_IN_BYTES \
+                           * self.cfg.SECTOR_SIZE_IN_BYTES)
                     if sparseformat:
                         wdata = sparse.read(wlen)
                     else:
                         wdata = rf.read(wlen)
-                    bytesToWrite -= wlen
-                    fsize -= wlen
-                    pos += wlen
-                    pv = wlen % self.cfg.SECTOR_SIZE_IN_BYTES
-                    if pv != 0:
+                    bytestowrite -= wlen
+
+                    if wlen % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                         filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
                                   self.cfg.SECTOR_SIZE_IN_BYTES
                         wdata += b"\x00" * (filllen - wlen)
@@ -424,11 +418,11 @@ class firehose(metaclass=LogBase):
 
                     self.cdc.write(wdata, wlen)
 
-                    prog = int(float(pos) / float(total) * float(100))
+                    prog = int(float(total-bytestowrite) / float(total) * float(100))
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
-                                           % (pos // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                           % ((total-bytestowrite) // self.cfg.SECTOR_SIZE_IN_BYTES),
                                            bar_length=50)
 
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
@@ -603,21 +597,21 @@ class firehose(metaclass=LogBase):
                         return b""
                 bytesToRead = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = bytesToRead
-                dataread = 0
                 old = 0
                 prog = 0
                 if display:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                size = min(self.cfg.MaxPayloadSizeToTargetInBytes, 1048576)
                 while bytesToRead > 0:
-                    tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                    size = min(size, bytesToRead)
+                    tmp = self.cdc.read(size)
                     bytesToRead -= len(tmp)
-                    dataread += len(tmp)
                     wr.write(tmp)
                     if display:
-                        prog = int(float(dataread) / float(total) * float(100))
+                        prog = int(float(total-bytesToRead) / float(total) * float(100))
                         if prog > old:
                             print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                           % (dataread // self.cfg.SECTOR_SIZE_IN_BYTES),
+                                           % ((total-bytesToRead) // self.cfg.SECTOR_SIZE_IN_BYTES),
                                            bar_length=50)
                             old = prog
                 if display and prog != 100:
@@ -670,8 +664,10 @@ class firehose(metaclass=LogBase):
             prog = 0
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            size = min(self.cfg.MaxPayloadSizeToTargetInBytes, 1048576)
             while bytesToRead > 0:
-                tmp = self.cdc.read(self.cfg.MaxPayloadSizeToTargetInBytes)
+                size = min(size, bytesToRead)
+                tmp = self.cdc.read(size)
                 bytesToRead -= len(tmp)
                 dataread += len(tmp)
                 resData += tmp
