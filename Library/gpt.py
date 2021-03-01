@@ -119,6 +119,7 @@ class gpt(metaclass=LogBase):
     def __init__(self, num_part_entries=0, part_entry_size=0, part_entry_start_lba=0, loglevel=logging.INFO, *args,
                  **kwargs):
         self.num_part_entries = num_part_entries
+        self.__logger = self.__logger
         self.part_entry_size = part_entry_size
         self.part_entry_start_lba = part_entry_start_lba
         self.totalsectors = None
@@ -203,21 +204,15 @@ class gpt(metaclass=LogBase):
         return True
 
     def print(self):
-        print("\nGPT Table:\n-------------")
-        for partition in self.partentries:
-            print("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(
-                partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
-                partition.flags, partition.unique, partition.type))
-        print("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors * self.sectorsize,
-                                                                      self.totalsectors))
+        print(self.tostring())
 
     def tostring(self):
-        mstr = "\nGPT Table:\n-------------"
+        mstr = "\nGPT Table:\n-------------\n"
         for partition in self.partentries:
-            mstr += ("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}".format(
+            mstr += ("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}\n".format(
                 partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
                 partition.flags, partition.unique, partition.type))
-        mstr += ("\nTotal disk size:0x{:016x}, sectors:0x{:016x}".format(self.totalsectors * self.sectorsize,
+        mstr += ("\nTotal disk size:0x{:016x}, sectors:0x{:016x}\n".format(self.totalsectors * self.sectorsize,
                                                                          self.totalsectors))
         return mstr
 

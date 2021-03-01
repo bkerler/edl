@@ -1,6 +1,5 @@
 import ctypes
 from enum import Enum
-from struct import unpack, pack
 from Config.qualcomm_config import secgen, secureboottbl
 
 c_uint8 = ctypes.c_uint8
@@ -274,14 +273,14 @@ class SettingsOpt:
         self.chipname = "Unknown"
         if chipset in config_tbl:
             self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, self.pbl, \
-            self.qfprom, self.memtbl = config_tbl[chipset]
+                self.qfprom, self.memtbl = config_tbl[chipset]
             self.bad_loader = 0
         else:
             loadername = parent.sahara.programmer.lower()
             for chipid in config_tbl:
                 if config_tbl[chipid][0] in loadername:
                     self.chipname, self.bam, self.nandbase, self.bcraddr, self.secureboot, \
-                    self.pbl, self.qfprom, self.memtbl = config_tbl[chipid]
+                        self.pbl, self.qfprom, self.memtbl = config_tbl[chipid]
                     self.bad_loader = 0
         if chipset == 0xFF:
             self.bad_loader = 0
@@ -447,7 +446,6 @@ class NandDevice:
         flashinfo = {}
         tid = nand_toshiba_id_t()
         tid.asDword = nandid
-        small_slc = False
         # did,slc_small_device,device_width,density_mbits
         if tid.did in tbl:
             fdev = tbl[tid.did]
@@ -676,30 +674,30 @@ class NandDevice:
 
         # UD_SIZE_BYTES must be 512, 516 or 517. If ECC-Protection 516 for x16Bit-Nand and 517 for x8-bit Nand
         cfg0 = 0 << self.SET_RD_MODE_AFTER_STATUS \
-               | 0 << self.STATUS_BFR_READ \
-               | 5 << self.NUM_ADDR_CYCLES \
-               | self.settings.SPARE_SIZE_BYTES << self.SPARE_SIZE_BYTES \
-               | hw_ecc_bytes << self.ECC_PARITY_SIZE_BYTES_RS \
-               | self.settings.UD_SIZE_BYTES << self.UD_SIZE_BYTES \
-               | self.settings.CW_PER_PAGE << self.CW_PER_PAGE \
-               | 0 << self.DISABLE_STATUS_AFTER_WRITE
+            | 0 << self.STATUS_BFR_READ \
+            | 5 << self.NUM_ADDR_CYCLES \
+            | self.settings.SPARE_SIZE_BYTES << self.SPARE_SIZE_BYTES \
+            | hw_ecc_bytes << self.ECC_PARITY_SIZE_BYTES_RS \
+            | self.settings.UD_SIZE_BYTES << self.UD_SIZE_BYTES \
+            | self.settings.CW_PER_PAGE << self.CW_PER_PAGE \
+            | 0 << self.DISABLE_STATUS_AFTER_WRITE
 
         bad_block_byte = self.settings.BAD_BLOCK_BYTE_NUM
         wide_bus = self.settings.IsWideFlash
         bch_disabled = self.settings.args_disable_ecc  # option in gui, implemented
 
         cfg1 = 0 << self.ECC_MODE_DEV1 \
-               | 1 << self.ENABLE_NEW_ECC \
-               | 0 << self.DISABLE_ECC_RESET_AFTER_OPDONE \
-               | 0 << self.ECC_DECODER_CGC_EN \
-               | 0 << self.ECC_ENCODER_CGC_EN \
-               | 2 << self.WR_RD_BSY_GAP \
-               | 0 << self.BAD_BLOCK_IN_SPARE_AREA \
-               | bad_block_byte << self.BAD_BLOCK_BYTE_NUM \
-               | 0 << self.CS_ACTIVE_BSY \
-               | 7 << self.NAND_RECOVERY_CYCLES \
-               | wide_bus << self.WIDE_FLASH \
-               | bch_disabled << self.ENABLE_BCH_ECC
+            | 1 << self.ENABLE_NEW_ECC \
+            | 0 << self.DISABLE_ECC_RESET_AFTER_OPDONE \
+            | 0 << self.ECC_DECODER_CGC_EN \
+            | 0 << self.ECC_ENCODER_CGC_EN \
+            | 2 << self.WR_RD_BSY_GAP \
+            | 0 << self.BAD_BLOCK_IN_SPARE_AREA \
+            | bad_block_byte << self.BAD_BLOCK_BYTE_NUM \
+            | 0 << self.CS_ACTIVE_BSY \
+            | 7 << self.NAND_RECOVERY_CYCLES \
+            | wide_bus << self.WIDE_FLASH \
+            | bch_disabled << self.ENABLE_BCH_ECC
 
         """
         cfg0_raw = (self.settings.CW_PER_PAGE-1) << CW_PER_PAGE \
@@ -716,13 +714,13 @@ class NandDevice:
                     | 1 << DEV0_CFG1_ECC_DISABLE
         """
         ecc_bch_cfg = 1 << self.ECC_FORCE_CLK_OPEN \
-                      | 0 << self.ECC_DEC_CLK_SHUTDOWN \
-                      | 0 << self.ECC_ENC_CLK_SHUTDOWN \
-                      | self.settings.UD_SIZE_BYTES << self.ECC_NUM_DATA_BYTES \
-                      | self.settings.ECC_PARITY_SIZE_BYTES << self.ECC_PARITY_SIZE_BYTES_BCH \
-                      | self.settings.ECC_MODE << self.ECC_MODE \
-                      | 0 << self.ECC_SW_RESET \
-                      | bch_disabled << self.ECC_CFG_ECC_DISABLE
+            | 0 << self.ECC_DEC_CLK_SHUTDOWN \
+            | 0 << self.ECC_ENC_CLK_SHUTDOWN \
+            | self.settings.UD_SIZE_BYTES << self.ECC_NUM_DATA_BYTES \
+            | self.settings.ECC_PARITY_SIZE_BYTES << self.ECC_PARITY_SIZE_BYTES_BCH \
+            | self.settings.ECC_MODE << self.ECC_MODE \
+            | 0 << self.ECC_SW_RESET \
+            | bch_disabled << self.ECC_CFG_ECC_DISABLE
 
         if self.settings.UD_SIZE_BYTES == 516:
             ecc_buf_cfg = 0x203

@@ -2,11 +2,13 @@ from struct import pack
 from binascii import unhexlify
 from Library.utils import *
 from Library.hdlc import *
-from Library.nand_config import BadFlags, SettingsOpt, nand_ids, nand_manuf_ids, nandregs, NandDevice
+from Library.nand_config import BadFlags, SettingsOpt, nandregs, NandDevice
 
 
 class Streaming(metaclass=LogBase):
     def __init__(self, cdc, sahara, loglevel=logging.INFO):
+        self.__logger = self.__logger
+        self.regs = None
         self.cdc = cdc
         self.hdlc = hdlc(self.cdc)
         self.mode = sahara.mode
@@ -17,9 +19,9 @@ class Streaming(metaclass=LogBase):
         self.nanddevice = None
         self.nandbase = 0
         self.__logger.setLevel(loglevel)
-        self.info=self.__logger.info
-        self.debug=self.__logger.debug
-        self.error=self.__logger.error
+        self.info = self.__logger.info
+        self.debug = self.__logger.debug
+        self.error = self.__logger.error
         self.warning = self.__logger.warning
         self.modules = None
         self.Qualcomm = 0
@@ -43,13 +45,9 @@ class Streaming(metaclass=LogBase):
         self.regs.NAND_FLASH_CMD = 0x8000b
         self.regs.NAND_EXEC_CMD = self.nanddevice.NAND_CMD_SOFT_RESET
         self.nandwait()
-        dev_cfg0 = self.regs.NAND_DEV0_CFG0
-        dev_cfg1 = self.regs.NAND_DEV0_CFG1
-        dev_ecc_cfg = self.regs.NAND_DEV0_ECC_CFG
-
-        # dev_ecc1_cfg = self.regs.NAND_DEV1_ECC_CFG
-        # dev_cfg1_0 = self.regs.NAND_DEV1_CFG0
-        # dev_cfg1_1 = self.regs.NAND_DEV1_CFG1
+        # dev_cfg0 = self.regs.NAND_DEV0_CFG0
+        # dev_cfg1 = self.regs.NAND_DEV0_CFG1
+        # dev_ecc_cfg = self.regs.NAND_DEV0_ECC_CFG
 
         """
         self.nand_reset()
@@ -79,10 +77,13 @@ class Streaming(metaclass=LogBase):
         self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ
         self.regs.NAND_ADDR0 = 0
         self.regs.NAND_ADDR1 = 0
-        self.regs.NAND_DEV0_CFG0 = 0 << self.nanddevice.CW_PER_PAGE | 512 << self.nanddevice.UD_SIZE_BYTES | 5 << self.nanddevice.NUM_ADDR_CYCLES | 0 << self.nanddevice.SPARE_SIZE_BYTES
-        self.regs.NAND_DEV1_CFG1 = 7 << self.nanddevice.NAND_RECOVERY_CYCLES | 0 << self.nanddevice.CS_ACTIVE_BSY | 17 << self.nanddevice.BAD_BLOCK_BYTE_NUM | \
-                                   1 << self.nanddevice.BAD_BLOCK_IN_SPARE_AREA | 2 << self.nanddevice.WR_RD_BSY_GAP | 0 << self.nanddevice.WIDE_FLASH | \
-                                   1 << self.nanddevice.DEV0_CFG1_ECC_DISABLE
+        self.regs.NAND_DEV0_CFG0 = 0 << self.nanddevice.CW_PER_PAGE | 512 << self.nanddevice.UD_SIZE_BYTES | \
+            5 << self.nanddevice.NUM_ADDR_CYCLES | 0 << self.nanddevice.SPARE_SIZE_BYTES
+        self.regs.NAND_DEV1_CFG1 = 7 << self.nanddevice.NAND_RECOVERY_CYCLES | 0 << self.nanddevice.CS_ACTIVE_BSY | \
+            17 << self.nanddevice.BAD_BLOCK_BYTE_NUM | \
+            1 << self.nanddevice.BAD_BLOCK_IN_SPARE_AREA | 2 << self.nanddevice.WR_RD_BSY_GAP | \
+            0 << self.nanddevice.WIDE_FLASH | \
+            1 << self.nanddevice.DEV0_CFG1_ECC_DISABLE
         self.regs.NAND_EBI2_ECC_BUF_CFG = 1 << self.nanddevice.ECC_CFG_ECC_DISABLE
         self.regs.NAND_DEV_CMD_VLD = self.regs.NAND_DEV_CMD_VLD & ~(1 << self.nanddevice.READ_START_VLD)
         self.regs.NAND_DEV_CMD1 = (self.regs.NAND_DEV_CMD1 & ~(
@@ -140,7 +141,7 @@ class Streaming(metaclass=LogBase):
             self.mempoke(self.nanddevice.NAND_FLASH_BUFFER + i, 0xffffffff)
 
     def secure_mode(self):
-        resp = self.send(b"\x17\x01", True)
+        self.send(b"\x17\x01", True)
         return 0
 
     def qclose(self, errmode):
@@ -165,7 +166,7 @@ class Streaming(metaclass=LogBase):
     def enter_flash_mode(self, ptable=None):
         self.secure_mode()
         self.qclose(0)
-        if ptable != None:
+        if ptable is None:
             self.send_ptable(ptable, 0)  # 1 for fullflash
 
     def write_flash(self, partname, filename):
@@ -211,7 +212,7 @@ class Streaming(metaclass=LogBase):
                 write_handle.write(data)
                 sector += sectorstoread
                 if info:
-                    prog = int(float(sector) / float(sectors) * float(100))
+                    prog = round(float(sector) / float(sectors) * float(100), 1)
                     if prog > old:
                         print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % sector,
                                        bar_length=50)
@@ -342,7 +343,7 @@ class Streaming(metaclass=LogBase):
         return self.memwrite(address, data)
 
     def reset(self):
-        data = self.send(b"\x0B", True)
+        self.send(b"\x0B", True)
         return True
 
     def nandwait(self):
@@ -692,6 +693,7 @@ class Streaming(metaclass=LogBase):
             numberOfSectors = 0
             sectorSizes = 0
             featureBits = 0
+
         hp = hellopacket()
         info = b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20"
         resp = self.send(info, True)
@@ -730,7 +732,7 @@ class Streaming(metaclass=LogBase):
             self.settings.sectors_per_page=hp.numberOfSectors
             """
             return True, hp
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             return False, hp
 
@@ -742,7 +744,7 @@ class Streaming(metaclass=LogBase):
                 [0x11, 0x00, 0x12, 0x00, 0xa0, 0xe3, 0x00, 0x00, 0xc1, 0xe5, 0x01, 0x40, 0xa0, 0xe3, 0x1e, 0xff, 0x2f,
                  0xe1])
             resp = self.send(cmdbuf, True)
-            resp2 = self.hdlc.receive_reply(5)
+            self.hdlc.receive_reply(5)
             i = resp[1]
             if i == 0x12:
                 # if not self.tst_loader():
@@ -759,7 +761,7 @@ class Streaming(metaclass=LogBase):
                     return True
                 return True
             else:
-                if not b"Invalid" in resp:
+                if b"Invalid" not in resp:
                     self.streaming_mode = self.Qualcomm
                     self.memread = self.qc_memread
                     self.settings = SettingsOpt(self, 0xFF)
@@ -816,8 +818,9 @@ class Streaming(metaclass=LogBase):
                 markerpos = "spare" if self.nanddevice.BAD_BLOCK_IN_SPARE_AREA else "user"
                 self.info(
                     "Defective block marker position: %s+%x" % (markerpos, self.nanddevice.BAD_BLOCK_BYTE_NUM))
-                self.info("The total size of the flash memory = %u blocks (%i MB)" % (self.settings.MAXBLOCK,
-                                                                                               self.settings.MAXBLOCK * self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
+                self.info("The total size of the flash memory = %u blocks (%i MB)" %
+                          (self.settings.MAXBLOCK, self.settings.MAXBLOCK *
+                           self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
 
             val = resp[1].flashId.decode('utf-8') if resp[1].flashId[0] != 0x65 else ""
             self.info("Flash memory: %s %s, %s" % (self.settings.flash_mfr, val, self.settings.flash_descr))
@@ -863,7 +866,7 @@ class Streaming(metaclass=LogBase):
                 toread -= size
                 pos += size
                 if info:
-                    prog = int(float(pos) / float(length) * float(100))
+                    prog = round(float(pos) / float(length) * float(100), 1)
                     if prog > old:
                         print_progress(prog, 100, prefix='Progress:', suffix='Complete (Offset: %08X)' % (offset + pos),
                                        bar_length=50)
@@ -896,7 +899,7 @@ class Streaming(metaclass=LogBase):
                 badblocks += 1
             pos += self.settings.PAGESIZE
             if info:
-                prog = int(float(pos) / float(totallength) * float(100))
+                prog = round(float(pos) / float(totallength) * float(100), 1)
                 if prog > old:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     old = prog
@@ -988,7 +991,7 @@ class Streaming(metaclass=LogBase):
                            "faffff3a0000a0e3000000ea000090e504109de40100c1e5aa00a0e30000c1e50240a0e31eff2fe1efbeadde")
         cmd = b"\x11\x00" + search
         resp = self.send(cmd, True)
-        resp2 = self.hdlc.receive_reply(5)
+        self.hdlc.receive_reply(5)
         if b"Power off not supported" in resp:
             self.streaming_mode = self.Qualcomm
             self.memread = self.qc_memread

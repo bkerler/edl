@@ -10,14 +10,15 @@ from Library.utils import do_tcp_server, LogBase, getint
 class streaming_client(metaclass=LogBase):
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
+        self.__logger = self.__logger
         self.sahara = sahara
         self.arguments = arguments
         self.streaming = Streaming(cdc, sahara, loglevel)
         self.printer = printer
         self.__logger.setLevel(loglevel)
-        self.error=self.__logger.error
-        self.info=self.__logger.info
-        if loglevel==logging.DEBUG:
+        self.error = self.__logger.error
+        self.info = self.__logger.info
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
@@ -74,8 +75,8 @@ class streaming_client(metaclass=LogBase):
             mode = options["<mode>"]
         if self.streaming.connect(mode):
             xflag = 0
-            res=self.streaming.hdlc.receive_reply(5)
-            if self.streaming.streaming_mode==self.streaming.Patched:
+            self.streaming.hdlc.receive_reply(5)
+            if self.streaming.streaming_mode == self.streaming.Patched:
                 self.streaming.nand_init(xflag)
             if cmd == "gpt":
                 directory = options["<directory>"]
@@ -119,18 +120,19 @@ class streaming_client(metaclass=LogBase):
                         self.error(f"Error: Couldn't detect partition: {partition}\nAvailable partitions:")
                         self.print_partitions(rpartitions)
             elif cmd == "rs":
-                sector = getint(options["<start_sector>"]) #Page
+                sector = getint(options["<start_sector>"])  # Page
                 sectors = getint(options["<sectors>"])
                 filename = options["<filename>"]
                 self.printer(f"Dumping at Sector {hex(sector)} with Sectorcount {hex(sectors)}...")
-                if self.streaming.read_sectors(sector,sectors,filename,True):
+                if self.streaming.read_sectors(sector, sectors, filename, True):
                     self.printer(f"Dumped sector {str(sector)} with sector count {str(sectors)} as {filename}.")
             elif cmd == "rf":
                 sector = 0
-                sectors = self.streaming.settings.MAXBLOCK*self.streaming.settings.num_pages_per_blk*self.streaming.settings.sectors_per_page
+                sectors = self.streaming.settings.MAXBLOCK * self.streaming.settings.num_pages_per_blk * \
+                    self.streaming.settings.sectors_per_page
                 filename = options["<filename>"]
                 self.printer(f"Dumping Flash from sector 0 to sector {hex(sectors)}...")
-                if self.streaming.read_sectors(sector,sectors,filename,True):
+                if self.streaming.read_sectors(sector, sectors, filename, True):
                     self.printer(f"Dumped sector {str(sector)} with sector count {str(sectors)} as {filename}.")
             elif cmd == "rl":
                 directory = options["<directory>"]
@@ -164,13 +166,13 @@ class streaming_client(metaclass=LogBase):
                     # attr3 = spartition["attr3"]
                     partfilename = filename
                     self.info(f"Dumping partition {str(partition)} with block count {str(length)} as " +
-                                     f"{filename}.")
+                              f"{filename}.")
                     self.streaming.read_raw(offset, length, self.streaming.settings.UD_SIZE_BYTES, partfilename)
             elif cmd == "peek":
                 offset = getint(options["<offset>"])
                 length = getint(options["<length>"])
                 filename = options["<filename>"]
-                if self.streaming.memtofile(offset,length,filename):
+                if self.streaming.memtofile(offset, length, filename):
                     self.info(
                         f"Peek data from offset {hex(offset)} and length {hex(length)} was written to {filename}")
             elif cmd == "peekhex":
@@ -292,7 +294,7 @@ class streaming_client(metaclass=LogBase):
                     return False
             ###############################
             elif cmd == "nop":
-                #resp=self.streaming.send(b"\x7E\x09")
+                # resp=self.streaming.send(b"\x7E\x09")
                 self.error("Nop command isn't supported by streaming loader")
                 return True
             elif cmd == "setbootablestoragedrive":
@@ -306,7 +308,7 @@ class streaming_client(metaclass=LogBase):
                     return False
                 partitionname = options["<partitionname>"]
                 filename = options["<filename>"]
-                partitionfilename=""
+                partitionfilename = ""
                 if "--partitionfilename" in options:
                     partitionfilename = options["--partitionfilename"]
                     if not os.path.exists(partitionfilename):
@@ -315,7 +317,7 @@ class streaming_client(metaclass=LogBase):
                 if not os.path.exists(filename):
                     self.error(f"Error: Couldn't find file: {filename}")
                     return False
-                if partitionfilename=="":
+                if partitionfilename == "":
                     rpartitions = self.streaming.get_partitions()
                 else:
                     rpartitions = self.streaming.get_partitions(partitionfilename)
@@ -328,7 +330,8 @@ class streaming_client(metaclass=LogBase):
                         # attr2 = spartition["attr2"]
                         # attr3 = spartition["attr3"]
                         sectors = int(os.stat(
-                            filename).st_size / self.streaming.settings.num_pages_per_blk / self.streaming.settings.PAGESIZE)
+                            filename).st_size / self.streaming.settings.num_pages_per_blk /
+                                      self.streaming.settings.PAGESIZE)
                         if sectors > length:
                             self.error(
                                 f"Error: {filename} has {sectors} sectors but partition only has {length}.")

@@ -168,14 +168,16 @@ class sahara(metaclass=LogBase):
                     devid = hwid[8:]
                     pkhash = filename.split("_")[1].lower()
                     for msmid in convertmsmid(msmid):
-                        mhwid = (msmid + devid).lower()
+                        mhwid = msmid + devid
+                        mhwid = mhwid.lower()
                         if mhwid not in loaderdb:
                             loaderdb[mhwid] = {}
                         if pkhash not in loaderdb[mhwid]:
                             loaderdb[mhwid][pkhash] = fn
                         else:
                             loaderdb[mhwid][pkhash].append(fn)
-                except: # pylint: disable=broad-except
+                except Exception as e:  # pylint: disable=broad-except
+                    self.debug(str(e))
                     continue
         self.loaderdb = loaderdb
         return loaderdb
@@ -277,6 +279,12 @@ class sahara(metaclass=LogBase):
 
     def __init__(self, cdc, loglevel):
         self.cdc = cdc
+        self.__logger = self.__logger
+        self.info = self.__logger.info
+        self.debug = self.__logger.debug
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
+        self.id = None
         self.loaderdb = None
         self.version = 2.1
         self.programmer = None
@@ -297,10 +305,6 @@ class sahara(metaclass=LogBase):
         self.pktsize = None
 
         self.init_loader_db()
-        self.info = self.__logger.info
-        self.debug = self.__logger.debug
-        self.error = self.__logger.error
-        self.warning = self.__logger.warning
 
         self.__logger.setLevel(loglevel)
         if loglevel == logging.DEBUG:
@@ -344,7 +348,7 @@ class sahara(metaclass=LogBase):
                 else:
                     return None
             return [pkt, data]
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             return None
 
@@ -356,7 +360,7 @@ class sahara(metaclass=LogBase):
         try:
             self.cdc.write(responsedata)
             return True
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             return False
 
@@ -390,7 +394,7 @@ class sahara(metaclass=LogBase):
                             return ["nandprg", None]
                         else:
                             return ["", None]
-                    except Exception as e: # pylint: disable=broad-except
+                    except Exception as e:  # pylint: disable=broad-except
                         self.error(str(e))
                         return ["", None]
                 if b"<?xml" in res:
@@ -408,7 +412,7 @@ class sahara(metaclass=LogBase):
                         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
                         return ["sahara", None]
 
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
 
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
@@ -440,14 +444,15 @@ class sahara(metaclass=LogBase):
         res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
         try:
             return unpack("<Q", res[0:0x8])[0]
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
+            self.debug(str(e))
             return None
 
     def cmdexec_get_pkhash(self):
         try:
             res = self.cmd_exec(self.exec_cmd.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
             return binascii.hexlify(res).decode('utf-8')
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             return None
 
@@ -499,12 +504,12 @@ class sahara(metaclass=LogBase):
                 else:
                 """
                 self.info(f"\n------------------------\n" +
-                                   f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
-                                   f"OEM_ID:0x{self.oem_str}," +
-                                   f"MODEL_ID:0x{self.model_id})\n" +
-                                   cpustr +
-                                   f"PK_HASH:           0x{self.pkhash}\n" +
-                                   f"Serial:            0x{self.serials}\n")
+                          f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                          f"OEM_ID:0x{self.oem_str}," +
+                          f"MODEL_ID:0x{self.model_id})\n" +
+                          cpustr +
+                          f"PK_HASH:           0x{self.pkhash}\n" +
+                          f"Serial:            0x{self.serials}\n")
             if self.programmer == "":
                 if self.hwidstr in self.loaderdb:
                     mt = self.loaderdb[self.hwidstr]
@@ -535,7 +540,7 @@ class sahara(metaclass=LogBase):
                             break
                         # print("Couldn't find a loader for given hwid and pkhash :(")
                         # exit(0)
-                elif self.hwidstr != None and self.pkhash != None:
+                elif self.hwidstr is not None and self.pkhash is not None:
                     msmid = self.hwidstr[:8]
                     for hwidstr in self.loaderdb:
                         if msmid == hwidstr[:8]:
@@ -582,7 +587,8 @@ class sahara(metaclass=LogBase):
         self.cdc.write(pack("<II", self.cmd.SAHARA_RESET_REQ, 0x8))
         try:
             cmd, pkt = self.get_rsp()
-        except: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
+            self.debug(str(e))
             return False
         if cmd["cmd"] == self.cmd.SAHARA_RESET_RSP:
             return True
@@ -606,7 +612,8 @@ class sahara(metaclass=LogBase):
             bytesread = 0
             try:
                 self.cdc.read(1, 1)
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
+                self.debug(str(e))
                 pass
             if self.bit64:
                 if not self.cdc.write(pack("<IIQQ", self.cmd.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
@@ -619,7 +626,8 @@ class sahara(metaclass=LogBase):
             while length > 0:
                 try:
                     tmp = self.cdc.read(length)
-                except Exception as e: # pylint: disable=broad-except
+                except Exception as e:  # pylint: disable=broad-except
+                    self.debug(str(e))
                     return None
                 length -= len(tmp)
                 pos += len(tmp)
@@ -629,7 +637,7 @@ class sahara(metaclass=LogBase):
                 else:
                     data += tmp
                 if display:
-                    prog = int(float(pos) / float(total) * float(100))
+                    prog = round(float(pos) / float(total) * float(100), 1)
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
@@ -676,7 +684,7 @@ class sahara(metaclass=LogBase):
                 if memory_table_length % pktsize == 0:
                     if memory_table_length != 0:
                         print(
-                            f"Reading 64-Bit partition from {hex(memory_table_addr)} with length of " + \
+                            f"Reading 64-Bit partition from {hex(memory_table_addr)} with length of " +
                             "{hex(memory_table_length)}")
                         ptbldata = self.read_memory(memory_table_addr, memory_table_length)
                         num_entries = len(ptbldata) // pktsize
@@ -692,7 +700,7 @@ class sahara(metaclass=LogBase):
                             partitions.append(dict(desc=desc, filename=filename, mem_base=mem_base, length=length,
                                                    save_pref=save_pref))
                             print(
-                                f"{filename}({desc}): Offset {hex(mem_base)}, Length {hex(length)}, " + \
+                                f"{filename}({desc}): Offset {hex(mem_base)}, Length {hex(length)}, " +
                                 "SavePref {hex(save_pref)}")
 
                         self.dump_partitions(partitions)
@@ -734,7 +742,7 @@ class sahara(metaclass=LogBase):
             self.info(f"Uploading loader {self.programmer} ...")
             with open(self.programmer, "rb") as rf:
                 programmer = rf.read()
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             sys.exit()
 
@@ -744,7 +752,7 @@ class sahara(metaclass=LogBase):
         try:
             datalen = len(programmer)
             done = False
-            while datalen > 0 or done == True:
+            while datalen > 0 or done:
                 cmd, pkt = self.get_rsp()
                 if cmd == -1 or pkt == -1:
                     if self.cmd_done():
@@ -791,7 +799,7 @@ class sahara(metaclass=LogBase):
                     self.cmd_done()
                     return self.mode
             return ""
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             self.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
 

@@ -36,35 +36,35 @@ def parse_spt(data, base):
         va += 4
 
 
-def get_fld(fld):
-    s = fld & 3
+def get_fld(mfld):
+    s = mfld & 3
     if s == 0:
-        return fault_desc(fld)
+        return fault_desc(mfld)
 
     if s == 1:
-        return pt_desc(fld)
+        return pt_desc(mfld)
 
     if s == 2:
-        return section_desc(fld)
+        return section_desc(mfld)
 
     if s == 3:
-        return reserved_desc(fld)
+        return reserved_desc(mfld)
     return None
 
 
-def get_sld(sld):
-    s = sld & 3
+def get_sld(msld):
+    s = msld & 3
     if s == 1:
-        return sld_lp(sld)
+        return sld_lp(msld)
 
     if s > 1:
-        return sld_xsp(sld)
+        return sld_xsp(msld)
 
     return "UNSUPPORTED"
 
 
 class descriptor(object):
-    def __init__(self, fld):
+    def __init__(self, mfld):
         pass
 
     def get_name(self):

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-import sys
-from struct import unpack
-from queue import Queue
 import logging
+import sys
+from queue import Queue
+from struct import unpack
 
 try:
     from Library.utils import LogBase, print_progress
-except Exception as e:
-    import os, sys, inspect
+except ImportError as e:
+    import os
+    import sys
+    import inspect
 
     current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = os.path.dirname(current_dir)
@@ -19,6 +21,7 @@ class QCSparse(metaclass=LogBase):
     def __init__(self, filename, loglevel):
         self.rf = open(filename, 'rb')
         self.data = Queue()
+        self.__logger = self.__logger
         self.offset = 0
         self.tmpdata = bytearray()
         self.__logger.setLevel(loglevel)
@@ -227,7 +230,7 @@ if __name__ == "__main__":
 
                 wf.write(wdata)
 
-                prog = int(float(pos) / float(total) * float(100))
+                prog = round(float(pos) / float(total) * float(100), 1)
                 if prog > old:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
                                                                          % (pos // SECTOR_SIZE_IN_BYTES),

@@ -40,88 +40,96 @@ crcTbl = (
     0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78)
 
 
+def serial16le(data):
+    out = bytearray()
+    out.append(data & 0xFF)
+    out.append((data >> 8) & 0xFF)
+    return out
+
+
+def serial16(data):
+    out = bytearray()
+    out.append((data >> 8) & 0xFF)
+    out.append(data & 0xFF)
+    return out
+
+
+def serial32le(data):
+    out = bytearray()
+    out += serial16le(data & 0xFFFF)
+    out += serial16le((data >> 16) & 0xFFFF)
+    return out
+
+
+def crc16(iv, data):
+    for byte in data:
+        iv = ((iv >> 8) & 0xFFFF) ^ crcTbl[(iv ^ byte) & 0xFF]
+    return ~iv & 0xFFFF
+
+
+def serial32(data):
+    out = bytearray()
+    out += serial16((data >> 16) & 0xFFFF)
+    out += serial16(data & 0xFFFF)
+    return out
+
+
+def escape(indata):
+    outdata = bytearray()
+    for i in range(0, len(indata)):
+        buf = indata[i]
+        if buf == 0x7e:
+            outdata.append(0x7d)
+            outdata.append(0x5e)
+        elif buf == 0x7d:
+            outdata.append(0x7d)
+            outdata.append(0x5d)
+        else:
+            outdata.append(buf)
+    return outdata
+
+
+def unescape(indata):
+    mescape = False
+    out = bytearray()
+    for buf in indata:
+        if mescape:
+            if buf == 0x5e:
+                out.append(0x7e)
+            elif buf == 0x5d:
+                out.append(0x7d)
+            else:
+                logging.error("Fatal error unescaping buffer!")
+                return None
+            mescape = False
+        else:
+            if buf == 0x7d:
+                mescape = True
+            else:
+                out.append(buf)
+    if len(out) == 0:
+        return None
+    return out
+
+
+def convert_cmdbuf(indata):
+    crc16val = crc16(0xFFFF, indata)
+    indata.extend(bytearray(serial16le(crc16val)))
+    outdata = escape(indata)
+    outdata.append(0x7E)
+    return outdata
+
+
 class hdlc:
     def __init__(self, cdc):
         self.cdc = cdc
         self.programmer = None
         self.timeout = 1500
 
-    def serial16(self, data):
-        out = bytearray()
-        out.append((data >> 8) & 0xFF)
-        out.append(data & 0xFF)
-        return out
-
-    def serial16le(self, data):
-        out = bytearray()
-        out.append(data & 0xFF)
-        out.append((data >> 8) & 0xFF)
-        return out
-
-    def serial32(self, data):
-        out = bytearray()
-        out += self.serial16((data >> 16) & 0xFFFF)
-        out += self.serial16(data & 0xFFFF)
-        return out
-
-    def serial32le(self, data):
-        out = bytearray()
-        out += self.serial16le(data & 0xFFFF)
-        out += self.serial16le((data >> 16) & 0xFFFF)
-        return out
-
-    def crc16(self, iv, data):
-        for byte in data:
-            iv = ((iv >> 8) & 0xFFFF) ^ crcTbl[(iv ^ byte) & 0xFF]
-        return ~iv & 0xFFFF
-
-    def convert_cmdbuf(self, indata):
-        crc16val = self.crc16(0xFFFF, indata)
-        indata.extend(bytearray(self.serial16le(crc16val)))
-        outdata = self.escape(indata)
-        outdata.append(0x7E)
-        return outdata
-
-    def escape(self, indata):
-        outdata = bytearray()
-        for i in range(0, len(indata)):
-            buf = indata[i]
-            if buf == 0x7e:
-                outdata.append(0x7d)
-                outdata.append(0x5e)
-            elif buf == 0x7d:
-                outdata.append(0x7d)
-                outdata.append(0x5d)
-            else:
-                outdata.append(buf)
-        return outdata
-
-    def unescape(self, indata):
-        escape = False
-        out = bytearray()
-        for buf in indata:
-            if escape:
-                if buf == 0x5e:
-                    out.append(0x7e)
-                elif buf == 0x5d:
-                    out.append(0x7d)
-                else:
-                    logging.error("Fatal error unescaping buffer!")
-                    return None
-                escape = False
-            else:
-                if buf == 0x7d:
-                    escape = True
-                else:
-                    out.append(buf)
-        if len(out) == 0:
-            return None
-        return out
-
-    def receive_reply(self,timeout=None):
+    def receive_reply(self, timeout=None):
         replybuf = bytearray()
         if timeout is None:
-            timeout=self.timeout
+            timeout = self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
@@ -135,10 +143,10 @@ class hdlc:
             if retry > 5:
                 break
         replybuf.extend(tmp)
-        data = self.unescape(replybuf)
+        data = unescape(replybuf)
         # print(hexlify(data))
         if len(data) > 3:
-            crc16val = self.crc16(0xFFFF, data[:-3])
+            crc16val = crc16(0xFFFF, data[:-3])
             reccrc = int(data[-3]) + (int(data[-2]) << 8)
             if crc16val != reccrc:
                 return -1
@@ -146,17 +154,17 @@ class hdlc:
             time.sleep(0.01)
             data = self.cdc.read(MAX_PACKET_LEN, timeout)
             if len(data) > 3:
-                crc16val = self.crc16(0xFFFF, data[:-3])
+                crc16val = crc16(0xFFFF, data[:-3])
                 reccrc = int(data[-3]) + (int(data[-2]) << 8)
                 if crc16val != reccrc:
                     return -1
                 return data
         return data[:-3]
 
-    def receive_reply_nocrc(self,timeout=None):
+    def receive_reply_nocrc(self, timeout=None):
         replybuf = bytearray()
         if timeout is None:
-            timeout=self.timeout
+            timeout = self.timeout
         tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
         if tmp == bytearray():
             return 0
@@ -170,7 +178,7 @@ class hdlc:
             if retry > 5:
                 break
         replybuf.extend(tmp)
-        data = self.unescape(replybuf)
+        data = unescape(replybuf)
         # print(hexlify(data))
         if len(data) > 3:
             # crc16val = self.crc16(0xFFFF, data[:-3])
@@ -197,9 +205,9 @@ class hdlc:
         # FlushFileBuffers(ser)
 
     def send_cmd_base(self, outdata, prefixflag, nocrc=False):
-        if isinstance(outdata,str):
-            outdata=bytes(outdata,'utf-8')
-        packet = self.convert_cmdbuf(bytearray(outdata))
+        if isinstance(outdata, str):
+            outdata = bytes(outdata, 'utf-8')
+        packet = convert_cmdbuf(bytearray(outdata))
         if self.send_unframed_buf(packet, prefixflag):
             if nocrc:
                 return self.receive_reply_nocrc()

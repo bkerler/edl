@@ -418,12 +418,13 @@ class firehose(metaclass=LogBase):
 
                     self.cdc.write(wdata, wlen)
 
-                    prog = int(float(total-bytestowrite) / float(total) * float(100))
+                    prog = round(float(total-bytestowrite) / float(total) * float(100),1)
                     if prog > old:
                         if display:
                             print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)'
                                            % ((total-bytestowrite) // self.cfg.SECTOR_SIZE_IN_BYTES),
                                            bar_length=50)
+                            old=prog
 
                 self.cdc.write(b'', self.cfg.MaxPayloadSizeToTargetInBytes)
                 # time.sleep(0.2)
@@ -490,7 +491,7 @@ class firehose(metaclass=LogBase):
                     wdata += b"\x00" * (filllen - wlen)
                     wlen = len(wdata)
                 self.cdc.write(wdata, wlen)
-                prog = int(float(pos) / float(total) * float(100))
+                prog = round(float(pos) / float(total) * float(100),1)
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Written (Sector %d)'
@@ -544,7 +545,7 @@ class firehose(metaclass=LogBase):
                 if bytesToWrite < wlen:
                     wlen = bytesToWrite
                 self.cdc.write(empty[0:wlen], self.cfg.MaxPayloadSizeToTargetInBytes)
-                prog = int(float(pos) / float(total) * float(100))
+                prog = round(float(pos) / float(total) * float(100),1)
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Erased (Sector %d)'
@@ -608,7 +609,7 @@ class firehose(metaclass=LogBase):
                     bytesToRead -= len(tmp)
                     wr.write(tmp)
                     if display:
-                        prog = int(float(total-bytesToRead) / float(total) * float(100))
+                        prog = round(float(total-bytesToRead) / float(total) * float(100),1)
                         if prog > old:
                             print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
                                            % ((total-bytesToRead) // self.cfg.SECTOR_SIZE_IN_BYTES),
@@ -671,7 +672,7 @@ class firehose(metaclass=LogBase):
                 bytesToRead -= len(tmp)
                 dataread += len(tmp)
                 resData += tmp
-                prog = int(float(dataread) / float(total) * float(100))
+                prog = round(float(dataread) / float(total) * float(100),1)
                 if prog > old:
                     if display:
                         print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
@@ -1136,7 +1137,7 @@ class firehose(metaclass=LogBase):
             datawritten += maxsize
             lengthtowrite -= maxsize
             if info:
-                prog = int(float(datawritten) / float(SizeInBytes) * float(100))
+                prog = round(float(datawritten) / float(SizeInBytes) * float(100),1)
                 if prog > old:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     old = prog
@@ -1210,7 +1211,7 @@ class firehose(metaclass=LogBase):
             else:
                 resp += tmp2
             if info:
-                prog = int(float(dataread) / float(SizeInBytes) * float(100))
+                prog = round(float(dataread) / float(SizeInBytes) * float(100),1)
                 if prog > old:
                     print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
                     old = prog

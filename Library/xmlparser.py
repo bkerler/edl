@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 
 
-class xmlparser():
+class xmlparser:
     def getresponse(self, input):
         lines = input.split(b"<?xml")
         content = {}

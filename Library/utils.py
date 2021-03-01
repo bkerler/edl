@@ -34,6 +34,7 @@ def do_tcp_server(client, arguments, handler):
     print('starting up on %s port %s' % server_address)
     sock.bind(server_address)
     sock.listen(1)
+    response = None
     while True:
         print('waiting for a connection')
         connection, client_address = sock.accept()

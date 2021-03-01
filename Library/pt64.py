@@ -54,14 +54,14 @@ def parse_pt(data, base, tnsz, level=1):
     i = 0
     entries = []
     while i < min(len(data), get_level_size(tnsz, level)):
-        entry = struct.unpack("<Q", data[i:i + 8])[0]
+        mentry = struct.unpack("<Q", data[i:i + 8])[0]
 
-        f = get_fld(entry, level)
+        f = get_fld(mentry, level)
         if f is None:
             i += 8
             continue
         va = get_va_for_level(base, int(i / 8), level)
-        if (f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.xn == 0):
+        if f != 'UNSUPPORTED' and f.apx == 0 and f.ap == 3 and f.xn == 0:
             print("%016x %s - WX !!" % (va, f))
         else:
             print("%016x %s" % (va, f))
@@ -72,19 +72,19 @@ def parse_pt(data, base, tnsz, level=1):
     return entries
 
 
-def get_fld(fld, level):
-    s = fld & 3
+def get_fld(mfld, level):
+    s = mfld & 3
     if s == 0:
         return None
 
     if s == 1:
-        return block_entry4k(fld, level)
+        return block_entry4k(mfld, level)
 
     if s == 2:
         return None
 
     if s == 3:
-        return table_entry4k(fld, level)
+        return table_entry4k(mfld, level)
     return None
 
 class descriptor(object):

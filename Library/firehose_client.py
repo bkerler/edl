@@ -586,14 +586,15 @@ class firehose_client(metaclass=LogBase):
                     self.printer(f"Error writing {filename} to sector {str(startsector)}.")
                     return False
             else:
-                fpartitions = res[1]
-                self.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
-                for lun in fpartitions:
-                    for partition in fpartitions[lun]:
-                        if self.cfg.MemoryName == "emmc":
-                            self.error("\t" + partition)
-                        else:
-                            self.error(lun + ":\t" + partition)
+                if len(res) > 0:
+                    fpartitions = res[1]
+                    self.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+                    for lun in fpartitions:
+                        for partition in fpartitions[lun]:
+                            if self.cfg.MemoryName == "emmc":
+                                self.error("\t" + partition)
+                            else:
+                                self.error(lun + ":\t" + partition)
             return False
         elif cmd == "wl":
             if not self.check_param(["<directory>"]):
