@@ -1,23 +1,17 @@
 #!/usr/bin/env python3
+import os
 import sys
 from os import walk
 import hashlib
-from struct import unpack
+from struct import unpack, pack
 from shutil import copyfile
-try:
-    from Library.utils import elf
-    from Library.sahara import convertmsmid
-    from Config.qualcomm_config import vendor
-    parent_dir = "Loaders"
-except Exception as e:
-    import os, sys, inspect
-
-    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = os.path.dirname(current_dir)
-    sys.path.insert(0, parent_dir)
-    from Library.utils import elf
-    from Library.sahara import convertmsmid
-    from Config.qualcomm_config import vendor
+import os, sys, inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+from Library.utils import elf
+from Library.sahara import convertmsmid
+from Config.qualcomm_config import vendor
 
 class MBN:
     def __init__(self, memory):
@@ -167,7 +161,7 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
 
 def init_loader_db():
     loaderdb = {}
-    for (dirpath, dirnames, filenames) in os.walk(parent_dir):
+    for (dirpath, dirnames, filenames) in os.walk(current_dir):
         for filename in filenames:
             file_name = os.path.join(dirpath, filename)
             found = False
@@ -249,12 +243,12 @@ def main(argv):
                 hashes[sha256.digest()] = fname
 
     # Now lets search the input path for loaders
-    extensions = ["elf", "mbn", "bin", "hex"]
+    extensions = ["txt", "idb", "i64", "py"]
     for (dirpath, dirnames, filenames) in walk(path):
         for filename in filenames:
             basename = os.path.basename(filename).lower()
             ext = basename[basename.rfind(".") + 1:]
-            if ext in extensions:
+            if ext not in extensions:
                 file_list.append(os.path.join(dirpath, filename))
 
     if not os.path.exists(os.path.join(outputdir, "Unknown")):
