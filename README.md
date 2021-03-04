@@ -162,6 +162,9 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 - VIP Programming not supported (Contributions are welcome !)
 - EFS directory write and file read has to be added (Contributions are welcome !)
 
+## Loaders
+https://github.com/bkerler/Loaders
+
 ## Tested with
 
 - Oneplus 3T/5/6T/7T/8/8t/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Netgear MR1100-10EUS, Netgear MR5100
