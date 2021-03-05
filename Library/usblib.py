@@ -247,7 +247,7 @@ class UsbClass(metaclass=LogBase):
                 if self.device.is_kernel_driver_active(self.interface):
                     self.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except Exception(UsbClass) as e:
+            except Exception as e:
                 self.debug(str(e))
 
             usb.util.claim_interface(self.device, self.interface)
