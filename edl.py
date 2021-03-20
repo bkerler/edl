@@ -140,7 +140,7 @@ default_ids = [
 ]
 
 
-print("Qualcomm Sahara / Firehose Client V3.2 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.3 (c) B.Kerler 2018-2021.")
 
 
 class main(metaclass=LogBase):
