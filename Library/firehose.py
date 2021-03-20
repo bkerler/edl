@@ -643,9 +643,7 @@ class firehose(metaclass=LogBase):
                         prog = round(float(total - bytesToRead) / float(total) * float(100), 1)
                         if prog > old:
                             print_progress(prog, 100, prefix='Progress:', suffix='Read (Sector %d)'
-                                                                                 % ((
-                                                                                            total - bytesToRead) // self.cfg.SECTOR_SIZE_IN_BYTES),
-                                           bar_length=50)
+                                % ((total - bytesToRead) // self.cfg.SECTOR_SIZE_IN_BYTES),bar_length=50)
                             old = prog
                 if display and prog != 100:
                     print_progress(100, 100, prefix='Progress:', suffix='Done', bar_length=50)
@@ -699,6 +697,7 @@ class firehose(metaclass=LogBase):
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             # todo: Why on earth doesn't MaxPayloadSizeToTargetInBytes work here ?
             # Forced to use self.cfg.SECTOR_SIZE_IN_BYTES ... thus slow as hell
+            #size = min(self.cfg.SECTOR_SIZE_IN_BYTES, 1048576)
             size = min(self.cfg.SECTOR_SIZE_IN_BYTES, 1048576)
             while bytesToRead > 0:
                 size = min(size, bytesToRead)
