@@ -11,19 +11,21 @@
 
 - Get python >= 3.7 64-Bit
 
-Linux/Windows:
-- ```cp Drivers/51-edl.rules /etc/udev/rules.d```
-- ```cp Drivers/50-android.rules /etc/udev/rules.d```
-- ```sudo apt install adb```
-- ```sudo apt install fastboot```
-- ```sudo apt install python3-dev```
-- ```sudo sudo apt install liblzma-dev```
-- ```sudo apt purge ModemManager```
-- ```python -m pip install -r requirements.txt```
+Linux/Windows: 
+```bash
+cp Drivers/51-edl.rules /etc/udev/rules.d
+cp Drivers/50-android.rules /etc/udev/rules.d
+sudo apt install adb fastboot python3-dev python3-pip
+sudo sudo apt install liblzma-dev
+sudo apt purge ModemManager
+python3 -m pip install -r requirements.txt
+```
 
 Mac:
-- ```brew install libusb```
-- ```sudo python3 -m pip install -r requirements.txt```
+```bash
+brew install libusb
+sudo python3 -m pip install -r requirements.txt```
+```
 
 Windows:
 - Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows

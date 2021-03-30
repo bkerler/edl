@@ -30,7 +30,7 @@ from binascii import hexlify, unhexlify
 
 try:
     from Library.utils import print_progress, read_object, write_object, LogBase
-    from Library.usblib import usb_class
+    from Library.usblib import UsbClass
     from Library.hdlc import hdlc
 except Exception as e:
     import os,sys,inspect
@@ -38,7 +38,7 @@ except Exception as e:
     parent_dir = os.path.dirname(current_dir)
     sys.path.insert(0, parent_dir)
     from Library.utils import print_progress, read_object, write_object, LogBase
-    from Library.usblib import usb_class
+    from Library.usblib import UsbClass
     from Library.hdlc import hdlc
 
 
@@ -396,7 +396,7 @@ class qcdiag(metaclass=LogBase):
             return True
 
     def connect(self):
-        self.cdc = usb_class(portconfig=self.portconfig, loglevel=self.__logger.level)
+        self.cdc = UsbClass(portconfig=self.portconfig, loglevel=self.__logger.level)
         self.hdlc = None
         if self.cdc.connect(self.ep_in, self.ep_out):
             self.hdlc = hdlc(self.cdc)
