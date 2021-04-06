@@ -13,7 +13,10 @@ default_vid_pid = [
     [0x19d2, 0x0016, -1],  # ZTE Diag
     [0x19d2, 0x0076, -1],  # ZTE Download
     [0x12d1, 0x1506, -1],
-    [0x413c, 0x81d7, 5],  # Telit LN940
+    [0x413c, 0x81d7, 5],  # Telit LN940/T77W968
+    [0x1bc7, 0x1040, 0],  # Telit LM960A18 USBCFG 1 QMI
+    [0x1bc7, 0x1041, 0],  # Telit LM960A18 USBCFG 2 MBIM
+    [0x1bc7, 0x1201, 0],  # Telit LE910C4-NF
 
 ]
 
