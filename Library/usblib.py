@@ -104,7 +104,7 @@ class UsbClass(metaclass=LogBase):
                 return False
             try:
                 self.device.set_configuration()
-            except Exception(UsbClass) as e:
+            except Exception as e:
                 self.debug(str(e))
                 pass
             self.configuration = self.device.get_active_configuration()
