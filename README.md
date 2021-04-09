@@ -12,17 +12,22 @@
 Linux: 
 ```bash
 sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
+sudo apt purge ModemManager
+
+git clone https://github.com/bkerler/edl.git
+
+cd edl
 cp Drivers/51-edl.rules /etc/udev/rules.d
 cp Drivers/50-android.rules /etc/udev/rules.d
-git clone https://github.com/bkerler/edl.git
-sudo apt purge ModemManager
 python3 -m pip install -r requirements.txt
 ```
 
 Mac:
 ```bash
 brew install libusb git
+
 git clone https://github.com/bkerler/edl.git
+
 sudo python3 -m pip install -r requirements.txt
 ```
 
