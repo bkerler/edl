@@ -9,7 +9,7 @@
 
 ## Installation
 
-Linux: 
+Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
 sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
 sudo apt purge ModemManager
@@ -22,7 +22,7 @@ cp Drivers/50-android.rules /etc/udev/rules.d
 python3 -m pip install -r requirements.txt
 ```
 
-Mac:
+macOS:
 ```bash
 brew install libusb git
 
