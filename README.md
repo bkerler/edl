@@ -9,14 +9,11 @@
 
 ## Installation
 
-- Get python >= 3.7 64-Bit
-
-Linux/Windows: 
+Linux: 
 ```bash
 cp Drivers/51-edl.rules /etc/udev/rules.d
 cp Drivers/50-android.rules /etc/udev/rules.d
-sudo apt install adb fastboot python3-dev python3-pip
-sudo sudo apt install liblzma-dev
+sudo apt install adb fastboot python3-dev python3-pip liblzma-dev
 sudo apt purge ModemManager
 python3 -m pip install -r requirements.txt
 ```
