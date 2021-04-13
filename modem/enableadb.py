@@ -227,6 +227,7 @@ class adbtools(metaclass=LogBase):
                     if kg.openlock():
                         if cn.send('AT!CUSTOM="ADBENABLE",1\r')==-1:
                             print("Error on sending adb enable command.")
+                            kg.openlock()
                         if cn.send('AT!CUSTOM="TELNETENABLE",1\r')!=-1:
                                 time.sleep(5)
                                 tn = Telnet("192.168.1.1", 23, 15)
@@ -236,6 +237,11 @@ class adbtools(metaclass=LogBase):
                                 print("Enabled adb via telnet")
                         else:
                             print("Error on sending telnet enable command.")
+                        if kg.openlock():
+                            if info["vendor"] == "Netgear":
+                                print("Enabling new port config")
+                                if cn.send("AT!UDPID=68E2"):
+                                    print("Successfully enabled PID 68E2")
                 elif info["vendor"]=="Quectel":
                     print("Sending at switch command")
                     salt=cn.send("AT+QADBKEY?\r")

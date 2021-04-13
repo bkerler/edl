@@ -49,46 +49,46 @@ Usage:
     edl.py qfil <rawprogram> <patch> <imagedir> [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
 
 Description:
-    server [--tcpport=portnumber]                                                # Run tcp/ip server
-    printgpt [--memory=memtype] [--lun=lun]                                      # Print GPT Table information
-    gpt <directory> [--memory=memtype] [--lun=lun]                               # Save gpt table to given directory
-    r <partitionname> <filename> [--memory=memtype] [--lun=lun]                  # Read flash to filename
-    rl <directory> [--memory=memtype] [--lun=lun] [--skip=partname]              # Read all partitions from flash to a directory
-    rf <filename> [--memory=memtype] [--lun=lun]                                 # Read whole flash to file
-    rs <start_sector> <sectors> <filename> [--lun=lun]                           # Read sectors starting at start_sector to filename
-    w <partitionname> <filename> [--partitionfilename=filename] [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to partition to flash
-    wl <directory> [--memory=memtype] [--lun=lun]                                # Write all files from directory to flash
-    wf <filename> [--memory=memtype] [--lun=lun]                                 # Write whole filename to flash
-    ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--skipwrite]    # Write filename to flash at start_sector
-    e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun]               # Erase partition from flash
-    es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--skipwrite]     # Erase sectors at start_sector from flash
-    ep <partitionname> <sectors> [--memory=memtype] [--skipwrite] [--lun=lun]    # Erase sector count from flash partition
-    footer <filename> [--memory=memtype] [--lun=lun]                             # Read crypto footer from flash
-    peek <offset> <length> <filename>                                            # Dump memory at offset with given length to filename
-    peekhex <offset> <length>                                                    # Dump memory at offset and given length
-    peekdword <offset>                                                           # Dump DWORD at memory offset
-    peekqword <offset>                                                           # Dump QWORD at memory offset
-    memtbl <filename>                                                            # Dump memory table to file
-    poke <offset> <filename>                                                     # Write filename to memory at offset to memory
-    pokehex <offset> <data>                                                      # Write hex string data at offset to memory
-    pokedword <offset> <data>                                                    # Write DWORD to memory at offset
-    pokeqword <offset> <data>                                                    # Write QWORD to memory at offset
-    memcpy <offset> <size>                                                       # Copy memory from srcoffset with given size to dstoffset
-    secureboot                                                                   # Print secureboot fields from qfprom fuses
-    pbl <filename>                                                               # Dump primary bootloader to filename
-    qfp <filename>                                                               # Dump QFPROM fuses to filename
-    getstorageinfo                                                               # Print storage info in firehose mode
-    setbootablestoragedrive <lun>                                                # Change bootable storage drive to lun number
-    send <command>                                                               # Send firehose command
-    xml <xmlfile>                                                                # Send firehose xml file
-    rawxml <xmlstring>                                                           # Send firehose xml raw string
-    reset                                                                        # Send firehose reset command
-    nop                                                                          # Send firehose nop command
-    modules <command> <options>                                                  # Enable submodules, for example: "oemunlock enable"
-    qfil <rawprogram> <patch> <imagedir>                                         # Write rawprogram xml files
-                                                                                 # <rawprogram> : program config xml, such as rawprogram_unsparse.xml or rawprogram*.xml
-                                                                                 # <patch> : patch config xml, such as patch0.xml or patch*.xml
-                                                                                 # <imagedir> : directory name of image files
+    server                      # Run tcp/ip server
+    printgpt                    # Print GPT Table information
+    gpt                         # Save gpt table to given directory
+    r                           # Read flash to filename
+    rl                          # Read all partitions from flash to a directory
+    rf                          # Read whole flash to file
+    rs                          # Read sectors starting at start_sector to filename
+    w                           # Write filename to partition to flash
+    wl                          # Write all files from directory to flash
+    wf                          # Write whole filename to flash
+    ws                          # Write filename to flash at start_sector
+    e                           # Erase partition from flash
+    es                          # Erase sectors at start_sector from flash
+    ep                          # Erase sector count from flash partition
+    footer                      # Read crypto footer from flash
+    peek                        # Dump memory at offset with given length to filename
+    peekhex                     # Dump memory at offset and given length
+    peekdword                   # Dump DWORD at memory offset
+    peekqword                   # Dump QWORD at memory offset
+    memtbl                      # Dump memory table to file
+    poke                        # Write filename to memory at offset to memory
+    pokehex                     # Write hex string data at offset to memory
+    pokedword                   # Write DWORD to memory at offset
+    pokeqword                   # Write QWORD to memory at offset
+    memcpy                      # Copy memory from srcoffset with given size to dstoffset
+    secureboot                  # Print secureboot fields from qfprom fuses
+    pbl                         # Dump primary bootloader to filename
+    qfp                         # Dump QFPROM fuses to filename
+    getstorageinfo              # Print storage info in firehose mode
+    setbootablestoragedrive     # Change bootable storage drive to lun number
+    send                        # Send firehose command
+    xml                         # Send firehose xml file
+    rawxml                      # Send firehose xml raw string
+    reset                       # Send firehose reset command
+    nop                         # Send firehose nop command
+    modules                     # Enable submodules, for example: "oemunlock enable"
+    qfil                        # Write rawprogram xml files
+                                # <rawprogram> : program config xml, such as rawprogram_unsparse.xml or rawprogram*.xml
+                                # <patch> : patch config xml, such as patch0.xml or patch*.xml
+                                # <imagedir> : directory name of image files
 
 Options:
     --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
@@ -125,6 +125,7 @@ from Library.sahara import sahara
 from Library.streaming_client import streaming_client
 from Library.firehose_client import firehose_client
 from Library.streaming import Streaming
+from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
@@ -139,16 +140,46 @@ default_ids = [
     [0x19d2, 0x0076, -1]
 ]
 
-
 print("Qualcomm Sahara / Firehose Client V3.3 (c) B.Kerler 2018-2021.")
+
+
+def parse_cmd(rargs):
+    cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
+            "peek", "peekhex",
+            "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword", "memcpy", "secureboot",
+            "pbl",
+            "qfp", "getstorageinfo", "setbootablestoragedrive", "send", "xml", "rawxml", "reset", "nop", "modules",
+            "memorydump", "qfil"]
+    for cmd in cmds:
+        if rargs[cmd]:
+            return cmd
+    return ""
+
+
+def console_cmd(cmd):
+    read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, close_fds=True)
+    output = read.stdout.read().decode()
+    return output
+
+
+def parse_option(rargs):
+    options = {}
+    for arg in rargs:
+        if "--" in arg or "<" in arg:
+            options[arg] = rargs[arg]
+    return options
 
 
 class main(metaclass=LogBase):
     def __init__(self):
+        self.__logger = self.__logger
         self.info = self.__logger.info
         self.debug = self.__logger.debug
         self.error = self.__logger.error
         self.warning = self.__logger.warning
+        self.cdc = None
+        self.sahara = None
 
     def doconnect(self, loop, mode, resp):
         while not self.cdc.connected:
@@ -173,7 +204,8 @@ class main(metaclass=LogBase):
                 self.info("Device detected :)")
                 try:
                     mode, resp = self.sahara.connect()
-                except Exception as e: # pylint: disable=broad-except
+                except Exception as err:  # pylint: disable=broad-except
+                    self.debug(str(err))
                     if mode == "" or resp == -1:
                         mode, resp = self.sahara.connect()
                 if mode == -1:
@@ -190,34 +222,9 @@ class main(metaclass=LogBase):
         self.cdc.close()
         sys.exit()
 
-    def parse_option(self, args):
-        options = {}
-        for arg in args:
-            if "--" in arg or "<" in arg:
-                options[arg] = args[arg]
-        return options
-
-    def parse_cmd(self, args):
-        cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
-                "peek", "peekhex",
-                "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword", "memcpy", "secureboot",
-                "pbl",
-                "qfp", "getstorageinfo", "setbootablestoragedrive", "send", "xml", "rawxml", "reset", "nop", "modules",
-                "memorydump", "qfil"]
-        for cmd in cmds:
-            if args[cmd]:
-                return cmd
-        return ""
-
-    def console_cmd(self, cmd):
-        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, \
-                                stderr=subprocess.STDOUT, close_fds=True)
-        output = read.stdout.read().decode()
-        return output
-
     def run(self):
         if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
-            proper_driver = self.console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
+            proper_driver = console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
             if re.findall(r'QCUSB', str(proper_driver)):
                 self.warning(f'Please first install libusb_win32 driver from Zadig')
 
@@ -267,6 +274,7 @@ class main(metaclass=LogBase):
                     print("Sahara in error state, resetting ...")
                     self.sahara.cmd_reset()
                     data = self.cdc.read(5)
+                    self.debug(hexlify(data).decode('utf-8'))
                     self.exit()
             elif "mode" in resp:
                 mode = resp["mode"]
@@ -336,14 +344,14 @@ class main(metaclass=LogBase):
         if mode == "firehose":
             self.cdc.timeout = None
             fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
-            cmd = self.parse_cmd(args)
-            options = self.parse_option(args)
+            cmd = parse_cmd(args)
+            options = parse_option(args)
             if cmd != "":
                 fh.handle_firehose(cmd, options)
         elif mode == "nandprg" or mode == "enandprg" or mode == "load_nandprg" or mode == "load_enandprg":
             sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level, print)
-            cmd = self.parse_cmd(args)
-            options = self.parse_option(args)
+            cmd = parse_cmd(args)
+            options = parse_option(args)
             if "load_" in mode:
                 options["<mode>"] = 1
             else:
