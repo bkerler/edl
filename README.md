@@ -15,8 +15,8 @@ sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
 sudo apt purge ModemManager
 
 git clone https://github.com/bkerler/edl.git
-
 cd edl
+git submodule update --init --recursive
 cp Drivers/51-edl.rules /etc/udev/rules.d
 cp Drivers/50-android.rules /etc/udev/rules.d
 python3 -m pip install -r requirements.txt
@@ -27,7 +27,8 @@ macOS:
 brew install libusb git
 
 git clone https://github.com/bkerler/edl.git
-
+cd edl
+git submodule update --init --recursive
 sudo python3 -m pip install -r requirements.txt
 ```
 
@@ -170,6 +171,7 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 
 ## Loaders
 https://github.com/bkerler/Loaders
+You should get these automatically if you do a ``` git submodule update --init --recursive ```
 
 ## Tested with
 
