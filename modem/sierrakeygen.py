@@ -12,6 +12,16 @@ import serial.tools.list_ports
 from telnetlib import Telnet
 from binascii import hexlify, unhexlify
 
+try:
+    from Library.utils import LogBase
+except Exception as e:
+    import os,sys,inspect
+    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = os.path.dirname(current_dir)
+    sys.path.insert(0, parent_dir)
+    from diag import qcdiag
+    from Library.utils import LogBase
+
 '''
 C7 = 7 0		0	2	7		5 0
 C6 = 3 1		7	0	3		0 1
@@ -50,13 +60,14 @@ prodtable = {
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),  # EM7565
     "MDM9x06": dict(openlock=20, openmep=19, opencnd=20, clen=8, init=[7, 3, 0, 1, 5],
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),  # WP77xx
+
 }
 
 infotable = {
     "MDM8200": ["M81A", "M81B", "AC880", "AC881", "MC8780", "MC8781", "AC880E", "AC881E", "EM8780", "EM8781",
                 "MC8780V", "MC8781V", "MC8700", "AC308U"],
     "MDM9200": ["AC710", "MC8775", "MC8775V", "AC875", "MC8700", "AC313U", "MC8801", "MC7700", "MC7750", "MC7710",
-                "EM7700"],
+                "EM7700", "770S", "781S"],
     "MDM9200_V1": ["AC710", "MC8775", "MC8775V", "AC875", "MC8700", "AC313U", "MC8801", "MC7700", "MC7750",
                    "MC7710", "EM7700"],
     "MDM9200_V2": ["AC775", "PC7200"],
@@ -68,8 +79,8 @@ infotable = {
                 "WP75xx", "WP85xx", "WP8548", "WP8548G", "AC340U"],
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
-    "MDM9x40": ["AC815s", "AC785s, MR1100"],
-    "MDM9x50": ["EM7565", "EM7565-9", "EM7511"],
+    "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
+    "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"]
 }
 
 keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
@@ -106,14 +117,14 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
                       0x98, 0xE1, 0xC1, 0x93, 0xC3, 0xBF, 0xC3, 0x50, 0x8D, 0xA1, 0x35, 0xFE, 0x50, 0x47, 0xB3, 0xC4,
                       # 15 NTG9X35C_02.08.29.00 Openmep Key AC791L/AC790S Old
                       0x61, 0x94, 0xCE, 0xA7, 0xB0, 0xEA, 0x4F, 0x0A, 0x73, 0xC5, 0xC3, 0xA6, 0x5E, 0xEC, 0x1C, 0xE2,
-                      # 16 NTG9X35C_02.08.29.00 Openmep Key AC791/AC790S
+                      # 16 NTG9X35C_02.08.29.00 Openmep Key AC791/AC790S, NTGX55_10.25.15.02 MR5100 Alternative
                       0xC5, 0x50, 0x40, 0xDA, 0x23, 0xE8, 0xF4, 0x4C, 0x29, 0xE9, 0x07, 0xDE, 0x24, 0xE5, 0x2C, 0x1D,
                       # 17 NTG9X35C_02.08.29.00 Openlock Key AC791/AC790S Old
                       0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
-                      # 18 NTG9X35C_02.08.29.00 Openlock Key AC791/AC790S
+                      # 18 NTG9X35C_02.08.29.00 Openlock Key AC791/AC790S, NTGX55_10.25.15.02 MR5100 Alternative
                       0x78, 0x19, 0xC5, 0x6D, 0xC3, 0xD8, 0x25, 0x3E, 0x51, 0x60, 0x8C, 0xA7, 0x32, 0x83, 0x37, 0x9D,
                       # 19 SWI9X06Y_02.14.04.00 Openmep Key WP77xx
-                      0x12, 0xF0, 0x79, 0x6B, 0x19, 0xC7, 0xF4, 0xEC, 0x50, 0xF3, 0x8C, 0x40, 0x02, 0xC9, 0x43, 0xC8,
+                      0x12, 0xF0, 0x79, 0x6B, 0x19, 0xC7, 0xF4, 0xEC, 0x50, 0xF3, 0x8C, 0x40, 0x02, 0xC9, 0x43, 0xC8
                       # 20 SWI9X06Y_02.14.04.00 Openlock Key WP77xx
                       ])
 
@@ -219,6 +230,12 @@ class SierraGenerator():
         devicegeneration = "MDM9200"
         openlock = self.run(devicegeneration, challenge, 0)
         if openlock != 'EEDBF8BFF8DAE346':
+            return False
+
+        challenge = "20E253156762DACE" # Verified
+        devicegeneration = "SDX55"
+        openlock = self.run(devicegeneration, challenge, 0)
+        if openlock != '03940D7067145323':
             return False
 
         return True
@@ -359,6 +376,12 @@ class connection:
                     if int(portid) == 3:
                         print("Detected Sierra Wireless device at: " + port.device)
                         return port.device
+                elif port.vid == 0x8046:
+                    portid = port.location[-1:]
+                    if int(portid) == 3:
+                        print("Detected Netgear device at: " + port.device)
+                        return port.device
+
         return ""
 
     def readreply(self):
@@ -398,10 +421,105 @@ class connection:
             self.serial.close()
             self.connected = False
 
+class SierraKeygen(metaclass=LogBase):
+    def __init__(self,cn,devicegeneration=None):
+        self.cn=cn
+        self.keygen = SierraGenerator()
+        print("Running self-test ...")
+        if self.keygen.selftest():
+            print("PASSED!")
+        else:
+            print("FAILED!")
+        if devicegeneration==None:
+            self.detectdevicegeneration()
+        else:
+            self.devicegeneration=devicegeneration
+
+    def detectdevicegeneration(self):
+        if self.cn.connected:
+            info = self.cn.send("ATI")
+            if info != -1:
+                revision = ""
+                model = ""
+                for line in info:
+                    if "Revision" in line:
+                        revision = line.split(":")[1].strip()
+                    if "Model" in line:
+                        model = line.split(":")[1].strip()
+                if revision != "":
+                    if "9200" in revision:
+                        devicegeneration = "MDM9200" #AC762S NTG9200H2_03.05.14.12ap
+                    if "9X07" in revision:
+                        devicegeneration = "MDM9x07"
+                    elif "9X25" in revision:
+                        if "NTG9X25C" in revision:
+                            devicegeneration = "MDM9200" #AC781S NTG9X25C_01.00.57.00
+                    elif "9X15" in revision:
+                        if "NTG9X15A" in revision:
+                            devicegeneration = "" #Aircard 779S
+                        elif "NTG9X15C" in revision:
+                            devicegeneration = "MDM9200" #AC770S NTG9X15C_01.18.02.00
+                        else:
+                            devicegeneration = "MDM9x15"
+                    elif "9X30" in revision:
+                        if "NTG9X35C" in revision: #790S NTG9X35C_11.11.15.03
+                            devicegeneration = "MDM9x30_V1"
+                        else:
+                            devicegeneration = "MDM9x30"
+                    elif "9X40" in revision:
+                        devicegeneration = "MDM9x40"
+                    elif "9X50" in revision:
+                        if "NTG9X50" in revision:
+                            devicegeneration = "MDM9x40" #MR1100,AC797S NTG9X50C_12.06.03.00
+                        else:
+                            devicegeneration = "MDM9x50"
+                    elif "9X06" in revision:
+                        devicegeneration = "MDM9x06"
+                    #Missing:
+                    # SDX24 Sierra
+                    # MR2100 NTGX24_10.17.03.00
+                    # SDX55 Sierra
+                    # 779S  NTG9X15A
+                    # AC810S NTG9X40C_11.14.08.16
+                    # AC800S NTG9X40C_11.14.07.00
+                    self.devicegeneration=devicegeneration
+            else:
+                print("Error on getting ATI modem response. Wrong port? Aborting.")
+                self.cn.close()
+                exit(0)
+
+    def openlock(self):
+        print("Device generation detected: " + self.devicegeneration)
+        #print("Sending AT!ENTERCND=\"A710\" request.")
+        #info = self.cn.send("AT!ENTERCND=\"A710\"")
+        #if info == -1:
+        #    print("Uhoh ... invalid entercnd password. Aborting ...")
+        #    return
+        print("Sending AT!OPENLOCK? request")
+        info = self.cn.send("AT!OPENLOCK?")
+        challenge = ""
+        if info != -1:
+            if len(info) > 2:
+                challenge = info[1]
+        else:
+            print("Error on AT!OPENLOCK? request. Aborting.")
+            return
+        if challenge == "":
+            print("Error: Couldn't get challenge. Aborting.")
+            return
+        resp = self.keygen.run(self.devicegeneration, challenge, 0)
+        print("Sending AT!OPENLOCK=\"" + resp + "\" response.")
+        info = self.cn.send("AT!OPENLOCK=\"" + resp + "\"")
+        if info == -1:
+            print("Damn. AT!OPENLOCK failed.")
+        else:
+            print("Success. Device is now engineer unlocked.")
+            return True
+        return False
 
 def main(args):
-    version = "1.2"
-    info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2020'
+    version = "1.3"
+    info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2021'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,description=info)
 
     parser.add_argument(
@@ -431,7 +549,7 @@ def main(args):
 
     parser.add_argument(
         '-unlock', '-u',
-        help='use com port for auto unlock',
+        help='use com port for openlock',
         default=False, action='store_true')
 
     args = parser.parse_args()
@@ -466,93 +584,27 @@ def main(args):
     if devicegeneration == "" and not args.unlock:
         print("You need to specific a device generation as well. Option -d")
         exit(0)
-
-    keygen = SierraGenerator()
-    print("Running self-test ...")
-    if keygen.selftest():
-        print("PASSED!")
-    else:
-        print("FAILED!")
-    port = ""
+    if devicegeneration == "":
+        devicegeneration=None
     if args.unlock:
-        if args.port != "":
-            port = args.port
-        cn = connection(port)
+        cn = connection(args.port)
         if cn.connected:
-            info = cn.send("ATI")
-            if info != -1:
-                revision = ""
-                model = ""
-                for line in info:
-                    if "Revision" in line:
-                        revision = line.split(":")[1].strip()
-                    if "Model" in line:
-                        model = line.split(":")[1].strip()
-                if revision != "":
-                    if "9X07" in revision:
-                        devicegeneration = "MDM9x07"
-                    if "9X15" in revision:
-                        devicegeneration = "MDM9x15"
-                    elif "9X30" in revision:
-                        if "NTG9X35C" in revision:
-                            devicegeneration = "MDM9x30_V1"
-                        else:
-                            devicegeneration = "MDM9x30"
-                    elif "9X40" in revision:
-                        devicegeneration = "MDM9x40"
-                    elif "9X50" in revision:
-                        if "MR1100" in model:
-                            devicegeneration = "MDM9x40"
-                        else:
-                            devicegeneration = "MDM9x50"
-                    elif "9X06" in revision:
-                        devicegeneration = "MDM9x06"
-            else:
-                print("Error on getting ATI modem response. Wrong port? Aborting.")
-                cn.close()
-                exit(0)
-            if devicegeneration == "":
+            kg=SierraKeygen(cn,devicegeneration)
+            if kg.devicegeneration == "":
                 print("Unknown device generation. Please send me details :)")
             else:
-                print("Device generation detected: " + devicegeneration)
-                print("Sending AT!ENTERCND=\"A710\" request.")
-                info = cn.send("AT!ENTERCND=\"A710\"")
-                if info == -1:
-                    print("Uhoh ... invalid entercnd password. Aborting ...")
-                    cn.close()
-                    exit(0)
-                print("Sending AT!OPENLOCK? request")
-                info = cn.send("AT!OPENLOCK?")
-                challenge = ""
-                if info != -1:
-                    if len(info) > 2:
-                        challenge = info[1]
-                else:
-                    print("Error on AT!OPENLOCK? request. Aborting.")
-                    cn.close()
-                    exit(0)
-                if challenge == "":
-                    print("Error: Couldn't get challenge. Aborting.")
-                    cn.close()
-                    exit(0)
-                resp = keygen.run(devicegeneration, challenge, 0)
-                print("Sending AT!OPENLOCK=\"" + resp + "\" response.")
-                info = cn.send("AT!OPENLOCK=\"" + resp + "\"")
-                if info == -1:
-                    print("Damn. AT!OPENLOCK failed.")
-                else:
-                    print("Success. Device is now engineer unlocked.")
-            cn.close()
-        exit(0)
+                kg.openlock()
+        cn.close()
     else:
+        kg = SierraKeygen(None, devicegeneration)
         if openlock != "":
-            resp = keygen.run(devicegeneration, openlock, 0)
+            resp = kg.keygen.run(devicegeneration, openlock, 0)
             print("AT!OPENLOCK=\"" + resp + "\"")
         elif openmep != "":
-            resp = keygen.run(devicegeneration, openmep, 1)
+            resp = kg.keygen.run(devicegeneration, openmep, 1)
             print("AT!OPENMEP=\"" + resp + "\"")
         elif opencnd != "":
-            resp = keygen.run(devicegeneration, opencnd, 2)
+            resp = kg.keygen.run(devicegeneration, opencnd, 2)
             print("AT!OPENCND=\"" + resp + "\"")
 
 
