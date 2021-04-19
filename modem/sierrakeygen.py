@@ -60,6 +60,8 @@ prodtable = {
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),  # EM7565
     "MDM9x06": dict(openlock=20, openmep=19, opencnd=20, clen=8, init=[7, 3, 0, 1, 5],
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),  # WP77xx
+    "SDX55": dict(openlock=22, openmep=21, opencnd=22, clen=8, init=[7, 3, 0, 1, 5], #MR5100
+                       run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),
 
 }
 
@@ -80,7 +82,8 @@ infotable = {
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
     "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
-    "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"]
+    "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"],
+    "SDX55" : ["MR5100"]
 }
 
 keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
@@ -124,8 +127,12 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
                       # 18 NTG9X35C_02.08.29.00 Openlock Key AC791/AC790S, NTGX55_10.25.15.02 MR5100 Alternative
                       0x78, 0x19, 0xC5, 0x6D, 0xC3, 0xD8, 0x25, 0x3E, 0x51, 0x60, 0x8C, 0xA7, 0x32, 0x83, 0x37, 0x9D,
                       # 19 SWI9X06Y_02.14.04.00 Openmep Key WP77xx
-                      0x12, 0xF0, 0x79, 0x6B, 0x19, 0xC7, 0xF4, 0xEC, 0x50, 0xF3, 0x8C, 0x40, 0x02, 0xC9, 0x43, 0xC8
+                      0x12, 0xF0, 0x79, 0x6B, 0x19, 0xC7, 0xF4, 0xEC, 0x50, 0xF3, 0x8C, 0x40, 0x02, 0xC9, 0x43, 0xC8,
                       # 20 SWI9X06Y_02.14.04.00 Openlock Key WP77xx
+                      0x49, 0x42, 0xFF, 0x76, 0x8A, 0x95, 0xCF, 0x7B, 0xA3, 0x47, 0x5F, 0xF5, 0x8F, 0xD8, 0x45, 0xE4,
+                      # 21 NTGX55 Openmep Key, NTGX55_10.25.15.02 MR5100
+                      0xF8, 0x1A, 0x3A, 0xCC, 0xAA, 0x2B, 0xA5, 0xE8, 0x8B, 0x53, 0x5A, 0x55, 0xB9, 0x65, 0x57, 0x98
+                      # 22 NTGX55 Openlock Key, NTGX55_10.25.15.02 MR5100
                       ])
 
 
@@ -475,6 +482,10 @@ class SierraKeygen(metaclass=LogBase):
                             devicegeneration = "MDM9x50"
                     elif "9X06" in revision:
                         devicegeneration = "MDM9x06"
+                    elif "X55" in revision:
+                        if "NTGX55" in revision: #MR5100 NTGX55_10.25.15.02
+                            devicegeneration = "SDX55"
+                        devicegeneration = "SDX55"
                     #Missing:
                     # SDX24 Sierra
                     # MR2100 NTGX24_10.17.03.00
