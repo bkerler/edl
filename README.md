@@ -17,9 +17,9 @@ sudo apt purge ModemManager
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
-cp Drivers/51-edl.rules /etc/udev/rules.d
-cp Drivers/50-android.rules /etc/udev/rules.d
-python3 -m pip install -r requirements.txt
+sudo cp Drivers/51-edl.rules /etc/udev/rules.d
+sudo cp Drivers/50-android.rules /etc/udev/rules.d
+sudo python3 -m pip install -r requirements.txt
 ```
 
 macOS:
