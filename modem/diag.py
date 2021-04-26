@@ -12,6 +12,7 @@ default_vid_pid = [
     [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
     [0x19d2, 0x0016, -1],  # ZTE Diag
     [0x19d2, 0x0076, -1],  # ZTE Download
+    [0x19d2, 0x1404, 2],  # ZTE ADB Modem
     [0x12d1, 0x1506, -1],
     [0x413c, 0x81d7, 5],  # Telit LN940/T77W968
     [0x1bc7, 0x1040, 0],  # Telit LM960A18 USBCFG 1 QMI
@@ -431,7 +432,7 @@ class qcdiag(metaclass=LogBase):
     def enter_saharamode(self):
         self.hdlc.receive_reply()
         res = self.send(b"\x4b\x65\x01\x00")
-        if res[0]=="\x4b":
+        if res[0]==0x4b:
             print("Done, switched to edl")
         else:
             print("Error switching to edl. Try again.")
@@ -1177,7 +1178,7 @@ class DiagTools(metaclass=LogBase):
 
         connected = False
         diag = None
-        if self.vid == None or self.pid == None:
+        if self.vid is None or self.pid is None:
             diag = qcdiag(loglevel=self.__logger.level, portconfig=default_vid_pid)
             connected = diag.connect()
         else:
