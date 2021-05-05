@@ -12,6 +12,7 @@ default_vid_pid = [
     [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
     [0x19d2, 0x0016, -1],  # ZTE Diag
     [0x19d2, 0x0076, -1],  # ZTE Download
+    [0x19d2, 0x0500, -1],  # ZTE Android
     [0x19d2, 0x1404, 2],  # ZTE ADB Modem
     [0x12d1, 0x1506, -1],
     [0x413c, 0x81d7, 5],  # Telit LN940/T77W968
