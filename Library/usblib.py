@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2021
+
 import usb.core  # pyusb
 import usb.util
 from enum import Enum

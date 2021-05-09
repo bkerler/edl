@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2019
 import ctypes
 from enum import Enum
 from Config.qualcomm_config import secgen, secureboottbl

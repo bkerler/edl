@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2020.
+# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2021
 # Licensed under MIT License
 """
 Usage:

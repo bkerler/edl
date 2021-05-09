@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2019
+
 import binascii
 import platform
 import time

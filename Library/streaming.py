@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2021
 from struct import pack
 from binascii import unhexlify
 from Library.utils import *

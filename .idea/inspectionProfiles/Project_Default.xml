@@ -1,0 +1,44 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="DuplicatedCode" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <Languages>
+        <language minSize="78" name="Python" />
+      </Languages>
+    </inspection_tool>
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="17">
+            <item index="0" class="java.lang.String" itemvalue="dnspython" />
+            <item index="1" class="java.lang.String" itemvalue="qiling" />
+            <item index="2" class="java.lang.String" itemvalue="matplotlib" />
+            <item index="3" class="java.lang.String" itemvalue="lxml" />
+            <item index="4" class="java.lang.String" itemvalue="numpy" />
+            <item index="5" class="java.lang.String" itemvalue="pytz" />
+            <item index="6" class="java.lang.String" itemvalue="requests" />
+            <item index="7" class="java.lang.String" itemvalue="ldap3" />
+            <item index="8" class="java.lang.String" itemvalue="idna" />
+            <item index="9" class="java.lang.String" itemvalue="coverage" />
+            <item index="10" class="java.lang.String" itemvalue="colorama" />
+            <item index="11" class="java.lang.String" itemvalue="PyQt5" />
+            <item index="12" class="java.lang.String" itemvalue="frida" />
+            <item index="13" class="java.lang.String" itemvalue="frida-tools" />
+            <item index="14" class="java.lang.String" itemvalue="pyserial" />
+            <item index="15" class="java.lang.String" itemvalue="argparse" />
+            <item index="16" class="java.lang.String" itemvalue="keystone" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="object.__getitem__" />
+          <option value="object.__setitem__" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
