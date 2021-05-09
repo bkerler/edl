@@ -26,74 +26,82 @@ except Exception as e:
 from binascii import unhexlify, hexlify
 
 deviceconfig={
-    # OP5
+    # OP5, cheeseburger
     "16859": dict(version=1,cm=None,param_mode=0),
-    # OP5t, Dumpling
+    # OP5t, dumpling
     "17801": dict(version=1,cm=None,param_mode=0),
-    # OP6T Europe, fajita
+    # OP6, enchilada
     "17819": dict(version=1,cm=None,param_mode=0),
-    # Oneplus 7 Pro
-    "18821": dict(version=1,cm=None,param_mode=0),
-    "18825": dict(version=1,cm=None,param_mode=0),
-    "18827": dict(version=1,cm=None,param_mode=0),
+    # OP6t, fajita
+    "18801": dict(version=1,cm=None,param_mode=0),
+    # OP6t T-Mo, fajitat
+    "18811": dict(version=1,cm=None,param_mode=0),    
+    # Oneplus 7, guacamoleb
     "18857": dict(version=1,cm=None,param_mode=0),
-    # Oneplus 7t
-    "18865": dict(version=1,cm=None,param_mode=0),
-    "19801": dict(version=1,cm=None,param_mode=0),
-    "19861": dict(version=1,cm=None,param_mode=0),
-    "19863": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7 Pro, guacamole
+    "18821": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7 Pro 5G Sprint, guacamoles
+    "18825": dict(version=1,cm=None,param_mode=0),    
+    # Oneplus 7 Pro 5G EE and Elisa, guacamoleg
+    "18827": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7 Pro T-Mo, guacamolet
     "18831": dict(version=1,cm=None,param_mode=0),
-
-    # OP8 Pro, instantnoodlep
-    "19811": dict(version=2,cm="40217c07",param_mode=0),
+    # Oneplus 7t, hotdogb
+    "18865": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7t T-Mo, hotdogt
+    "19863": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7t Pro, hotdog
+    "19801": dict(version=1,cm=None,param_mode=0),
+    # Oneplus 7t Pro 5G T-Mo, hotdogg
+    "19861": dict(version=1,cm=None,param_mode=0),
+    
     # OP8, instantnoodle
     "19821": dict(version=2,cm="0cffee8a",param_mode=0),
     # OP8 T-Mo, instantnoodlet
     "19855": dict(version=2,cm="6d9215b4",param_mode=0),
     # OP8 Verizon, instantnoodlev
     "19867": dict(version=2,cm="4107b2d4",param_mode=0),
-    # OP8 Verizon, instantnoodlevis
+    # OP8 Visible, instantnoodlevis
     "19868": dict(version=-1,cm="178d8213",param_mode=0),
-
+    # OP8 Pro, instantnoodlep
+    "19811": dict(version=2,cm="40217c07",param_mode=0),
     # OP8t, kebab
     "19805": dict(version=2,cm="1a5ec176",param_mode=0),
     # OP8t T-Mo, kebabt
     "20809": dict(version=2,cm="d6bc8c36",param_mode=0),
 
-    # OP Nord, Avicii
+    # OP Nord, avicii
     "20801": dict(version=2,cm="eacf50e7",param_mode=0),
-    # billie8t, OP N10 5G Metro
+    # OP N10 5G Metro, billie8t
     "20885": dict(version=3,cm = "3a403a71",param_mode=1),
-    # billie8 Global, OP N10 5G
+    # OP N10 5G Global, billie8
     "20886": dict(version=3,cm = "b8bd9e39",param_mode=1),
     # billie8t, OP N10 5G TMO
     "20888": dict(version=3,cm = "142f1bd7",param_mode=1),
-    # billie8 Europe, OP N10 5G
+    # OP N10 5G Europe, billie8
     "20889": dict(version=3,cm = "f2056ae1",param_mode=1),
 
-    # bengalt, OP N100 TMO
+    # OP N100 Metro, billie2t
     "20880": dict(version=3,cm = "6ccf5913",param_mode=1),
-    # bengal Global, OP N100
+    # OP N100 Global, billie2 
     "20881": dict(version=3,cm = "fa9ff378",param_mode=1),
-    # bengalt, OP N100 TMO
+    # OP N100 TMO, billie2t
     "20882": dict(version=3,cm = "4ca1e84e",param_mode=1),
-    # bengal Europe, OP N100
+    # OP N100 Europe, billie2
     "20883": dict(version=3,cm = "ad9dba4a",param_mode=1),
 
-    # lemonadep, OP9 Pro
+    # OP9 Pro, lemonadep
     "19815": dict(version=2,cm = "9c151c7f", param_mode=0),
     "20859": dict(version=2,cm = "9c151c7f", param_mode=0),
-    # lemonadept, OP9 Pro TMO
-    "2085A": dict(version=2,cm = "7f19519a",param_mode=1),
-    # lemonade, OP9
+    # OP9, lemonade
     "19825": dict(version=2,cm = "0898dcd6",param_mode=1),
-    # lemonadet, OP9 TMO
-    "20854": dict(version=2,cm = "16225d4e",param_mode=1),
-    # lemonadev, OP9 VZW
-    "2080A": dict(version=2,cm = "020885c8",param_mode=1),
-
-    # charpentier
+    # OP9R, lemonades
     "20828": dict(version=2,cm = None,param_mode=1),
+    # OP9 TMO, lemonadet
+    "20854": dict(version=2,cm = "16225d4e",param_mode=1),
+    # OP9 Pro TMO, lemonadept
+    "2085A": dict(version=2,cm = "7f19519a",param_mode=1),
+
     # dre8t
     "20818": dict(version=2, cm=None, param_mode=1),
     # dre8m
