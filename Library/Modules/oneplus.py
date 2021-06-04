@@ -122,16 +122,7 @@ class oneplus(metaclass=LogBase):
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
-        try:
-            from Library.Modules.oneplus_param import paramtools
-            if projid in deviceconfig:
-                mode = deviceconfig[projid]["param_mode"]
-                self.ops_parm = paramtools(mode=mode,serial=serial)
-            else:
-                self.ops_parm = paramtools(mode=0, serial=serial)
-        except ImportError as e:
-            self.__logger.error(str(e))
-            self.ops_parm = None
+        self.ops_parm = None
         self.ops = self.convert_projid(fh, projid, serial)
 
     def getprodkey(self, projid):
