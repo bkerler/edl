@@ -432,9 +432,9 @@ class memory_type:
         "MDM9x25": emmc,
         "MDM9x35": emmc,
 
-        "MSM8996": ufs,
-        "MSM8996AU": ufs,
-        "MSM8996Pro": ufs,
+        "MSM8996": emmc,
+        "MSM8996AU": emmc,
+        "MSM8996Pro": emmc,
 
         "IPQ4018": emmc,
         "IPQ4019": emmc,
