@@ -76,7 +76,6 @@ class UsbClass(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def verify_data(self, data, pre="RX:"):
-        self.debug("", stack_info=True)
         if isinstance(data, bytes) or isinstance(data, bytearray):
             if data[:5] == b"<?xml":
                 try:
@@ -85,13 +84,11 @@ class UsbClass(metaclass=LogBase):
                         try:
                             self.debug(pre + line.decode('utf-8'))
                             rdata += line + b"\n"
-                        except Exception as e:  # pylint: disable=broad-except
+                        except:  # pylint: disable=broad-except
                             v = hexlify(line)
-                            self.debug(str(e))
                             self.debug(pre + v.decode('utf-8'))
                     return rdata
-                except Exception as e:  # pylint: disable=broad-except
-                    self.debug(str(e))
+                except:  # pylint: disable=broad-except
                     pass
             if logging.DEBUG >= self.__logger.level:
                 self.debug(pre + hexlify(data).decode('utf-8'))
