@@ -105,8 +105,7 @@ class UsbClass(metaclass=LogBase):
                 return False
             try:
                 self.device.set_configuration()
-            except Exception as e:
-                self.debug(str(e))
+            except:
                 pass
             self.configuration = self.device.get_active_configuration()
             self.debug(2, self.configuration)
@@ -248,8 +247,8 @@ class UsbClass(metaclass=LogBase):
                 if self.device.is_kernel_driver_active(self.interface):
                     self.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except Exception as e:
-                self.debug(str(e))
+            except:
+                pass
 
             usb.util.claim_interface(self.device, self.interface)
             if ep_out == -1:
@@ -283,8 +282,7 @@ class UsbClass(metaclass=LogBase):
                     self.device.attach_kernel_driver(0)
                 if reset:
                     self.device.reset()
-            except Exception as e:  # pylint: disable=broad-except
-                self.debug(str(e))
+            except:  # pylint: disable=broad-except
                 pass
             del self.device
 
@@ -293,30 +291,18 @@ class UsbClass(metaclass=LogBase):
             command = bytes(command, 'utf-8')
         pos = 0
         if command == b'':
-            try:
-                self.device.write(self.EP_OUT, b'')
-            except usb.core.USBError as e:
-                error = str(e.strerror)
-                if "timeout" in error:
-                    time.sleep(0.01)
-                    try:
-                        self.device.write(self.EP_OUT, b'')
-                    except Exception as e:  # pylint: disable=broad-except
-                        self.debug(str(e))
-                        return False
-                return True
+            self.device.write(self.EP_OUT, b'')
         else:
             i = 0
             while pos < len(command):
                 try:
                     self.device.write(self.EP_OUT, command[pos:pos + pktsize])
                     pos += pktsize
-                except Exception as e:  # pylint: disable=broad-except
+                except:  # pylint: disable=broad-except
                     # print("Error while writing")
-                    self.debug(str(e))
-                    time.sleep(0.01)
+                    time.sleep(0.05)
                     i += 1
-                    if i == 3:
+                    if i == 5:
                         return False
                     pass
         self.verify_data(bytearray(command), "TX:")
