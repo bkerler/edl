@@ -205,7 +205,7 @@ class hdlc:
             tmp.append(0x7E)
             tmp.extend(outdata)
             outdata = tmp
-        return self.cdc.write(outdata, MAX_PACKET_LEN)
+        return self.cdc.write(outdata[:MAX_PACKET_LEN])
         # FlushFileBuffers(ser)
 
     def send_cmd_base(self, outdata, prefixflag, nocrc=False):

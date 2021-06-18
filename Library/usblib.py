@@ -76,6 +76,7 @@ class UsbClass(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def verify_data(self, data, pre="RX:"):
+        self.debug("", stack_info=True)
         if isinstance(data, bytes) or isinstance(data, bytearray):
             if data[:5] == b"<?xml":
                 try:
@@ -84,11 +85,13 @@ class UsbClass(metaclass=LogBase):
                         try:
                             self.debug(pre + line.decode('utf-8'))
                             rdata += line + b"\n"
-                        except:  # pylint: disable=broad-except
+                        except Exception as e:  # pylint: disable=broad-except
                             v = hexlify(line)
+                            self.debug(str(e))
                             self.debug(pre + v.decode('utf-8'))
                     return rdata
-                except:  # pylint: disable=broad-except
+                except Exception as e:  # pylint: disable=broad-except
+                    self.debug(str(e))
                     pass
             if logging.DEBUG >= self.__logger.level:
                 self.debug(pre + hexlify(data).decode('utf-8'))
@@ -105,7 +108,8 @@ class UsbClass(metaclass=LogBase):
                 return False
             try:
                 self.device.set_configuration()
-            except:
+            except Exception as e:
+                self.debug(str(e))
                 pass
             self.configuration = self.device.get_active_configuration()
             self.debug(2, self.configuration)
@@ -247,8 +251,8 @@ class UsbClass(metaclass=LogBase):
                 if self.device.is_kernel_driver_active(self.interface):
                     self.debug("Detaching kernel driver")
                     self.device.detach_kernel_driver(self.interface)
-            except:
-                pass
+            except Exception as e:
+                self.debug(str(e))
 
             usb.util.claim_interface(self.device, self.interface)
             if ep_out == -1:
@@ -282,29 +286,44 @@ class UsbClass(metaclass=LogBase):
                     self.device.attach_kernel_driver(0)
                 if reset:
                     self.device.reset()
-            except:  # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
+                self.debug(str(e))
                 pass
             del self.device
 
-    def write(self, command, pktsize=64):
+    def write(self, command):
+        pktsize=self.EP_OUT.wMaxPacketSize
         if isinstance(command, str):
             command = bytes(command, 'utf-8')
-        pos = 0
         if command == b'':
-            self.device.write(self.EP_OUT, b'')
+            try:
+                self.EP_OUT.write(b'')
+            except usb.core.USBError as e:
+                error = str(e.strerror)
+                if "timeout" in error:
+                    time.sleep(0.01)
+                    try:
+                        self.EP_OUT.write(b'')
+                    except Exception as e:  # pylint: disable=broad-except
+                        self.debug(str(e))
+                        return False
+                return True
         else:
             i = 0
-            while pos < len(command):
-                try:
-                    self.device.write(self.EP_OUT, command[pos:pos + pktsize])
-                    pos += pktsize
-                except:  # pylint: disable=broad-except
-                    # print("Error while writing")
-                    time.sleep(0.05)
+            try:
+                [self.EP_OUT.write(command[pos:pos+pktsize]) for pos in range(0,len(command),pktsize)]
+            except Exception as e:  # pylint: disable=broad-except
+                # print("Error while writing")
+                if "timed out" in str(e):
+                    self.debug(str(e))
+                    time.sleep(0.01)
                     i += 1
-                    if i == 5:
+                    if i == 3:
                         return False
                     pass
+                else:
+                    self.error(str(e))
+                    return False
         self.verify_data(bytearray(command), "TX:")
         return True
 
@@ -315,7 +334,7 @@ class UsbClass(metaclass=LogBase):
             timeout = self.timeout
         while bytearray(tmp) == b'':
             try:
-                tmp = self.device.read(self.EP_IN, length, timeout)
+                tmp = self.EP_IN.read(length, timeout)
             except usb.core.USBError as e:
                 error = str(e.strerror)
                 if "timed out" in error:

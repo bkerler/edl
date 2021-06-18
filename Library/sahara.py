@@ -386,12 +386,12 @@ class sahara(metaclass=LogBase):
                     return ["nandprg", None]
             else:
                 data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
-                self.cdc.write(data, 0x80)
+                self.cdc.write(data)
                 res = self.cdc.read()
                 if res == b"":
                     try:
                         data = b"\x7E\x06\x4E\x95\x7E"  # Streaming nop
-                        self.cdc.write(data, 0x80)
+                        self.cdc.write(data)
                         res = self.cdc.read()
                         if b"\x7E\x0D\x16\x00\x00\x00\x00" in res or b"Invalid Command" in res:
                             return ["nandprg", None]
@@ -407,7 +407,7 @@ class sahara(metaclass=LogBase):
                     return ["sahara", None]
                 else:
                     data = b"\x7E\x11\x00\x12\x00\xA0\xE3\x00\x00\xC1\xE5\x01\x40\xA0\xE3\x1E\xFF\x2F\xE1\x4B\xD9\x7E"
-                    self.cdc.write(data, 0x80)
+                    self.cdc.write(data)
                     res = self.cdc.read()
                     if len(res) > 0 and res[1] == 0x12:
                         return ["nandprg", None]
@@ -793,7 +793,7 @@ class sahara(metaclass=LogBase):
                     while len(programmer) < data_offset + data_len:
                         programmer += b"\xFF"
                 data_to_send = programmer[data_offset:data_offset + data_len]
-                self.cdc.write(data_to_send, self.pktsize)
+                self.cdc.write(data_to_send)
                 datalen -= data_len
             self.info("Loader uploaded.")
             cmd, pkt = self.get_rsp()
