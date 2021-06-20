@@ -40,7 +40,8 @@ root_cert_hash = {
     "secboot_sha2_pss_subca1" : "afca69d4235117e5bfc21467068b20df85e0115d7413d5821883a6d244961581",
     "secboot_sha2_pss_subca2" : "d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87",
     "old" : "cc3153a80293939b90d02d3bf8b23e0292e452fef662c74998421adad42a380f",
-    "new" : "7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09"
+    "new" : "7be49b72f9e4337223ccb84d6eccca4e61ce16e3602ac2008cb18b75babe6d09",
+    "mdm9x60_tel" : "36c886068d9a6634e9c55185044344e9e756dcc3b5960874942c7a1a1550dee0"
 }
 
 msmids = {
@@ -138,8 +139,8 @@ msmids = {
     0x13F0E1: "bitra_SDM", # soc_vers 0x6012
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
-    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 662
-    0x1350E1: "lahaina", # soc_vers 0x600F
+    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 662/460 SM4250/SM4350, bengal
+    0x1350E1: "lahaina", # soc_vers 0x600F sm8350, SDM875
     0x1420E1: "lahaina_premier",
     0x14A0E1: "makena", # soc_vers 0x6014
     0x14B0E1: "SA8295P",
@@ -160,14 +161,15 @@ msmids = {
     0x12A0E1: "rennell",
     0x12B0E1: "rennell_premier",
     0x1490E1: "rennell_v1.1",
+    0x1630E1: "sd7250",
     0x11E0E1: "saipan", # 0x600D0100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit, SM7250 Snapdragon 765G
     0x0950E1: "SM6150",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0EC0E1: "SM6150p",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0E60E1: "SM7150",  # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0A50E1: "SDM855_SM8150", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0A60E1: "SDM855p_SM8150p", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0C30E1: "SM8250:CD90-PH805-1A", # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
-    0x0CE0E1: "SM8250:CD90-PH806-1A", # 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
+    0x0A50E1: "SDM855_SM8150", # Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0A60E1: "SDM855p_SM8150p", # Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0C30E1: "SM8250:CD90-PH805-1A", # Kona, 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
+    0x0CE0E1: "SM8250:CD90-PH806-1A", # Kona 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
     0x0B80E1: "sc8180x", # Snapdragon 8CX
 
     # Unknown root hash
@@ -211,7 +213,9 @@ msmids = {
     0x0CC0E1: "SDM636",
     0x0930E1: "SDA670",  # 0x60040100 soc_hw_version
     #0x0930E1: "SDA835", # 0x30020000 => HW_ID1 3002000000290022
-    0x08B0E1: "SDM845",  # 0x60000100 => HW_ID1 6000000000010000
+    0x08B0E1: "SDM845",  # Napali 0x60000100 => HW_ID1 6000000000010000
+    #SDM840 NapaliQ ?
+    #SDM640 Talos ?
 }
 
 sochw = {
@@ -262,10 +266,10 @@ secgen=[
     [[], [0x01900000, 0x100000], []],
     [[],[0x01e20000,0x1000],[]],
     [[0xFC010000, 0x18000], [0xFC4B8000, 0x60F0], [0x200000, 0x24000]],
-    [[0x100000, 0x18000], [0x70000, 0x6158], [0x200000, 0x24000]],
-    [[0x100000, 0x18000], [0x00058000, 0x1000], [0x200000, 0x24000]],
-    [[0x100000, 0x18000], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
-    [[0x100000, 0x18000], [0x00700000, 0x6158], [0x200000, 0x24000]],
+    [[0x100000, 0x1ffb0], [0x70000, 0x6158], [0x200000, 0x24000]],
+    [[0x100000, 0x1ffb0], [0x00058000, 0x1000], [0x200000, 0x24000]],
+    [[0x100000, 0x1ffb0], [0x000A0000, 0x6FFF], [0x200000, 0x24000]],
+    [[0x100000, 0x1ffb0], [0x00700000, 0x6158], [0x200000, 0x24000]],
     [[0x300000, 0x3c000], [0x00780000, 0x10000], [0x14009003, 0x24000]],
     [[0x300000, 0x3c000], [0x01B40000, 0x10000], []],
 ]
@@ -388,6 +392,7 @@ infotbl = {
     "lahaina_premier": secgen[7],
     "mannar": secgen[7],
     "rennell": secgen[7],
+    "sd7250": secgen[7],
 
     "nicobar": secgen[8],
     "agatti": secgen[8],
@@ -432,9 +437,9 @@ class memory_type:
         "MDM9x25": emmc,
         "MDM9x35": emmc,
 
-        "MSM8996": emmc,
-        "MSM8996AU": emmc,
-        "MSM8996Pro": emmc,
+        "MSM8996": ufs,
+        "MSM8996AU": ufs,
+        "MSM8996Pro": ufs,
 
         "IPQ4018": emmc,
         "IPQ4019": emmc,
@@ -528,6 +533,7 @@ class memory_type:
         "lahaina_premier": ufs,
         "mannar": ufs,
         "rennell": ufs,
+        "sd7250": ufs,
 
         "nicobar": ufs,
         "agatti": ufs,
@@ -614,7 +620,7 @@ secureboottbl = {
     "SDA632": 0x000a01d0,
     "SDM636": 0x00780350,
     "SDM660": 0x00780350,
-    "SDM670": 0x00780350,
+    "SDM670": 0x00780350, # Warlock
     "SDA670": 0x00780350,
     "SDM710": 0x00780350,
     "QCS605": 0x00780350,
@@ -645,6 +651,7 @@ secureboottbl = {
     "ipq5018": 0x000A01D0,
     "ipq6018": 0x000A01D0,
     "saipan": 0x007805E8,
+    "sd7250": 0x007805E8,
     "sc8180x": 0x007805E8,
     "qcs403": 0x000a0310,
     "qcs405": 0x000a0310,
