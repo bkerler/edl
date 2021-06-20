@@ -140,7 +140,7 @@ default_ids = [
     [0x19d2, 0x0076, -1]
 ]
 
-print("Qualcomm Sahara / Firehose Client V3.3 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.4 (c) B.Kerler 2018-2021.")
 
 
 def parse_cmd(rargs):
