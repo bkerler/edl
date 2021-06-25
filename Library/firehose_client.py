@@ -13,6 +13,7 @@ from Library.xmlparser import xmlparser
 from Library.utils import do_tcp_server
 from Config.qualcomm_config import memory_type
 from Library.utils import LogBase, getint
+import json
 
 try:
     import xml.etree.cElementTree as ET
@@ -126,7 +127,7 @@ class firehose_client(metaclass=LogBase):
             return [int(argument["--lun"])]
 
         luns = []
-        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
+        if self.cfg.MemoryName.lower() == "ufs":
             for i in range(0, self.cfg.maxlun):
                 luns.append(i)
         else:
@@ -147,6 +148,18 @@ class firehose_client(metaclass=LogBase):
                 self.printer("Arguments " + params + "required.")
             return False
         return True
+
+    def get_storage_info(self):
+        if "getstorageinfo" in self.firehose.supported_functions:
+            storageinfo = self.firehose.cmd_getstorageinfo()
+            for info in storageinfo:
+                if "storage_info" in info:
+                    rs = info.split("INFO: ")[1]
+                    field = json.loads(rs)
+                    if "storage_info" in field:
+                        info = field["storage_info"]
+                        return info
+        return None
 
     def handle_firehose(self, cmd, options):
         if cmd == "gpt":
@@ -199,6 +212,15 @@ class firehose_client(metaclass=LogBase):
                 return False
             i = 0
             for partition in partitions:
+                if partition=="gpt":
+                    luns = self.getluns(options)
+                    for lun in luns:
+                        partfilename=filenames[i]+".lun%d" % lun
+                        if self.firehose.cmd_read(lun, 0, 32, partfilename):
+                            self.printer(
+                                f"Dumped sector {str(0)} with sector count {str(32)} " +
+                                f"as {partfilename}.")
+                    continue
                 partfilename = filenames[i]
                 i += 1
                 res = self.firehose.detect_partition(options, partition)
@@ -276,21 +298,49 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<filename>"]):
                 return False
             filename = options["<filename>"]
-            luns = self.getluns(options)
-            for lun in luns:
-                data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
-                                                       int(options["--gpt-part-entry-size"]),
-                                                       int(options["--gpt-part-entry-start-lba"]))
-                if guid_gpt is None:
-                    break
-                if len(luns) > 1:
-                    sfilename = filename + f"_lun{str(lun)}"
-                else:
-                    sfilename = filename
-                self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
-                if self.firehose.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename):
-                    self.printer(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
-            return True
+            storageinfo = self.get_storage_info()
+            if storageinfo is not None:
+                totalsectors = None
+                if "total_blocks" in storageinfo:
+                    totalsectors = storageinfo["total_blocks"]
+                if "num_physical" in storageinfo:
+                    num_physical = storageinfo["num_physical"]
+                    luns = [0]
+                    if num_physical > 0:
+                        luns=[]
+                        for i in range(num_physical):
+                            luns.append(i)
+                if totalsectors is not None:
+                    for lun in luns:
+                        buffer=self.firehose.cmd_read_buffer(physical_partition_number=lun,
+                                                      start_sector=0, num_partition_sectors=1, display=False)
+                        storageinfo = self.get_storage_info()
+                        if "total_blocks" in storageinfo:
+                            totalsectors = storageinfo["total_blocks"]
+                        if len(luns) > 1:
+                            sfilename = filename + f".lun{str(lun)}"
+                        else:
+                            sfilename = filename
+                        self.printer(f"Dumping sector 0 with sector count {str(totalsectors)} as {filename}.")
+                        if self.firehose.cmd_read(lun, 0, totalsectors, sfilename):
+                            self.printer(
+                                f"Dumped sector 0 with sector count {str(totalsectors)} as {filename}.")
+            else:
+                luns = self.getluns(options)
+                for lun in luns:
+                    data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
+                                                           int(options["--gpt-part-entry-size"]),
+                                                           int(options["--gpt-part-entry-start-lba"]))
+                    if guid_gpt is None:
+                        break
+                    if len(luns) > 1:
+                        sfilename = filename + f"_lun{str(lun)}"
+                    else:
+                        sfilename = filename
+                    self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+                    if self.firehose.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename):
+                        self.printer(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+                return True
         elif cmd == "pbl":
             if not self.check_param(["<filename>"]):
                 return False

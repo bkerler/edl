@@ -320,7 +320,7 @@ class sahara(metaclass=LogBase):
         try:
             v = self.cdc.read()
             if v == b'':
-                return [-1, -1]
+                return [None, None]
             if b"<?xml" in v:
                 return ["firehose", None]
             pkt = read_object(v[0:0x2 * 0x4], self.pkt_cmd_hdr)
@@ -349,11 +349,11 @@ class sahara(metaclass=LogBase):
                 elif cmd == self.cmd.SAHARA_CMD_READY or cmd == self.cmd.SAHARA_RESET_RSP:
                     data = []
                 else:
-                    return None
+                    return [None,None]
             return [pkt, data]
         except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
-            return None
+            return [None,None]
 
     def cmd_hello(self, mode, version_min=1, max_cmd_len=0):  # CMD 0x1, RSP 0x2
         cmd = self.cmd.SAHARA_HELLO_RSP
@@ -420,7 +420,7 @@ class sahara(metaclass=LogBase):
 
         self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG)
         cmd, pkt = self.get_rsp()
-        if cmd == -1 and pkt == -1:
+        if None in [cmd , pkt]:
             return ["", None]
         return ["sahara", pkt]
 

@@ -3,6 +3,7 @@
 # (c) B.Kerler 2018-2019
 
 import binascii
+import io
 import platform
 import time
 import json
@@ -162,10 +163,10 @@ class firehose(metaclass=LogBase):
     def show_progress(self, prefix, pos, total, display=True):
         t0 = time.time()
         if pos == 0:
-            self.prog=0
+            self.prog = 0
             self.progtime = time.time()
             self.progpos=pos
-        prog = round(float(pos) / float(total) * float(100), 1)
+        prog = round(float(pos) / float(total) * float(100), 2)
         if pos != total:
             if prog > self.prog:
                 if display:
@@ -472,7 +473,6 @@ class firehose(metaclass=LogBase):
                 else:
                     self.error(f"Error:{rsp}")
                     return False
-            self.show_progress("Write", 100, 100, display)
         return True
 
     def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
@@ -529,7 +529,6 @@ class firehose(metaclass=LogBase):
             else:
                 self.error(f"Error:{rsp}")
                 return False
-        self.show_progress("Write", 100, 100, display)
         return True
 
     def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
@@ -573,7 +572,6 @@ class firehose(metaclass=LogBase):
             else:
                 self.error(f"Error:{rsp}")
                 return False
-        self.show_progress("Erase", 100, 100, display)
         return True
 
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
@@ -585,7 +583,7 @@ class firehose(metaclass=LogBase):
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
             print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
-        with open(filename, "wb") as wr:
+        with open(file=filename, mode="wb", buffering=self.cfg.MaxPayloadSizeFromTargetInBytes) as wr:
 
             data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
@@ -602,20 +600,15 @@ class firehose(metaclass=LogBase):
                         return b""
                 bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = bytestoread
+                show_progress = self.show_progress
+                usb_read = self.cdc.read
                 self.show_progress("Read", 0, total, display)
+                wMaxPacketSize = self.cdc.EP_IN.wMaxPacketSize
                 while bytestoread > 0:
-                    if bytestoread > self.cfg.MaxPayloadSizeFromTargetInBytes:
-                        tmp = b"".join([self.cdc.read(self.cdc.EP_IN.wMaxPacketSize)
-                                        for _ in range(self.cfg.MaxPayloadSizeFromTargetInBytes
-                                        // self.cdc.EP_IN.wMaxPacketSize)])
-                    else:
-                        size = min(self.cdc.EP_IN.wMaxPacketSize, bytestoread)
-                        tmp = self.cdc.read(size)
-                    size=len(tmp)
-                    bytestoread -= size
-                    wr.write(tmp)
-                    self.show_progress("Read", total - bytestoread, total, display)
-                self.show_progress("Read", 100,100,display)
+                    data=usb_read(min(wMaxPacketSize, bytestoread))
+                    wr.write(data)
+                    bytestoread -= len(data)
+                    show_progress("Read", total - bytestoread, total, display)
                 # time.sleep(0.2)
                 wd = self.wait_for_data()
                 info = self.xml.getlog(wd)
@@ -659,25 +652,15 @@ class firehose(metaclass=LogBase):
                         return -1
             bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
             total = bytestoread
-            dataread = 0
-            old = 0
-            prog = 0
             if display:
                 print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
             while bytestoread > 0:
-                if bytestoread > self.cfg.MaxPayloadSizeFromTargetInBytes:
-                    tmp = b"".join([self.cdc.read(self.cdc.EP_IN.wMaxPacketSize) for _ in
-                                    range(self.cfg.MaxPayloadSizeFromTargetInBytes // self.cdc.EP_IN.wMaxPacketSize)])
-                else:
-                    size = min(self.cdc.EP_IN.wMaxPacketSize, bytestoread)
-                    tmp = self.cdc.read(size)
+                tmp = self.cdc.read(min(self.cdc.EP_IN.wMaxPacketSize, bytestoread))
                 size=len(tmp)
                 bytestoread -= size
-                dataread += size
-                resData += tmp
-                self.show_progress("Read", dataread, total, display)
+                resData.extend(tmp)
+                self.show_progress("Read", total-bytestoread, total, display)
 
-            self.show_progress("Read", 100, 100, display)
             wd = self.wait_for_data()
             info = self.xml.getlog(wd)
             rsp = self.xml.getresponse(wd)
@@ -734,9 +717,9 @@ class firehose(metaclass=LogBase):
             )
             try:
                 header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                if "first_usable_lba" in header:
-                    gptsize = (header["part_entry_start_lba"] * self.cfg.SECTOR_SIZE_IN_BYTES) + (
-                            header['num_part_entries'] * header['part_entry_size'])
+                if header is not None:
+                    gptsize = (header.part_entry_start_lba * self.cfg.SECTOR_SIZE_IN_BYTES) + (
+                            header.num_part_entries * header.part_entry_size)
                     sectors = gptsize // self.cfg.SECTOR_SIZE_IN_BYTES
                     if gptsize % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                         sectors += 1
@@ -766,14 +749,11 @@ class firehose(metaclass=LogBase):
             loglevel=self.__logger.level
         )
         header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-        if "backup_lba" in header:
-            sectors = header["first_usable_lba"] - 1
-            data = self.cmd_read_buffer(lun, header["backup_lba"], sectors, False)
-            if data == b"":
-                return None
-            return data
-        else:
+        sectors = header.first_usable_lba - 1
+        data = self.cmd_read_buffer(lun, header.backup_lba, sectors, False)
+        if data == b"":
             return None
+        return data
 
     def calc_offset(self, sector, offset):
         sector = sector + (offset // self.cfg.SECTOR_SIZE_IN_BYTES)
@@ -785,7 +765,7 @@ class firehose(metaclass=LogBase):
             return [int(argument["--lun"])]
 
         luns = []
-        if self.cfg.MemoryName.lower() == "ufs" or self.cfg.MemoryName.lower() == "spinor":
+        if self.cfg.MemoryName.lower() == "ufs":
             for i in range(0, self.cfg.maxlun):
                 luns.append(i)
         else:

@@ -22,6 +22,58 @@ except ImportError:
     print("Keystone library is missing.")
 
 
+from struct import unpack, pack
+
+
+class structhelper:
+    pos = 0
+
+    def __init__(self, data, pos=0):
+        self.pos = 0
+        self.data = data
+
+    def qword(self):
+        dat = unpack("<Q", self.data[self.pos:self.pos + 8])[0]
+        self.pos += 8
+        return dat
+
+    def dword(self):
+        dat = unpack("<I", self.data[self.pos:self.pos + 4])[0]
+        self.pos += 4
+        return dat
+
+    def dwords(self, dwords=1):
+        dat = unpack("<" + str(dwords) + "I", self.data[self.pos:self.pos + 4 * dwords])
+        self.pos += 4 * dwords
+        return dat
+
+    def short(self):
+        dat = unpack("<H", self.data[self.pos:self.pos + 2])[0]
+        self.pos += 2
+        return dat
+
+    def shorts(self, shorts):
+        dat = unpack("<" + str(shorts) + "H", self.data[self.pos:self.pos + 2*shorts])
+        self.pos += 2 * shorts
+        return dat
+
+    def bytes(self, rlen=1):
+        dat = self.data[self.pos:self.pos + rlen]
+        self.pos += rlen
+        if rlen == 1: return dat[0]
+        return dat
+
+    def string(self, rlen=1):
+        dat = self.data[self.pos:self.pos + rlen]
+        self.pos += rlen
+        return dat
+
+    def getpos(self):
+        return self.pos
+
+    def seek(self, pos):
+        self.pos = pos
+
 def do_tcp_server(client, arguments, handler):
     def tcpprint(arg):
         if isinstance(arg, bytes) or isinstance(arg, bytearray):

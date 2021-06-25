@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2021
-
+import io
+import logging
+import array
 import usb.core  # pyusb
 import usb.util
 from enum import Enum
@@ -51,6 +53,7 @@ class UsbClass(metaclass=LogBase):
 
     def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
         self.connected = False
+        self.loglevel = loglevel
         self.timeout = None
         self.vid = None
         self.pid = None
@@ -70,6 +73,7 @@ class UsbClass(metaclass=LogBase):
         self.warning = self.__logger.warning
         self.debug = self.__logger.debug
         self.__logger.setLevel(loglevel)
+        self.buffer = array.array('B', [0]) * 1024*1024
         if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
@@ -328,13 +332,20 @@ class UsbClass(metaclass=LogBase):
         return True
 
     def read(self, length=0x80, timeout=None):
-        tmp = b''
-        self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
+        if self.loglevel==logging.DEBUG:
+            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
+        tmp = bytearray()
+        extend = tmp.extend
         if timeout is None:
             timeout = self.timeout
-        while bytearray(tmp) == b'':
+        buffer = self.buffer
+        ep_read = self.EP_IN.read
+        while len(tmp) == 0:
             try:
-                tmp = self.EP_IN.read(length, timeout)
+                length=ep_read(buffer, timeout)
+                extend(buffer[:length])
+                if len(tmp)>0:
+                    return tmp
             except usb.core.USBError as e:
                 error = str(e.strerror)
                 if "timed out" in error:
@@ -343,7 +354,7 @@ class UsbClass(metaclass=LogBase):
                     # print("Waiting...")
                     self.debug("Timed out")
                     self.debug(tmp)
-                    return bytearray(tmp)
+                    return tmp
                 elif "Overflow" in error:
                     self.error("USB Overflow")
                     sys.exit(0)
@@ -352,8 +363,9 @@ class UsbClass(metaclass=LogBase):
                     sys.exit(0)
                 else:
                     break
-        self.verify_data(bytearray(tmp), "RX:")
-        return bytearray(tmp)
+        if self.loglevel == logging.DEBUG:
+            self.verify_data(tmp, "RX:")
+        return tmp
 
     def ctrl_transfer(self, bmrequesttype, brequest, wvalue, windex, data_or_wlength):
         ret = self.device.ctrl_transfer(bmrequesttype=bmrequesttype, brequest=brequest, wvalue=wvalue, windex=windex,
