@@ -171,6 +171,7 @@ msmids = {
     0x0C30E1: "SM8250:CD90-PH805-1A", # Kona, 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
     0x0CE0E1: "SM8250:CD90-PH806-1A", # Kona 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
     0x0B80E1: "sc8180x", # Snapdragon 8CX
+    0x1560E1: "SM8250", # HDK 8250
 
     # Unknown root hash
     0x0B70E1: "SDM850",
@@ -243,7 +244,7 @@ sochw = {
     #: "SDX50M",
     0x6006: "sc8180x",
     0x6007: "SM6150,SM6150p",
-    0x6008: "SM8250:CD90-PH805-1A,SM8250:CD90-PH806-1A",
+    0x6008: "SM8250:CD90-PH805-1A,SM8250:CD90-PH806-1A,SM8250",
     0x6009: "SDM670",
     0x600B: "SDX55:CD90-PG591,SDX55:CD90-PH809",
     0x600C: "SM7150,SM7150p",
