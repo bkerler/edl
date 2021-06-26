@@ -53,7 +53,6 @@ class UsbClass(metaclass=LogBase):
 
     def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
         self.connected = False
-        self.loglevel = loglevel
         self.timeout = None
         self.vid = None
         self.pid = None
@@ -66,14 +65,16 @@ class UsbClass(metaclass=LogBase):
         self.baudrate = None
         self.parity = None
         self.configuration = None
+        self.loglevel = loglevel
         self.portconfig = portconfig
         self.devclass = devclass
+        self.__logger = self.__logger
         self.info = self.__logger.info
         self.error = self.__logger.error
         self.warning = self.__logger.warning
         self.debug = self.__logger.debug
         self.__logger.setLevel(loglevel)
-        self.buffer = array.array('B', [0]) * 1024*1024
+        self.buffer = array.array('B', [0]) * 1048576
         if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
@@ -338,7 +339,7 @@ class UsbClass(metaclass=LogBase):
         extend = tmp.extend
         if timeout is None:
             timeout = self.timeout
-        buffer = self.buffer
+        buffer = self.buffer[:length]
         ep_read = self.EP_IN.read
         while len(tmp) == 0:
             try:

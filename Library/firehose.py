@@ -13,11 +13,6 @@ from Library.utils import *
 from Library.gpt import gpt
 from Library.sparse import QCSparse
 
-try:
-    from Library.Modules.init import modules
-except ImportError as e:
-    pass
-
 from queue import Queue
 from threading import Thread
 
@@ -717,7 +712,7 @@ class firehose(metaclass=LogBase):
             )
             try:
                 header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                if header is not None:
+                if header.signature == b"EFI PART":
                     gptsize = (header.part_entry_start_lba * self.cfg.SECTOR_SIZE_IN_BYTES) + (
                             header.num_part_entries * header.part_entry_size)
                     sectors = gptsize // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -749,11 +744,14 @@ class firehose(metaclass=LogBase):
             loglevel=self.__logger.level
         )
         header = guid_gpt.parseheader(data, self.cfg.SECTOR_SIZE_IN_BYTES)
-        sectors = header.first_usable_lba - 1
-        data = self.cmd_read_buffer(lun, header.backup_lba, sectors, False)
-        if data == b"":
+        if "backup_lba" in header:
+            sectors = header.first_usable_lba - 1
+            data = self.cmd_read_buffer(lun, header.backup_lba, sectors, False)
+            if data == b"":
+                return None
+            return data
+        else:
             return None
-        return data
 
     def calc_offset(self, sector, offset):
         sector = sector + (offset // self.cfg.SECTOR_SIZE_IN_BYTES)
@@ -951,11 +949,6 @@ class firehose(metaclass=LogBase):
                 for line in self.supported_functions:
                     info += line + ","
                 self.info(info[:-1])
-        try:
-            self.modules = modules(fh=self, serial=self.serial, supported_functions=self.supported_functions,
-                                   loglevel=self.__logger.level, devicemodel=self.devicemodel, args=self.args)
-        except Exception as err:  # pylint: disable=broad-except
-            self.modules = None
         data = self.cdc.read(self.cfg.MaxXMLSizeInBytes)  # logbuf
         try:
             self.info(data.decode('utf-8'))
@@ -970,7 +963,7 @@ class firehose(metaclass=LogBase):
 
         if "getstorageinfo" in self.supported_functions and self.args["--memory"] is None:
             storageinfo = self.cmd_getstorageinfo()
-            if storageinfo is not None:
+            if storageinfo is not None and storageinfo!=[]:
                 for info in storageinfo:
                     if "storage_info" in info:
                         try:
@@ -1005,6 +998,7 @@ class firehose(metaclass=LogBase):
                         self.info(info)
                     if "UFS Total Active LU: " in info:
                         self.cfg.maxlun = int(info.split("LU: ")[1], 16)
+
         return self.supported_functions
 
     # OEM Stuff here below --------------------------------------------------

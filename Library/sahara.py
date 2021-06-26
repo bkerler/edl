@@ -9,6 +9,10 @@ import logging
 from struct import unpack, pack
 from Library.utils import read_object, print_progress, rmrf, LogBase
 from Config.qualcomm_config import sochw, msmids, root_cert_hash
+import os, sys, inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 
 def convertmsmid(msmid):
@@ -155,7 +159,7 @@ class sahara(metaclass=LogBase):
 
     def init_loader_db(self):
         loaderdb = {}
-        for (dirpath, dirnames, filenames) in os.walk("Loaders"):
+        for (dirpath, dirnames, filenames) in os.walk(os.path.join(parent_dir,"Loaders")):
             for filename in filenames:
                 fn = os.path.join(dirpath, filename)
                 found = False

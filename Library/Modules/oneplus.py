@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2021
+
 """
 Usage:
     oneplus.py rawxml [--projid=value] [--serial=value]
@@ -25,82 +28,82 @@ except Exception as e:
     from ..cryptutils import cryptutils
 from binascii import unhexlify, hexlify
 
-deviceconfig={
+deviceconfig = {
     # OP5, cheeseburger
-    "16859": dict(version=1,cm=None,param_mode=0),
+    "16859": dict(version=1, cm=None, param_mode=0),
     # OP5t, dumpling
-    "17801": dict(version=1,cm=None,param_mode=0),
+    "17801": dict(version=1, cm=None, param_mode=0),
     # OP6, enchilada
-    "17819": dict(version=1,cm=None,param_mode=0),
+    "17819": dict(version=1, cm=None, param_mode=0),
     # OP6t, fajita
-    "18801": dict(version=1,cm=None,param_mode=0),
+    "18801": dict(version=1, cm=None, param_mode=0),
     # OP6t T-Mo, fajitat
-    "18811": dict(version=1,cm=None,param_mode=0),    
+    "18811": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7, guacamoleb
-    "18857": dict(version=1,cm=None,param_mode=0),
+    "18857": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7 Pro, guacamole
-    "18821": dict(version=1,cm=None,param_mode=0),
+    "18821": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7 Pro 5G Sprint, guacamoles
-    "18825": dict(version=1,cm=None,param_mode=0),    
+    "18825": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7 Pro 5G EE and Elisa, guacamoleg
-    "18827": dict(version=1,cm=None,param_mode=0),
+    "18827": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7 Pro T-Mo, guacamolet
-    "18831": dict(version=1,cm=None,param_mode=0),
+    "18831": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7t, hotdogb
-    "18865": dict(version=1,cm=None,param_mode=0),
+    "18865": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7t T-Mo, hotdogt
-    "19863": dict(version=1,cm=None,param_mode=0),
+    "19863": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7t Pro, hotdog
-    "19801": dict(version=1,cm=None,param_mode=0),
+    "19801": dict(version=1, cm=None, param_mode=0),
     # Oneplus 7t Pro 5G T-Mo, hotdogg
-    "19861": dict(version=1,cm=None,param_mode=0),
-    
+    "19861": dict(version=1, cm=None, param_mode=0),
+
     # OP8, instantnoodle
-    "19821": dict(version=2,cm="0cffee8a",param_mode=0),
+    "19821": dict(version=2, cm="0cffee8a", param_mode=0),
     # OP8 T-Mo, instantnoodlet
-    "19855": dict(version=2,cm="6d9215b4",param_mode=0),
+    "19855": dict(version=2, cm="6d9215b4", param_mode=0),
     # OP8 Verizon, instantnoodlev
-    "19867": dict(version=2,cm="4107b2d4",param_mode=0),
+    "19867": dict(version=2, cm="4107b2d4", param_mode=0),
     # OP8 Visible, instantnoodlevis
-    "19868": dict(version=-1,cm="178d8213",param_mode=0),
+    "19868": dict(version=-1, cm="178d8213", param_mode=0),
     # OP8 Pro, instantnoodlep
-    "19811": dict(version=2,cm="40217c07",param_mode=0),
+    "19811": dict(version=2, cm="40217c07", param_mode=0),
     # OP8t, kebab
-    "19805": dict(version=2,cm="1a5ec176",param_mode=0),
+    "19805": dict(version=2, cm="1a5ec176", param_mode=0),
     # OP8t T-Mo, kebabt
-    "20809": dict(version=2,cm="d6bc8c36",param_mode=0),
+    "20809": dict(version=2, cm="d6bc8c36", param_mode=0),
 
     # OP Nord, avicii
-    "20801": dict(version=2,cm="eacf50e7",param_mode=0),
+    "20801": dict(version=2, cm="eacf50e7", param_mode=0),
     # OP N10 5G Metro, billie8t
-    "20885": dict(version=3,cm = "3a403a71",param_mode=1),
+    "20885": dict(version=3, cm="3a403a71", param_mode=1),
     # OP N10 5G Global, billie8
-    "20886": dict(version=3,cm = "b8bd9e39",param_mode=1),
+    "20886": dict(version=3, cm="b8bd9e39", param_mode=1),
     # billie8t, OP N10 5G TMO
-    "20888": dict(version=3,cm = "142f1bd7",param_mode=1),
+    "20888": dict(version=3, cm="142f1bd7", param_mode=1),
     # OP N10 5G Europe, billie8
-    "20889": dict(version=3,cm = "f2056ae1",param_mode=1),
+    "20889": dict(version=3, cm="f2056ae1", param_mode=1),
 
     # OP N100 Metro, billie2t
-    "20880": dict(version=3,cm = "6ccf5913",param_mode=1),
+    "20880": dict(version=3, cm="6ccf5913", param_mode=1),
     # OP N100 Global, billie2 
-    "20881": dict(version=3,cm = "fa9ff378",param_mode=1),
+    "20881": dict(version=3, cm="fa9ff378", param_mode=1),
     # OP N100 TMO, billie2t
-    "20882": dict(version=3,cm = "4ca1e84e",param_mode=1),
+    "20882": dict(version=3, cm="4ca1e84e", param_mode=1),
     # OP N100 Europe, billie2
-    "20883": dict(version=3,cm = "ad9dba4a",param_mode=1),
+    "20883": dict(version=3, cm="ad9dba4a", param_mode=1),
 
     # OP9 Pro, lemonadep
-    "19815": dict(version=2,cm = "9c151c7f", param_mode=0),
-    "20859": dict(version=2,cm = "9c151c7f", param_mode=0),
+    "19815": dict(version=2, cm="9c151c7f", param_mode=0),
+    "20859": dict(version=2, cm="9c151c7f", param_mode=0),
     # OP9, lemonade
-    "19825": dict(version=2,cm = "0898dcd6",param_mode=1),
+    "19825": dict(version=2, cm="0898dcd6", param_mode=1),
     # OP9R, lemonades
-    "20828": dict(version=2,cm = None,param_mode=1),
+    "20828": dict(version=2, cm=None, param_mode=1),
     # OP9 TMO, lemonadet
-    "20854": dict(version=2,cm = "16225d4e",param_mode=1),
+    "20854": dict(version=2, cm="16225d4e", param_mode=1),
     # OP9 Pro TMO, lemonadept
-    "2085A": dict(version=2,cm = "7f19519a",param_mode=1),
+    "2085A": dict(version=2, cm="7f19519a", param_mode=1),
 
     # dre8t
     "20818": dict(version=2, cm=None, param_mode=1),
@@ -110,18 +113,39 @@ deviceconfig={
     "2083D": dict(version=2, cm=None, param_mode=1)
 }
 
+
 class oneplus(metaclass=LogBase):
-    def __init__(self, fh, projid="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None, loglevel=logging.INFO):
+    def __init__(self, fh, projid="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
+                 args=None, loglevel=logging.INFO):
         self.fh = fh
+        self.__logger=self.__logger
+        self.args = args
         self.ATOBuild = ATOBuild
         self.Flash_Mode = Flash_Mode
         self.cf = cf  # CustFlag
         self.supported_functions = supported_functions
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        self.info = self.__logger.info
+        self.debug = self.__logger.debug
+        self.error = self.__logger.error
+        if projid == "":
+            res = self.fh.detect_partition(arguments=args, partitionname="param")
+            if res[0]:
+                lun = res[1]
+                rpartition = res[2]
+                data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1)
+                value = data[24:24 + 5]
+                try:
+                    test = int(value.decode('utf-8'))
+                    self.info("Oneplus protection with prjid %d detected" % test)
+                    projid = value.decode('utf-8')
+                except:
+                    pass
+
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
-            fh = logging.FileHandler(logfilename)
-            self.__logger.addHandler(fh)
+            filehandler = logging.FileHandler(logfilename)
+            self.__logger.addHandler(filehandler)
         self.ops_parm = None
         self.ops = self.convert_projid(fh, projid, serial)
 
@@ -142,17 +166,17 @@ class oneplus(metaclass=LogBase):
             pk += chr(val[nr])
 
         if projid in deviceconfig:
-            version=deviceconfig[projid]["version"]
-            cm=deviceconfig[projid]["cm"]
-            if version==1:
+            version = deviceconfig[projid]["version"]
+            cm = deviceconfig[projid]["cm"]
+            if version == 1:
                 return oneplus1(fh, projid, serial, pk, prodkey, self.cf)
-            elif version==2:
+            elif version == 2:
                 if cm is not None:
                     return oneplus1(fh, cm, serial, pk, prodkey, self.cf)
                 else:
                     assert "Device is not supported"
                     exit(0)
-            elif version==3:
+            elif version == 3:
                 if cm is not None:
                     oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
                 else:
@@ -195,8 +219,6 @@ class oneplus(metaclass=LogBase):
             return self.ops.demacia()
 
     def enable_ops(self, data, enable, projid, serial):
-        if self.ops_parm is not None:
-            return self.ops_parm.enable_ops(data, enable)
         return None
 
     def addpatch(self):
@@ -394,7 +416,7 @@ class oneplus2(metaclass=LogBase):
         self.ato_build_state = str(ATOBuild)
         self.soc_sn = str(serial)
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
@@ -402,7 +424,7 @@ class oneplus2(metaclass=LogBase):
     def crypt_token(self, data, pk, device_timestamp, decrypt=False):
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
-                 pack("<Q", int(device_timestamp,10))  # we get this using setprocstart
+                 pack("<Q", int(device_timestamp, 10))  # we get this using setprocstart
         aesiv = b"\xDC\x91\x0D\x88\xE3\xC6\xEE\x65\xF0\xC7\x44\xB4\x02\x30\xCE\x40"
         if decrypt:
             cdata = unhexlify(data)
@@ -429,7 +451,7 @@ class oneplus2(metaclass=LogBase):
         if program:
             items = [timestamp, secret]
         else:  # 0x1C[0x10]              0x2D[0x11]          0x3E[0x41]           0x10[0x4]
-               # 0x14[0x4]       0x90[0x40]   0x4[0x4]   0x114[0x4] 0x7F[0x10] 0xD1[0x41]
+            # 0x14[0x4]       0x90[0x40]   0x4[0x4]   0x114[0x4] 0x7F[0x10] 0xD1[0x41]
             items = [self.ModelVerifyPrjName, self.random_postfix, ModelVerifyHashToken, self.ato_build_state,
                      self.flash_mode, self.Version, self.soc_sn, self.device_id, timestamp, secret]
         data = ""
@@ -512,7 +534,7 @@ def main():
         # 18857 7 Europe
         pk, token = op.demacia()
         print(
-            f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><demacia "+
+            f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><demacia " +
             f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\"")
         pk, token = op.generatetoken(False)
         print(

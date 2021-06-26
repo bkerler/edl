@@ -14,6 +14,10 @@ from Library.utils import do_tcp_server
 from Config.qualcomm_config import memory_type
 from Library.utils import LogBase, getint
 import json
+try:
+    from Library.Modules.init import modules
+except ImportError as e:
+    pass
 
 try:
     import xml.etree.cElementTree as ET
@@ -79,14 +83,15 @@ class firehose_client(metaclass=LogBase):
                                 self.cfg.MemoryName = "eMMC"
                             elif type == memory_type.ufs:
                                 self.cfg.MemoryName = "UFS"
-                            self.info("Based on the chipset, we assume " +
-                                self.cfg.MemoryName + " as default memory type...")
+                            self.warning("Based on the chipset, we assume " +
+                                self.cfg.MemoryName + " as default memory type..., if it fails, try using " +
+                                "--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
                 elif socid in sochw:
                     self.target_name = sochw[socid].split(",")[0]
 
         # We assume ufs is fine (hopefully), set it as default
         if self.cfg.MemoryName == "":
-            self.info(
+            self.warning(
                 "No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" " +
                 "with \"UFS\",\"NAND\" or \"spinor\" instead !")
             self.cfg.MemoryName = "eMMC"
@@ -99,6 +104,13 @@ class firehose_client(metaclass=LogBase):
             self.info(funcs)
             self.target_name = self.firehose.cfg.TargetName
             self.connected = True
+            try:
+                self.firehose.modules = modules(fh=self.firehose, serial=self.firehose.serial,
+                                                supported_functions=self.firehose.supported_functions,
+                                                loglevel=self.__logger.level,
+                                                devicemodel=self.firehose.devicemodel, args=self.arguments)
+            except Exception as err:  # pylint: disable=broad-except
+                self.modules = None
 
     def check_cmd(self, func):
         if not self.firehose.supported_functions:
@@ -299,7 +311,7 @@ class firehose_client(metaclass=LogBase):
                 return False
             filename = options["<filename>"]
             storageinfo = self.get_storage_info()
-            if storageinfo is not None:
+            if storageinfo is not None and self.cfg.MemoryName.lower() in ["spinor" , "nand"]:
                 totalsectors = None
                 if "total_blocks" in storageinfo:
                     totalsectors = storageinfo["total_blocks"]
@@ -334,7 +346,7 @@ class firehose_client(metaclass=LogBase):
                     if guid_gpt is None:
                         break
                     if len(luns) > 1:
-                        sfilename = filename + f"_lun{str(lun)}"
+                        sfilename = filename + f".lun{str(lun)}"
                     else:
                         sfilename = filename
                     self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")

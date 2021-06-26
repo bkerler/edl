@@ -109,7 +109,7 @@ Options:
     --tcpport=portnumber               Set port for tcp server [default: 1340]
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
-    --devicemodel=value                Set device model [default: ""]
+    --devicemodel=value                Set device model
 """
 
 import os
