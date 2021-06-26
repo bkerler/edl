@@ -339,7 +339,7 @@ class UsbClass(metaclass=LogBase):
         extend = tmp.extend
         if timeout is None:
             timeout = self.timeout
-        buffer = self.buffer[:length]
+        buffer = self.buffer
         ep_read = self.EP_IN.read
         while len(tmp) == 0:
             try:
