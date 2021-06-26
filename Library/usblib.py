@@ -316,7 +316,8 @@ class UsbClass(metaclass=LogBase):
         else:
             i = 0
             try:
-                [self.EP_OUT.write(command[pos:pos+pktsize]) for pos in range(0,len(command),pktsize)]
+                buffer=array.array('B',command)
+                self.EP_OUT.write(buffer)
             except Exception as e:  # pylint: disable=broad-except
                 # print("Error while writing")
                 if "timed out" in str(e):
@@ -329,7 +330,8 @@ class UsbClass(metaclass=LogBase):
                 else:
                     self.error(str(e))
                     return False
-        self.verify_data(bytearray(command), "TX:")
+        if self.loglevel == logging.DEBUG:
+            self.verify_data(bytearray(command), "TX:")
         return True
 
     def read(self, length=0x80, timeout=None):
