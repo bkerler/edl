@@ -62,6 +62,8 @@ prodtable = {
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),  # WP77xx
     "SDX55": dict(openlock=22, openmep=21, opencnd=22, clen=8, init=[7, 3, 0, 1, 5], #MR5100
                        run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),
+    "MDM9x15A": dict(openlock=24, openmep=23, opencnd=24, clen=8, init=[7, 3, 0, 1, 5], #AC779S
+                       run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),
 
 }
 
@@ -79,6 +81,7 @@ infotable = {
     "MDM9x15": ["SWI9X15C", "AR7550", "AR7552", "AR7554", "EM7355", "EM7655", "MC7354", "WP7100", "WP7102", "WP7104",
                 "MC7305", "EM7305", "MC8805", "EM8805", "MC7350", "MC7350-L", "MC7802", "MC7304", "AR7556", "AR7558",
                 "WP75xx", "WP85xx", "WP8548", "WP8548G", "AC340U"],
+    "MDM9x15A": ["AC779S"],
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
     "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
@@ -131,8 +134,12 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
                       # 20 SWI9X06Y_02.14.04.00 Openlock Key WP77xx
                       0x49, 0x42, 0xFF, 0x76, 0x8A, 0x95, 0xCF, 0x7B, 0xA3, 0x47, 0x5F, 0xF5, 0x8F, 0xD8, 0x45, 0xE4,
                       # 21 NTGX55 Openmep Key, NTGX55_10.25.15.02 MR5100
-                      0xF8, 0x1A, 0x3A, 0xCC, 0xAA, 0x2B, 0xA5, 0xE8, 0x8B, 0x53, 0x5A, 0x55, 0xB9, 0x65, 0x57, 0x98
+                      0xF8, 0x1A, 0x3A, 0xCC, 0xAA, 0x2B, 0xA5, 0xE8, 0x8B, 0x53, 0x5A, 0x55, 0xB9, 0x65, 0x57, 0x98,
                       # 22 NTGX55 Openlock Key, NTGX55_10.25.15.02 MR5100
+                      0x54, 0xC9, 0xC7, 0xA4, 0x02, 0x1C, 0xB0, 0x11, 0x05, 0x22, 0x39, 0xB7, 0x84, 0xEF, 0x16, 0xCA,
+                      # 23 NTG9X15A Openlock Key, NTG9X15A_01.08.02.00
+                      0xC7, 0xE6, 0x39, 0xFE, 0x0A, 0xC7, 0xCA, 0x4D, 0x49, 0x8F, 0xD8, 0x55, 0xEB, 0x1A, 0xCD, 0x8A
+                      # 24 NTG9X15A Openlock Key, NTG9X15A_01.08.02.00
                       ])
 
 
@@ -463,7 +470,7 @@ class SierraKeygen(metaclass=LogBase):
                             devicegeneration = "MDM9200" #AC781S NTG9X25C_01.00.57.00
                     elif "9X15" in revision:
                         if "NTG9X15A" in revision:
-                            devicegeneration = "" #Aircard 779S
+                            devicegeneration = "MDM9x15A" #Aircard 779S
                         elif "NTG9X15C" in revision:
                             devicegeneration = "MDM9200" #AC770S NTG9X15C_01.18.02.00
                         else:
@@ -490,7 +497,6 @@ class SierraKeygen(metaclass=LogBase):
                     # SDX24 Sierra
                     # MR2100 NTGX24_10.17.03.00
                     # SDX55 Sierra
-                    # 779S  NTG9X15A
                     # AC810S NTG9X40C_11.14.08.16
                     # AC800S NTG9X40C_11.14.07.00
                     self.devicegeneration=devicegeneration
