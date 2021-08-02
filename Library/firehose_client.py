@@ -96,14 +96,6 @@ class firehose_client(metaclass=LogBase):
                 "with \"UFS\",\"NAND\" or \"spinor\" instead !")
             self.cfg.MemoryName = "eMMC"
 
-        try:
-            self.firehose.modules = modules(fh=self.firehose, serial=self.firehose.serial,
-                                            supported_functions=self.firehose.supported_functions,
-                                            loglevel=self.__logger.level,
-                                            devicemodel=self.firehose.devicemodel, args=self.arguments)
-        except Exception as err:  # pylint: disable=broad-except
-            self.modules = None
-
         if self.firehose.configure(0):
             funcs = "Supported functions:\n-----------------\n"
             for function in self.firehose.supported_functions:
@@ -112,6 +104,14 @@ class firehose_client(metaclass=LogBase):
             self.info(funcs)
             self.target_name = self.firehose.cfg.TargetName
             self.connected = True
+            try:
+                if self.firehose.modules is None:
+                    self.firehose.modules = modules(fh=self.firehose, serial=self.firehose.serial,
+                                                    supported_functions=self.firehose.supported_functions,
+                                                    loglevel=self.__logger.level,
+                                                    devicemodel=self.firehose.devicemodel, args=self.arguments)
+            except Exception as err:  # pylint: disable=broad-except
+                self.firehose.modules = None
 
     def check_cmd(self, func):
         if not self.firehose.supported_functions:

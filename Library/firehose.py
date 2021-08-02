@@ -15,6 +15,10 @@ from Library.sparse import QCSparse
 
 from queue import Queue
 from threading import Thread
+try:
+    from Library.Modules.init import modules
+except ImportError as e:
+    pass
 
 
 class nand_partition:
@@ -796,6 +800,13 @@ class firehose(metaclass=LogBase):
             if not rsp[0]:
                 if b"Only nop and sig tag can be" in rsp[2]:
                     self.info("Xiaomi EDL Auth detected.")
+                    try:
+                        self.modules = modules(fh=self, serial=self.serial,
+                                                        supported_functions=self.supported_functions,
+                                                        loglevel=self.__logger.level,
+                                                        devicemodel=self.devicemodel, args=self.args)
+                    except Exception as err:  # pylint: disable=broad-except
+                        self.modules = None
                     if self.modules.edlauth():
                         rsp = self.xmlsend(connectcmd)
         if len(rsp) > 1:

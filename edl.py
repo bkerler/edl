@@ -189,8 +189,8 @@ class main(metaclass=LogBase):
                 if loop == 5:
                     sys.stdout.write('\n')
                     self.info("Hint:   Press and hold vol up+dwn, connect usb. For some, only use vol up.")
-                    self.info("Xiaomi: Press and hold Vol up + pwr, in fastboot mode connect usb.\n" +
-                              "        Run \"./fastboot oem edl\".")
+                    self.info("Xiaomi: Press and hold vol dwn + pwr, in fastboot mode connect usb.\n" +
+                              "        Run \"./fastpwn oem edl\".")
                     self.info("Other:  Run \"adb reboot edl\".")
                     sys.stdout.write('\n')
 

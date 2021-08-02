@@ -133,7 +133,7 @@ class oneplus(metaclass=LogBase):
             if res[0]:
                 lun = res[1]
                 rpartition = res[2]
-                data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1)
+                data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1, False)
                 value = data[24:24 + 5]
                 try:
                     test = int(value.decode('utf-8'))
