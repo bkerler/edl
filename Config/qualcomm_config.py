@@ -130,6 +130,7 @@ msmids = {
     0x0AA0E1: "QCS605",
     0x0ED0E1: "SXR1120",
     0x0EA0E1: "SXR1130",
+    0x08E0E1: "SDA845",
 
     # d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955
     # d40eee56f3194665574109a39267724ae7944134cd53cb767e293d3c40497955bc8a4519ff992b031fadc6355015ac87 pk-hash/root-cert
@@ -237,6 +238,7 @@ sochw = {
     #: "SDA632",
     #: "SDM636",
     0x6000: "SDM845",
+    0x6001: "SDA845",
     0x6002: "SDX24,SDX24M",
     0x6003: "SDM855_SM8150,SDM855p_SM8150p",
     0x6004: "SDA670,SDM670,SDM710",
@@ -367,6 +369,7 @@ infotbl = {
     "SXR1120": secgen[7],
     "SXR1130": secgen[7],
     "SDM845": secgen[7],
+    "SDA845": secgen[7],
     "SDM850": secgen[7],
     "SDX24": secgen[7],
     "SDX24M": secgen[7],
@@ -508,6 +511,7 @@ class memory_type:
         "SXR1120": emmc,
         "SXR1130": emmc,
         "SDM845": ufs,
+        "SDA845": ufs,
         "SDM850": ufs,
         "SDX24": emmc,
         "SDX24M": emmc,
@@ -628,6 +632,7 @@ secureboottbl = {
     "SXR1120": 0x00780350,
     "SXR1130": 0x00780350,
     "SDM845": 0x00780350,
+    "SDA845": 0x00780350,
     "SDX24" : 0x00780390,
     "SDX24M": 0x00780390,
     "SDX50M": 0x000a01e0,
