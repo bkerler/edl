@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+recursive-include Loaders *
+include edl/Windows/*.dll
+recursive-include edl/Library/TestFiles *
+
