@@ -1,27 +1,7 @@
 #!/usr/bin/env python3
-'''
-Licensed under MIT License, (c) B. Kerler 2018-2019
-'''
-default_vid_pid = [
-    [0x2c7c, 0x0125, -1],  # Quectel EC25
-    [0x1199, 0x9071, -1],  # Sierra Wireless
-    [0x1199, 0x9091, -1],  # Sierra Wireless
-    [0x0846, 0x68e2,  2],  # Netgear
-    [0x05C6, 0x9008, -1],  # QC EDL
-    [0x05C6, 0x676C, 0],   # QC Handset
-    [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
-    [0x19d2, 0x0016, -1],  # ZTE Diag
-    [0x19d2, 0x0076, -1],  # ZTE Download
-    [0x19d2, 0x0500, -1],  # ZTE Android
-    [0x19d2, 0x1404, 2],  # ZTE ADB Modem
-    [0x12d1, 0x1506, -1],
-    [0x413c, 0x81d7, 5],  # Telit LN940/T77W968
-    [0x1bc7, 0x1040, 0],  # Telit LM960A18 USBCFG 1 QMI
-    [0x1bc7, 0x1041, 0],  # Telit LM960A18 USBCFG 2 MBIM
-    [0x1bc7, 0x1201, 0],  # Telit LE910C4-NF
-    [0x05c6, 0x9092, 0]
-
-]
+"""
+Licensed under MIT License, (c) B. Kerler 2018-2021
+"""
 
 import sys
 import os
@@ -33,20 +13,17 @@ from enum import Enum
 
 from struct import unpack, pack
 from binascii import hexlify, unhexlify
+import os, sys, inspect
 
-try:
-    from Library.utils import print_progress, read_object, write_object, LogBase
-    from Library.usblib import UsbClass
-    from Library.hdlc import hdlc
-except Exception as e:
-    import os,sys,inspect
-    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = os.path.dirname(current_dir)
-    sys.path.insert(0, parent_dir)
-    from Library.utils import print_progress, read_object, write_object, LogBase
-    from Library.usblib import UsbClass
-    from Library.hdlc import hdlc
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
+from edl.Library.utils import print_progress, read_object, write_object, LogBase
+from edl.Library.usblib import UsbClass
+from edl.Library.hdlc import hdlc
+
+from edl.Config.usb_ids import default_diag_vid_pid
 
 qcerror = {
     1: "None",
@@ -93,25 +70,25 @@ diagerror = {
 }
 
 nvitem_type = [
-    ('item', 'H'),
-    ('rawdata', '128s'),
-    ('status', 'H')
+    ("item", "H"),
+    ("rawdata", "128s"),
+    ("status", "H")
 ]
 
 subnvitem_type = [
-    ('item', 'H'),
-    ('index', 'H'),
-    ('rawdata', '128s'),
-    ('status', 'H')
+    ("item", "H"),
+    ("index", "H"),
+    ("rawdata", "128s"),
+    ("status", "H")
 ]
 
 
 class fs_factimage_read_info():
     def_fs_factimage_read_info = [
-        ('stream_state', 'B'),  # 0 indicates no more data to be sent, otherwise set to 1
-        ('info_cluster_sent', 'B'),  # 0 indicates if info_cluster was not sent, else 1
-        ('cluster_map_seqno', 'H'),  # Sequence number of cluster map pages
-        ('cluster_data_seqno', 'I')  # Sequence number of cluster data pages
+        ("stream_state", "B"),  # 0 indicates no more data to be sent, otherwise set to 1
+        ("info_cluster_sent", "B"),  # 0 indicates if info_cluster was not sent, else 1
+        ("cluster_map_seqno", "H"),  # Sequence number of cluster map pages
+        ("cluster_data_seqno", "I")  # Sequence number of cluster data pages
     ]
 
     def __init__(self, stream_state, info_cluster_sent, cluster_map_seqno, cluster_data_seqno):
@@ -135,16 +112,16 @@ class fs_factimage_read_info():
 
 class FactoryHeader():
     def_factory_header = [
-        ('magic1', 'I'),
-        ('magic2', 'I'),
-        ('fact_version', 'H'),  # Version of this cluster
+        ("magic1", "I"),
+        ("magic2", "I"),
+        ("fact_version", "H"),  # Version of this cluster
         # #Fields needed for the superblock
-        ('version', 'H'),  # Superblock version
-        ('block_size', 'I'),  # Pages per block.
-        ('page_size', 'I'),  # Page size in bytes.
-        ('block_count', 'I'),  # Total blocks in device.
-        ('space_limit', 'I'),  # Total number of used pages (defines the size of the map)
-        ('upper_data', '32I')
+        ("version", "H"),  # Superblock version
+        ("block_size", "I"),  # Pages per block.
+        ("page_size", "I"),  # Page size in bytes.
+        ("block_count", "I"),  # Total blocks in device.
+        ("space_limit", "I"),  # Total number of used pages (defines the size of the map)
+        ("upper_data", "32I")
     ]
 
     def __init__(self):
@@ -357,7 +334,7 @@ class qcdiag(metaclass=LogBase):
         import os, sys, inspect
         current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
-        nvxml = os.path.join(current_dir, "Config", "nvitems.xml")
+        nvxml = os.path.join(current_dir, "edl", "Config", "nvitems.xml")
         e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
@@ -399,7 +376,7 @@ class qcdiag(metaclass=LogBase):
         elif info == diag_cmds.DIAG_BAD_SEC_MODE_F.value:
             return "Security privileges required"
         else:
-            return True
+            return "Command accepted"
 
     def connect(self):
         self.cdc = UsbClass(portconfig=self.portconfig, loglevel=self.__logger.level)
@@ -452,13 +429,13 @@ class qcdiag(metaclass=LogBase):
         res = self.send(b"\x46" + sp)
         if res[0] != 0x46:
             res = self.send(b"\x25" + sp)
-        if res[0] != 0x25:
-            print(self.decodestatus(res))
-        else:
+        elif res[0] == 0x46:
             if res[1] == 0x0:
                 print("Security Password is wrong")
             elif res[1] == 0x1:
                 print("Security Password accepted.")
+        elif res[0] != 0x25:
+            print(self.decodestatus(res))
         return res
 
     def send_spc(self, spc="303030303030"):
@@ -548,13 +525,13 @@ class qcdiag(metaclass=LogBase):
         for item in range(0, 0xFFFF):
             prog = int(float(pos) / float(0xFFFF) * float(100))
             if prog > old:
-                print_progress(prog, 100, prefix='Progress:', suffix=f'Complete, item {hex(item)}', bar_length=50)
+                print_progress(prog, 100, prefix="Progress:", suffix=f"Complete, item {hex(item)}", bar_length=50)
                 old = prog
             res, nvitem = self.read_nvitem(item)
             if res != False:
                 if nvitem.status != 0x5:
                     nvitem.status = self.DecodeNVItems(nvitem)
-                    nvitems.append(dict(id=nvitem.item, name=nvitem.name, data=hexlify(nvitem.data).decode('utf-8'),
+                    nvitems.append(dict(id=nvitem.item, name=nvitem.name, data=hexlify(nvitem.data).decode("utf-8"),
                                         status=nvitem.status))
             else:
                 errors += nvitem + "\n"
@@ -580,9 +557,9 @@ class qcdiag(metaclass=LogBase):
         return data[:idx]
 
     def read_nvitem(self, item):
-        rawdata = 128 * b'\x00'
+        rawdata = 128 * b"\x00"
         status = 0x0000
-        nvrequest = b'\x26' + write_object(nvitem_type, item, rawdata, status)['raw_data']
+        nvrequest = b"\x26" + write_object(nvitem_type, item, rawdata, status)["raw_data"]
         data = self.send(nvrequest)
         if len(data) == 0:
             data = self.send(nvrequest)
@@ -602,9 +579,9 @@ class qcdiag(metaclass=LogBase):
         return [False, f"Empty request for nvitem {hex(item)}"]
 
     def read_nvitemsub(self, item, index):
-        rawdata = 128 * b'\x00'
+        rawdata = 128 * b"\x00"
         status = 0x0000
-        nvrequest = b'\x4B\x30\x01\x00' + write_object(subnvitem_type, item, index, rawdata, status)['raw_data']
+        nvrequest = b"\x4B\x30\x01\x00" + write_object(subnvitem_type, item, index, rawdata, status)["raw_data"]
         data = self.send(nvrequest)
         if len(data) == 0:
             data = self.send(nvrequest)
@@ -650,7 +627,7 @@ class qcdiag(metaclass=LogBase):
         while len(rawdata) < 128:
             rawdata += b"\x00"
         status = 0x0000
-        nvrequest = b"\x27" + write_object(nvitem_type, item, rawdata, status)['raw_data']
+        nvrequest = b"\x27" + write_object(nvitem_type, item, rawdata, status)["raw_data"]
         res = self.send(nvrequest)
         if len(res) > 0:
             if res[0] == 0x27:
@@ -672,7 +649,7 @@ class qcdiag(metaclass=LogBase):
         while len(rawdata) < 128:
             rawdata += b"\x00"
         status = 0x0000
-        nvrequest = b"\x4B\x30\x02\x00" + write_object(subnvitem_type, item, index, rawdata, status)['raw_data']
+        nvrequest = b"\x4B\x30\x02\x00" + write_object(subnvitem_type, item, index, rawdata, status)["raw_data"]
         res = self.send(nvrequest)
         if len(res) > 0:
             if res[0] == 0x4B:
@@ -705,7 +682,7 @@ class qcdiag(metaclass=LogBase):
 
         if filename == "":
             return False
-        write_handle = open(filename, 'wb')
+        write_handle = open(filename, "wb")
         if write_handle is None:
             print("Error on writing file ....")
             return False
@@ -714,20 +691,20 @@ class qcdiag(metaclass=LogBase):
         fefs = fs_factimage_read_info(0, 0, 0, 0)
 
         # EFS Cmd
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_PREP_FACT_IMAGE.value, 0x00)  # prepare factory image
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_PREP_FACT_IMAGE.value, 0x00)  # prepare factory image
 
         resp = self.send(buf)
         if len(resp) == 0:
             print("Phone does not respond. Maybe another software is blocking the port.")
             return False
 
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_START.value,
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_START.value,
                    0x00)  # indicate start read out factory image
 
         resp = self.send(buf)
 
         # EFS Cmd
-        buf = pack('<BBBBBBHI', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_READ.value, 0x00, fefs.stream_state,
+        buf = pack("<BBBBBBHI", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_READ.value, 0x00, fefs.stream_state,
                    fefs.info_cluster_sent,
                    fefs.cluster_map_seqno, fefs.cluster_data_seqno)
 
@@ -758,19 +735,19 @@ class qcdiag(metaclass=LogBase):
             fh.fromdata(resp[0x10:0x10 + (39 * 4)])
 
         old = 0
-        print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        print_progress(0, 100, prefix="Progress:", suffix="Complete", bar_length=50)
         total = fh.block_size * fh.block_count * (fh.page_size // 0x200)
 
         # Real start
         for page in range(0, total):
             # EFS Cmd
-            buf = pack('<BBBBBBHI', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_READ.value, 0x00,
+            buf = pack("<BBBBBBHI", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FACT_IMAGE_READ.value, 0x00,
                        fefs.stream_state, fefs.info_cluster_sent,
                        fefs.cluster_map_seqno, fefs.cluster_data_seqno)
 
             pos = int(page / total * 100)
             if pos > old:
-                print_progress(pos, 100, prefix='Progress:', suffix='Page %d of %d' % (page, total), bar_length=50)
+                print_progress(pos, 100, prefix="Progress:", suffix="Page %d of %d" % (page, total), bar_length=50)
                 old = pos
 
             resp = self.send(buf)
@@ -800,7 +777,7 @@ class qcdiag(metaclass=LogBase):
                             efserr = True
                             break
 
-        print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        print_progress(100, 100, prefix="Progress:", suffix="Complete", bar_length=50)
 
         buf = bytearray()
         buf.append(0x4B)
@@ -859,15 +836,15 @@ class qcdiag(metaclass=LogBase):
         return -1
 
     def efs_closedir(self, efsmethod, dirp):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CLOSEDIR.value, 0x00)  # list efs dir
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CLOSEDIR.value, 0x00)  # list efs dir
         buf += pack("<I", dirp)
         resp = self.send(buf)
         diagerror = unpack("<I", resp[0x4:0x8])[0]
         return self.efsdiagerror(diagerror)
 
     def efs_opendir(self, efsmethod, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_OPENDIR.value, 0x00)  # open efs dir
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_OPENDIR.value, 0x00)  # open efs dir
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             dirp = unpack("<I", resp[0x4:0x8])[0]
@@ -896,7 +873,7 @@ class qcdiag(metaclass=LogBase):
 
         info = ""
         for seqno in range(1, 0xFFFFFFFF):
-            buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_READDIR.value, 0x00)  # list efs dir
+            buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_READDIR.value, 0x00)  # list efs dir
             buf += pack("<II", dirp, seqno)
             resp = self.send(buf)
             if len(resp) > 0:
@@ -914,9 +891,9 @@ class qcdiag(metaclass=LogBase):
         return info
 
     def efs_open(self, efsmethod, oflag, mode, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_OPEN.value, 0x00)  # open efs dir
-        buf += pack('<II', oflag, mode)
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_OPEN.value, 0x00)  # open efs dir
+        buf += pack("<II", oflag, mode)
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             fdata = unpack("<i", resp[0x4:0x8])[0]
@@ -926,15 +903,15 @@ class qcdiag(metaclass=LogBase):
             return fdata
 
     def efs_close(self, efsmethod, fdata):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CLOSE.value, 0x00)  # list efs dir
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CLOSE.value, 0x00)  # list efs dir
         buf += pack("<i", fdata)
         resp = self.send(buf)
         diag_error = unpack("<I", resp[0x4:0x8])[0]
         return self.efsdiagerror(diag_error)
 
     def efs_stat(self, efsmethod, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_STAT.value, 0x00)  # open efs file
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_STAT.value, 0x00)  # open efs file
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             diag_error = unpack("<I", resp[0x4:0x8])[0]
@@ -949,7 +926,7 @@ class qcdiag(metaclass=LogBase):
             return [mode, size, nlink, atime, mtime, ctime]
 
     def efs_fstat(self, efsmethod, fdata):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FSTAT.value, 0x00)  # open efs file
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FSTAT.value, 0x00)  # open efs file
         buf += pack("<I", fdata)
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
@@ -965,8 +942,8 @@ class qcdiag(metaclass=LogBase):
             return [mode, size, nlink, atime, mtime, ctime]
 
     def efs_lstat(self, efsmethod, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_LSTAT.value, 0x00)  # open efs file
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_LSTAT.value, 0x00)  # open efs file
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             diag_error = unpack("<I", resp[0x4:0x8])[0]
@@ -980,9 +957,9 @@ class qcdiag(metaclass=LogBase):
 
     def efs_get(self, efsmethod, path, data_length, sequence_number):
         path_length = len(path) + 1
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_GET.value, 0x00)  # open efs file
-        buf += pack('<IIH', data_length, path_length, sequence_number)
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_GET.value, 0x00)  # open efs file
+        buf += pack("<IIH", data_length, path_length, sequence_number)
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             num_bytes = unpack("<I", resp[0x4:0x8])[0]
@@ -994,8 +971,8 @@ class qcdiag(metaclass=LogBase):
             return [num_bytes, seq_no, data]
 
     def efs_write(self, efsmethod, fdata, offset, data):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
-        buf += pack('<II', fdata, offset)
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
+        buf += pack("<II", fdata, offset)
         buf += data
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
@@ -1015,41 +992,41 @@ class qcdiag(metaclass=LogBase):
             return 0
 
     def efs_rmdir(self, efsmethod, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_RMDIR.value, 0x00)  # open efs file
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_RMDIR.value, 0x00)  # open efs file
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         return self.handle_error(resp)
 
     def efs_unlink(self, efsmethod, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_UNLINK.value, 0x00)  # open efs file
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_UNLINK.value, 0x00)  # open efs file
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         return self.handle_error(resp)
 
     def efs_chown(self, efsmethod, uid_val, gid_val, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CHOWN.value, 0x00)  # open efs file
-        buf += pack('<ii', uid_val, gid_val)
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CHOWN.value, 0x00)  # open efs file
+        buf += pack("<ii", uid_val, gid_val)
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         return self.handle_error(resp)
 
     def efs_chmod(self, efsmethod, mode, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CHMOD.value, 0x00)  # open efs file
-        buf += pack('<H', mode)
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_CHMOD.value, 0x00)  # open efs file
+        buf += pack("<H", mode)
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         return self.handle_error(resp)
 
     def efs_mkdir(self, efsmethod, mode, path):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_MKDIR.value, 0x00)  # open efs file
-        buf += pack('<H', mode)
-        buf += bytes(path, 'utf-8') + b"\x00"
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_MKDIR.value, 0x00)  # open efs file
+        buf += pack("<H", mode)
+        buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
         return self.handle_error(resp)
 
     def efs_read(self, efsmethod, fdata, nbytes, offset):
-        buf = pack('<BBBB', 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
-        buf += pack('<III', fdata, nbytes, offset)
+        buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
+        buf += pack("<III", fdata, nbytes, offset)
         resp = self.send(buf)
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
             fdata = unpack("<i", resp[0x4:0x8])[0]
@@ -1092,7 +1069,7 @@ class qcdiag(metaclass=LogBase):
         offset = 0
         fname = srcpath[srcpath.rfind("/") + 1:]
         fname = os.path.join(dstpath, fname)
-        with open(fname, 'wb') as write_handle:
+        with open(fname, "wb") as write_handle:
             dataleft = size
             while dataleft > 0:
                 rsize = dataleft
@@ -1121,7 +1098,7 @@ class qcdiag(metaclass=LogBase):
             else:
                 logging.error("No known efs method detected for reading.")
                 return 0
-        with open(srcpath, 'rb') as rf:
+        with open(srcpath, "rb") as rf:
             fdata = self.efs_open(efsmethod, O_RDONLY, 0, srcpath)
             if fdata == -1:
                 return 0
@@ -1129,13 +1106,13 @@ class qcdiag(metaclass=LogBase):
             if size == 0:
                 self.efs_close(efsmethod, fdata)
                 return 0
-            '''
+            """
             acr=(mode & O_ACCMODE)
             if acr==O_RDONLY:
                 print("File can only be read. Aborting.")
                 self.efs_close(efsmethod, fdata)
                 return
-            '''
+            """
             num_bytes = 0
             offset = 0
             size = os.fstat(srcpath).st_size
@@ -1181,40 +1158,44 @@ class DiagTools(metaclass=LogBase):
         connected = False
         diag = None
         if self.vid is None or self.pid is None:
-            diag = qcdiag(loglevel=self.__logger.level, portconfig=default_vid_pid)
+            diag = qcdiag(loglevel=self.__logger.level, portconfig=default_diag_vid_pid)
             connected = diag.connect()
         else:
             diag = qcdiag(loglevel=self.__logger.level, portconfig=[[self.vid, self.pid, self.interface]])
             connected = diag.connect()
         if connected:
-            if args.sp:
-                diag.send_sp(args.sp)
-            elif args.spc:
-                diag.send_spc(args.spc)
-            elif args.cmd:
-                print(diag.send_cmd(args.cmd))
-            elif args.info:
+            cmd = args.cmd
+            if cmd=="sp":
+                diag.send_sp(args.spval)
+            elif cmd=="spc":
+                diag.send_spc(args.spcval)
+            elif cmd=="cmd":
+                if args.cmdval=="":
+                    print("cmd needed as hex string, example: 00")
+                else:
+                    print(diag.send_cmd(args.cmdval))
+            elif cmd=="info":
                 print(diag.cmd_info())
-            elif args.download:
+            elif cmd=="download":
                 diag.enter_downloadmode()
-            elif args.sahara:
+            elif cmd=="sahara":
                 diag.enter_saharamode()
-            elif args.crash:
+            elif cmd=="crash":
                 diag.enforce_crash()
-            elif args.efslistdir:
+            elif cmd=="efslistdir":
                 print(diag.efslistdir(args.efslistdir))
-            elif args.efsreadfile:
+            elif cmd=="efsreadfile":
                 if args.src=="" or args.dst=="":
                     print("Usage: -efsreadfile -src srcfile -dst dstfile")
                     sys.exit()
                 print(diag.efsreadfile(args.src,args.dst))
-            elif args.nvread:
+            elif cmd=="nvread":
                 if "0x" in args.nvread:
                     nvitem = int(args.nvread, 16)
                 else:
                     nvitem = int(args.nvread)
                 diag.print_nvitem(nvitem)
-            elif args.nvreadsub:
+            elif cmd=="nvreadsub":
                 if not "," in args.nvreadsub:
                     print("NvReadSub usage: item,index")
                     sys.exit()
@@ -1229,7 +1210,7 @@ class DiagTools(metaclass=LogBase):
                     else:
                         nvindex = int(nv[1])
                 diag.print_nvitemsub(nvitem,nvindex)
-            elif args.nvwrite:
+            elif cmd=="nvwrite":
                 if not "," in args.nvwrite:
                     print("NvWrite requires data to write")
                     sys.exit()
@@ -1240,7 +1221,7 @@ class DiagTools(metaclass=LogBase):
                     nvitem = int(nv[0])
                 data = unhexlify(nv[1])
                 diag.write_nvitem(nvitem, data)
-            elif args.nvwritesub:
+            elif cmd=="nvwritesub":
                 if not "," in args.nvwritesub:
                     print("NvWriteSub requires item, index and data to write")
                     sys.exit()
@@ -1258,14 +1239,21 @@ class DiagTools(metaclass=LogBase):
                     nvindex = int(nv[1])
                 data = unhexlify(nv[2])
                 diag.write_nvitemsub(nvitem, nvindex, data)
-            elif args.nvbackup:
+            elif cmd=="nvbackup":
                 diag.backup_nvitems(args.nvbackup, "error.log")
-            elif args.writeimei:
+            elif cmd=="writeimei":
                 diag.write_imei(args.writeimei)
-            elif args.efsread:
+            elif cmd=="efsread":
                 diag.efsread(args.efsread)
             else:
                 print("A command is required. Use -cmd \"data\" for sending requests.")
+                print()
+                print("Valid commands are:")
+                print("-------------------")
+                print("info cmd sp spc nvread nvreadsub" +
+                " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile" +
+                " efslistdir download sahara crash")
+                print()
             diag.disconnect()
             sys.exit()
         else:
@@ -1275,40 +1263,78 @@ class DiagTools(metaclass=LogBase):
 
 
 def main():
-    info = 'Qualcomm Diag Client (c) B.Kerler 2019-2021.'
+    info = "Qualcomm Diag Client (c) B.Kerler 2019-2021."
     parser = argparse.ArgumentParser(description=info)
     print("\n" + info + "\n---------------------------------------\n")
-    parser.add_argument('-vid', metavar="<vid>", help='[Option] Specify vid', default="")
-    parser.add_argument('-pid', metavar="<pid>", help='[Option] Specify pid', default="")
-    parser.add_argument('-interface', metavar="<pid>", help='[Option] Specify interface number, default=0)',
+    parser.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
+    parser.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
+    parser.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
                         default="0")
-    parser.add_argument('-info', help='[Option] Get diag info', action='store_true')
-    parser.add_argument('-cmd', metavar=("<command>"), help='[Option] Command to send', default="")
-    parser.add_argument('-sp', metavar=("<SP>"), help='[Option] Security password to send, default: FFFFFFFFFFFFFFFE',
-                        default="", const='FFFFFFFFFFFFFFFE', nargs="?")
-    parser.add_argument('-spc', metavar=("<SPC>"), help='[Option] Security code to send, default: 303030303030',
-                        default="", const='303030303030', nargs="?")
-    parser.add_argument('-nvread', metavar=("<nvitem>"), help='[Option] Read nvitem', default="")
-    parser.add_argument('-nvreadsub', metavar=("<nvitem,nvindex>"), help='[Option] Read nvitem using subsystem', default="")
-    parser.add_argument('-nvwrite', metavar=("<nvitem,data>"), help='[Option] Write nvitem', default="")
-    parser.add_argument('-writeimei', metavar=("<imei1,imei2,...>"), help='[Option] Write imei', default="")
-    parser.add_argument('-nvwritesub', metavar=("<nvitem,nvindex,data>"), help='[Option] Write nvitem using subsystem', default="")
-    parser.add_argument('-nvbackup', metavar=("<filename>"), help='[Option] Make nvitem backup as json', default="")
-    parser.add_argument('-efsread', metavar=("<filename>"), help='[Option] Read efs', default="")
-    parser.add_argument('-efsreadfile', help='[Option] Read efs file', action='store_true')
-    parser.add_argument('-src', metavar=("<filename>"), help='[Option] Source filename', default="")
-    parser.add_argument('-dst', metavar=("<filename>"), help='[Option] Destination filename', default="")
-    parser.add_argument('-efslistdir', metavar=("<path>"), help='[Option] List efs directory', default="")
-    parser.add_argument('-download', help='[Option] Switch to sahara mode', action='store_true')
-    parser.add_argument('-sahara', help='[Option] Switch to sahara mode', action='store_true')
-    parser.add_argument('-crash', help='[Option] Enforce crash', action='store_true')
-    parser.add_argument('--debugmode', help='[Option] Enable verbose logging', action='store_true')
+    parser.add_argument("--debugmode", help="[Option] Enable verbose logging", action="store_true")
+
+    subparser = parser.add_subparsers(dest="cmd", help="Valid commands are:\ninfo cmd sp spc nvread nvreadsub" +
+                                                        " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile\n" +
+                                                        " efslistdir download sahara crash")
+
+    parser_info = subparser.add_parser("info", help="[Option] Get diag info")
+
+    parser_cmd = subparser.add_parser("cmd", help="Send command")
+    parser_cmd.add_argument("cmdval", help="cmd to send (hexstring), default: 00",
+                           default="", const="00", nargs="?")
+
+    parser_sp = subparser.add_parser("sp", help="Send Security password")
+    parser_sp.add_argument("spval", help="Security password to send, default: FFFFFFFFFFFFFFFE",
+                        default="FFFFFFFFFFFFFFFE", nargs="?")
+
+    parser_spc = subparser.add_parser("spc", help="Send Security Code")
+    parser_spc.add_argument("spcval", help="Security code to send, default: 303030303030",
+                        default="303030303030", nargs="?")
+
+    parser_nvread = subparser.add_parser("nvread", help="Read nvitem")
+    parser_nvread.add_argument("nvitem", help="[Option] NVItem to read", default="")
+
+    parser_nvreadsub = subparser.add_parser("nvreadsub", help="Read nvitem using subsystem")
+    parser_nvreadsub.add_argument("nvitem", help="[Option] NVItem to read", default="")
+    parser_nvreadsub.add_argument("nvindex", help="[Option] Index to read", default="")
+
+    parser_nvwrite = subparser.add_parser("nvwrite", help="Write nvitem")
+    parser_nvwrite.add_argument("nvitem", help="[Option] NVItem to write", default="")
+    parser_nvwrite.add_argument("data", help="[Option] Data to write", default="")
+
+    parser_nvwritesub = subparser.add_parser("nvwritesub", help="Write nvitem using subsystem")
+    parser_nvwritesub.add_argument("nvitem", help="[Option] NVItem to read", default="")
+    parser_nvwritesub.add_argument("nvindex", help="[Option] Index to read", default="")
+    parser_nvwritesub.add_argument("data", help="[Option] Data to write", default="")
+
+    parser_writeimei = subparser.add_parser("writeimei", help="Write imei")
+    parser_writeimei.add_argument("imei", metavar=("<imei1,imei2,...>"), help="[Option] IMEI to write", default="")
+
+
+    parser_nvbackup = subparser.add_parser("nvbackup", help="Make nvitem backup as json")
+    parser_nvbackup.add_argument("filename", help="[Option] Filename to write to", default="")
+
+    parser_efsread = subparser.add_parser("efsread", help="Read efs")
+    parser_efsread.add_argument("filename", help="[Option] Filename to write to", default="")
+
+    parser_efsreadfile = subparser.add_parser("efsreadfile", help="Read efs file")
+    parser_efsreadfile.add_argument("src", help="[Option] Source filename", default="")
+    parser_efsreadfile.add_argument("dst", help="[Option] Destination filename", default="")
+
+    parser_efslistdir = subparser.add_parser("efslistdir", help="List efs directory")
+    parser_efslistdir.add_argument("path", help="[Option] Path to list", default="")
+
+    parser_download = subparser.add_parser("download", help="[Option] Switch to sahara mode")
+
+    parser_sahara = subparser.add_parser("sahara", help="[Option] Switch to sahara mode")
+
+    parser_crash = subparser.add_parser("crash", help="[Option] Enforce crash")
+
 
     args = parser.parse_args()
     dg = DiagTools()
     dg.run(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
