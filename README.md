@@ -33,10 +33,24 @@ sudo python3 -m pip install -r requirements.txt
 ```
 
 Windows:
-- Boot device into 9008 mode, install Qualcomm_Diag_QD_Loader_2016_driver.exe from Drivers\Windows
-- Use Zadig 2.5 or higher, list all devices, select QUSB_BULK device and replace
-  driver with libusb >= 1.2.6.0 one (will replace original driver)
-- Get latest Zadig release [here] (https://zadig.akeo.ie/)
+#### Install python + git
+- Install python 3.9 and git
+- If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
+- WIN+R ```cmd```
+
+#### Grab files and install
+```
+git clone https://github.com/bkerler/edl
+cd edl
+pip3 install -r requirements.txt
+```
+
+#### Get latest UsbDk 64-Bit
+- Install normal QC 9008 Serial Port driver (or use default Windows COM Port one, make sure no exclamation is seen)
+- Get usbdk installer (.msi) from [here](https://github.com/daynix/UsbDk/releases/) and install it
+- Test on device connect using "UsbDkController -n" if you see a device with pid 0x9008
+- Works fine under Windows 10 and 11 :D
+
 
 ## Convert EDL loaders for automatic usage
 

@@ -119,28 +119,18 @@ import logging
 import subprocess
 import re
 from docopt import docopt
-from Library.utils import LogBase
-from Library.usblib import UsbClass
-from Library.sahara import sahara
-from Library.streaming_client import streaming_client
-from Library.firehose_client import firehose_client
-from Library.streaming import Streaming
+from edl.Config.usb_ids import default_ids
+from edl.Library.utils import LogBase
+from edl.Library.usblib import UsbClass
+from edl.Library.sahara import sahara
+from edl.Library.streaming_client import streaming_client
+from edl.Library.firehose_client import firehose_client
+from edl.Library.streaming import Streaming
 from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
-default_ids = [
-    [0x05c6, 0x9008, -1],
-    [0x05c6, 0x900e, -1],
-    [0x05c6, 0x9025, -1],
-    [0x1199, 0x9062, -1],
-    [0x1199, 0x9070, -1],
-    [0x1199, 0x9090, -1],
-    [0x0846, 0x68e0, -1],
-    [0x19d2, 0x0076, -1]
-]
-
-print("Qualcomm Sahara / Firehose Client V3.4 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.5 (c) B.Kerler 2018-2021.")
 
 
 def parse_cmd(rargs):
