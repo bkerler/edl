@@ -3,16 +3,18 @@
 # (c) B.Kerler 2018-2021
 import io
 import logging
-import array
-import usb.core  # pyusb
-import usb.util
-from enum import Enum
+
 import usb.core  # pyusb
 import usb.util
 import time
 import inspect
-from Library.utils import *
+import array
+import usb.backend.libusb0
+import usb.backend.libusb1
+from enum import Enum
 from binascii import hexlify
+from ctypes import c_void_p, c_int
+from Library.utils import *
 
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
@@ -50,8 +52,24 @@ CDC_CMDS = {
 
 
 class UsbClass(metaclass=LogBase):
+    
+    def load_windows_dll(self):
+        if os.name == 'nt':
+            windows_dir = None
+            try:
+                # add pygame folder to Windows DLL search paths
+                windows_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "Windows")
+                try:
+                    os.add_dll_directory(windows_dir)
+                except Exception:
+                    pass
+                os.environ['PATH'] = windows_dir + ';' + os.environ['PATH']
+            except Exception:
+                pass
+            del windows_dir
 
     def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
+        self.load_windows_dll()
         self.connected = False
         self.timeout = None
         self.vid = None
@@ -65,6 +83,7 @@ class UsbClass(metaclass=LogBase):
         self.baudrate = None
         self.parity = None
         self.configuration = None
+        self.backend = None
         self.loglevel = loglevel
         self.portconfig = portconfig
         self.devclass = devclass
@@ -79,6 +98,14 @@ class UsbClass(metaclass=LogBase):
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
+
+        if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
+            self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
+        elif sys.platform.startswith('win32'):
+            self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
+        if self.backend is not None:
+            self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
+            self.backend.lib.libusb_set_option(self.backend.ctx, 1)
 
     def verify_data(self, data, pre="RX:"):
         self.debug("", stack_info=True)
@@ -211,7 +238,7 @@ class UsbClass(metaclass=LogBase):
             data_or_wlength=0)
         self.debug("Linecoding set, {}b sent".format(wlen))
 
-    def connect(self, ep_in=-1, ep_out=-1):
+    def connect(self, EP_IN=-1, EP_OUT=-1):
         if self.connected:
             self.close()
             self.connected = False
@@ -219,7 +246,7 @@ class UsbClass(metaclass=LogBase):
             vid = usbid[0]
             pid = usbid[1]
             interface = usbid[2]
-            self.device = usb.core.find(idVendor=vid, idProduct=pid)
+            self.device = usb.core.find(idVendor=vid, idProduct=pid, backend=self.backend)
             if self.device is not None:
                 self.vid = vid
                 self.pid = pid
@@ -229,15 +256,30 @@ class UsbClass(metaclass=LogBase):
         if self.device is None:
             self.debug("Couldn't detect the device. Is it connected ?")
             return False
-        # try:
-        #    self.device.set_configuration()
-        # except:
-        #    pass
 
-        self.configuration = self.device.get_active_configuration()
+
+        try:
+            if self.device is not None:
+                self.configuration = self.device.get_active_configuration()
+        except usb.core.USBError as e:
+                if e.strerror == "Configuration not set":
+                    self.device.set_configuration()
+                    self.configuration = self.device.get_active_configuration()
+                if e.errno == 13:
+                    self.backend = usb.backend.libusb0.get_backend()
+                    self.device = usb.core.find(idVendor=vid, idProduct=pid, backend=self.backend)
+
         if self.interface == -1:
             for interfacenum in range(0, self.configuration.bNumInterfaces):
                 itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
+                try:
+                    if self.device.is_kernel_driver_active(interfacenum):
+                        self.debug("Detaching kernel driver")
+                        self.device.detach_kernel_driver(interfacenum)
+                except Exception as err:
+                    self.debug("No kernel driver supported: " + str(err))
+
+                usb.util.claim_interface(self.device, interfacenum)
                 if self.devclass != -1:
                     if itf.bInterfaceClass == self.devclass:  # MassStorage
                         self.interface = interfacenum
@@ -252,28 +294,20 @@ class UsbClass(metaclass=LogBase):
             return False
         if self.interface != -1:
             itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
-            try:
-                if self.device.is_kernel_driver_active(self.interface):
-                    self.debug("Detaching kernel driver")
-                    self.device.detach_kernel_driver(self.interface)
-            except Exception as e:
-                self.debug(str(e))
-
-            usb.util.claim_interface(self.device, self.interface)
-            if ep_out == -1:
+            if EP_OUT == -1:
                 # match the first OUT endpoint
                 self.EP_OUT = usb.util.find_descriptor(itf,
                                                        custom_match=lambda em: usb.util.endpoint_direction(
                                                            em.bEndpointAddress) == usb.util.ENDPOINT_OUT)
             else:
-                self.EP_OUT = ep_out
-            if ep_in == -1:
+                self.EP_OUT = EP_OUT
+            if EP_IN == -1:
                 # match the first OUT endpoint
                 self.EP_IN = usb.util.find_descriptor(itf,
                                                       custom_match=lambda em: usb.util.endpoint_direction(
                                                           em.bEndpointAddress) == usb.util.ENDPOINT_IN)
             else:
-                self.EP_IN = ep_in
+                self.EP_IN = EP_IN
 
             self.connected = True
             return True
