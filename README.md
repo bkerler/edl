@@ -19,7 +19,8 @@ cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-sudo python3 -m pip install -r requirements.txt
+python3 setup.py build
+python3 setup.py install
 ```
 
 ### macOS:
