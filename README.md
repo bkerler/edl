@@ -19,8 +19,8 @@ cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-python3 setup.py build
-python3 setup.py install
+python setup.py build
+sudo python setup.py install
 ```
 
 ### macOS:
@@ -30,7 +30,8 @@ brew install libusb git
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
-sudo python3 -m pip install -r requirements.txt
+python setup.py build
+sudo python setup.py install
 ```
 
 ### Windows:
@@ -43,6 +44,7 @@ sudo python3 -m pip install -r requirements.txt
 ```
 git clone https://github.com/bkerler/edl
 cd edl
+git submodule update --init --recursive
 pip3 install -r requirements.txt
 ```
 
