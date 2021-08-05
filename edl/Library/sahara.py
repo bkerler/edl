@@ -161,7 +161,7 @@ class sahara(metaclass=LogBase):
 
     def init_loader_db(self):
         loaderdb = {}
-        for (dirpath, dirnames, filenames) in os.walk(os.path.join(parent_dir,"Loaders")):
+        for (dirpath, dirnames, filenames) in os.walk(os.path.join(parent_dir,"..","Loaders")):
             for filename in filenames:
                 fn = os.path.join(dirpath, filename)
                 found = False
