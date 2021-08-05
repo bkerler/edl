@@ -7,7 +7,7 @@ setup(
     version='3.5',
     packages=find_packages(),
     long_description=open("README.md").read(),
-    scripts=['fastpwn','edl.py','diag.py','modem/sierrakeygen.py','modem/boottodwnload.py','modem/enableadb.py','Loaders/fhloaderparse.py','Loaders/beagle_to_loader.py'],
+    scripts=['edl.py','diag.py','modem/sierrakeygen.py','modem/boottodwnload.py','modem/enableadb.py','Loaders/fhloaderparse.py','Loaders/beagle_to_loader.py'],
     data_files = ['LICENSE','README.md'],
     long_description_content_type="text/markdown",
     url='https://github.com/bkerler/edl',
