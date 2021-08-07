@@ -1183,7 +1183,7 @@ class DiagTools(metaclass=LogBase):
             elif cmd=="crash":
                 diag.enforce_crash()
             elif cmd=="efslistdir":
-                print(diag.efslistdir(args.efslistdir))
+                print(diag.efslistdir(args.path))
             elif cmd=="efsreadfile":
                 if args.src=="" or args.dst=="":
                     print("Usage: -efsreadfile -src srcfile -dst dstfile")
