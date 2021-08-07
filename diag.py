@@ -1205,7 +1205,7 @@ class DiagTools(metaclass=LogBase):
                 else:
                     nvitem = int(args.nvitem)
                 if "0x" in nv[1]:
-                    nvindex = int(args.nvindex], 16)
+                    nvindex = int(args.nvindex, 16)
                 else:
                     nvindex = int(args.nvindex)
                 diag.print_nvitemsub(nvitem,nvindex)
