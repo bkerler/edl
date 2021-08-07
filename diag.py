@@ -1240,11 +1240,11 @@ class DiagTools(metaclass=LogBase):
                 data = unhexlify(nv[2])
                 diag.write_nvitemsub(nvitem, nvindex, data)
             elif cmd=="nvbackup":
-                diag.backup_nvitems(args.nvbackup, "error.log")
+                diag.backup_nvitems(args.filename, "error.log")
             elif cmd=="writeimei":
-                diag.write_imei(args.writeimei)
+                diag.write_imei(args.imei)
             elif cmd=="efsread":
-                diag.efsread(args.efsread)
+                diag.efsread(args.filename)
             else:
                 print("A command is required. Use -cmd \"data\" for sending requests.")
                 print()
