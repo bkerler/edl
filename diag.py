@@ -1190,54 +1190,48 @@ class DiagTools(metaclass=LogBase):
                     sys.exit()
                 print(diag.efsreadfile(args.src,args.dst))
             elif cmd=="nvread":
-                if "0x" in args.nvread:
-                    nvitem = int(args.nvread, 16)
+                if "0x" in args.nvitem:
+                    nvitem = int(args.nvitem, 16)
                 else:
-                    nvitem = int(args.nvread)
+                    nvitem = int(args.nvitem)
                 diag.print_nvitem(nvitem)
             elif cmd=="nvreadsub":
-                if not "," in args.nvreadsub:
-                    print("NvReadSub usage: item,index")
-                    sys.exit()
+                if args.nvitem is None or args.nvindex is None:
+                    print("Usage: nvreadsub [nvitem] [nvindex]")
+                    exit(1)
                 nv = args.nvreadsub.split(",")
-                if len(nv)>1:
-                    if "0x" in nv[0]:
-                        nvitem = int(nv[0], 16)
-                    else:
-                        nvitem = int(nv[0])
-                    if "0x" in nv[1]:
-                        nvindex = int(nv[1], 16)
-                    else:
-                        nvindex = int(nv[1])
+                if "0x" in args.nvitem:
+                    nvitem = int(args.nvitem, 16)
+                else:
+                    nvitem = int(args.nvitem)
+                if "0x" in nv[1]:
+                    nvindex = int(args.nvindex], 16)
+                else:
+                    nvindex = int(args.nvindex)
                 diag.print_nvitemsub(nvitem,nvindex)
             elif cmd=="nvwrite":
-                if not "," in args.nvwrite:
+                if args.data is None:
                     print("NvWrite requires data to write")
                     sys.exit()
-                nv = args.nvwrite.split(",")
-                if "0x" in args.nvwrite:
-                    nvitem = int(nv[0], 16)
+                if "0x" in args.nvitem:
+                    nvitem = int(args.nvitem, 16)
                 else:
-                    nvitem = int(nv[0])
-                data = unhexlify(nv[1])
+                    nvitem = int(args.nvitem)
+                data = unhexlify(args.data)
                 diag.write_nvitem(nvitem, data)
             elif cmd=="nvwritesub":
-                if not "," in args.nvwritesub:
+                if args.nvitem is None or args.nvindex is None or args.data is None:
                     print("NvWriteSub requires item, index and data to write")
                     sys.exit()
-                nv = args.nvwritesub.split(",")
-                if len(nv)<3:
-                    print("NvWriteSub requires item, index and data to write")
-                    sys.exit()
-                if "0x" in args.nvwritesub:
-                    nvitem = int(nv[0], 16)
+                if "0x" in args.nvitem:
+                    nvitem = int(args.nvitem, 16)
                 else:
-                    nvitem = int(nv[0])
-                if "0x" in args.nvwritesub:
-                    nvindex = int(nv[1], 16)
+                    nvitem = int(args.nvitem)
+                if "0x" in args.nvindex:
+                    nvindex = int(args.nvindex, 16)
                 else:
-                    nvindex = int(nv[1])
-                data = unhexlify(nv[2])
+                    nvindex = int(args.nvindex)
+                data = unhexlify(args.data)
                 diag.write_nvitemsub(nvitem, nvindex, data)
             elif cmd=="nvbackup":
                 diag.backup_nvitems(args.filename, "error.log")
