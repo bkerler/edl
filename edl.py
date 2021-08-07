@@ -130,7 +130,7 @@ from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.5 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.51 (c) B.Kerler 2018-2021.")
 
 
 def parse_cmd(rargs):
