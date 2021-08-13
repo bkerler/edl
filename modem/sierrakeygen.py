@@ -252,6 +252,12 @@ class SierraGenerator():
         if openlock != '03940D7067145323':
             return False
 
+        challenge = "2387885E7D290FEE" # Verified
+        devicegeneration = "MDM9x15A"
+        openlock = self.run(devicegeneration, challenge, 0)
+        if openlock != '676E10308BF05EE3':
+            return False        
+
         return True
 
     def SierraPreInit(self, counter, key, keylen, challengelen, mcount):
