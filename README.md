@@ -15,16 +15,21 @@ User: livedvd, Password:livedvd
 
 ### Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
+# Debian/Ubuntu/Mint/etc
 sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
-sudo apt purge ModemManager
+# Fedora/CentOS/etc
+sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
+
+sudo systemctl stop ModemManager
+sudo systemctl disable ModemManager
 
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-python setup.py build
-sudo python setup.py install
+python3 setup.py build
+sudo python3 setup.py install
 ```
 
 ### macOS:
