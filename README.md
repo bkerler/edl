@@ -22,14 +22,15 @@ sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
 
 sudo systemctl stop ModemManager
 sudo systemctl disable ModemManager
+sudo apt purge ModemManager
 
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-python3 setup.py build
-sudo python3 setup.py install
+python setup.py build
+sudo python setup.py install
 ```
 
 ### macOS:
