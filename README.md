@@ -15,7 +15,13 @@ User: livedvd, Password:livedvd
 
 ### Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
+# Debian/Ubuntu/Mint/etc
 sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
+# Fedora/CentOS/etc
+sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
+
+sudo systemctl stop ModemManager
+sudo systemctl disable ModemManager
 sudo apt purge ModemManager
 
 git clone https://github.com/bkerler/edl.git
