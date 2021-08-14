@@ -104,8 +104,11 @@ class UsbClass(metaclass=LogBase):
         elif sys.platform.startswith('win32'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
         if self.backend is not None:
-            self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
-            self.backend.lib.libusb_set_option(self.backend.ctx, 1)
+            try:
+                self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
+                self.backend.lib.libusb_set_option(self.backend.ctx, 1)
+            except:
+                self.backend = None
 
     def verify_data(self, data, pre="RX:"):
         self.debug("", stack_info=True)
