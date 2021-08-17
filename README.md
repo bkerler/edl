@@ -17,6 +17,7 @@ User: livedvd, Password:livedvd
 ```bash
 # Debian/Ubuntu/Mint/etc
 sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
+sudo apt purge modemmanager
 # Fedora/CentOS/etc
 sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
 
