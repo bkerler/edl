@@ -912,6 +912,10 @@ class firehose(metaclass=LogBase):
         v = b'-1'
         if platform.system() == 'Windows':
             self.cdc.timeout = 10
+        elif platform.system() == 'Darwin':
+            # must ensure the timeout is enough to fill the buffer we alloc
+            # which is 1MB, othwise some data are dropped in the underlying usb libraries
+            self.cdc.timeout = 50
         else:
             self.cdc.timeout = 10
         info = []
