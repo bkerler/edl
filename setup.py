@@ -29,6 +29,9 @@ setup(
     'lxml',
     'pylzma',
     'pycryptodome'
+    'capstone'
+    'keystone-engine'
+    'wheel'
     ],
     author='B. Kerler',
     author_email='info@revskills.de',
