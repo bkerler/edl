@@ -385,6 +385,8 @@ class UsbClass(metaclass=LogBase):
                 length=ep_read(buffer, timeout)
                 extend(buffer[:length])
                 if len(tmp)>0:
+                    if self.loglevel == logging.DEBUG:
+                        self.verify_data(tmp, "RX:")
                     return tmp
             except usb.core.USBError as e:
                 error = str(e.strerror)
@@ -403,8 +405,6 @@ class UsbClass(metaclass=LogBase):
                     sys.exit(0)
                 else:
                     break
-        if self.loglevel == logging.DEBUG:
-            self.verify_data(tmp, "RX:")
         return tmp
 
     def ctrl_transfer(self, bmrequesttype, brequest, wvalue, windex, data_or_wlength):
