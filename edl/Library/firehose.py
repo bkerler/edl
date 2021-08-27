@@ -503,16 +503,16 @@ class firehose(metaclass=LogBase):
             while bytestowrite > 0:
                 wlen = min(bytestowrite, self.cfg.MaxPayloadSizeToTargetInBytes)
 
-                wdata = data[pos:pos + wlen]
+                wrdata = wfdata[pos:pos + wlen]
                 pos += wlen
                 bytestowrite -= wlen
 
                 if wlen % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                     filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
                               self.cfg.SECTOR_SIZE_IN_BYTES
-                    wdata += b"\x00" * (filllen - wlen)
+                    wrdata += b"\x00" * (filllen - wlen)
 
-                self.cdc.write(wdata)
+                self.cdc.write(wrdata)
 
                 self.show_progress("Write", total - bytestowrite, total, display)
                 self.cdc.write(b'')
