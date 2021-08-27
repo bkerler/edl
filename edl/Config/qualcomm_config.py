@@ -137,7 +137,7 @@ msmids = {
     0x1260E1: "IPQ6018",
     0x1070E1: "MDM9205", # 0x20130100
     0x1450E1: "agatti", # soc_vers 0x9003
-    0x13F0E1: "bitra_SDM", # soc_vers 0x6012
+    0x13F0E1: "bitra_SDM", # soc_vers 0x6012 SDM690
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
     0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 662/460 SM4250/SM4350, bengal
