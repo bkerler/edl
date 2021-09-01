@@ -13,14 +13,14 @@ from telnetlib import Telnet
 from binascii import hexlify, unhexlify
 
 try:
-    from Library.utils import LogBase
+    from edl.Library.utils import LogBase
 except Exception as e:
     import os,sys,inspect
     current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = os.path.dirname(current_dir)
     sys.path.insert(0, parent_dir)
     from diag import qcdiag
-    from Library.utils import LogBase
+    from edl.Library.utils import LogBase
 
 '''
 C7 = 7 0		0	2	7		5 0
