@@ -13,13 +13,13 @@ import usb.core
 from enum import Enum
 from diag import qcdiag
 try:
-    from Library.utils import LogBase
+    from edl.Library.utils import LogBase
 except Exception as e:
     import os,sys,inspect
     current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = os.path.dirname(current_dir)
     sys.path.insert(0, parent_dir)
-    from Library.utils import LogBase
+    from edl.Library.utils import LogBase
 
 class vendor(Enum):
     sierra = 0x1199
