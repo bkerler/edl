@@ -26,5 +26,6 @@ default_diag_vid_pid = [
     [0x1bc7, 0x1040, 0],  # Telit LM960A18 USBCFG 1 QMI
     [0x1bc7, 0x1041, 0],  # Telit LM960A18 USBCFG 2 MBIM
     [0x1bc7, 0x1201, 0],  # Telit LE910C4-NF
+    [0x05c6, 0x9091, 0],
     [0x05c6, 0x9092, 0]
 ]
