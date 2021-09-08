@@ -10,7 +10,7 @@ Usage:
     edl.py [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
     edl.py [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
     edl.py server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl.py memorydump [--debugmode] [--vid=vid] [--pid=pid]
+    edl.py memorydump [--partitions=partnames] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py printgpt [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid]
     edl.py gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
     edl.py r <partitionname> <filename> [--memory=memtype] [--sectorsize==bytes] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid]
@@ -99,6 +99,7 @@ Options:
     --sectorsize=bytes                 Set default sector size
     --memory=memtype                   Set memory type ("NAND", "eMMC", "UFS", "spinor")
     --partitionfilename=filename       Set partition table as filename for streaming mode
+    --partitions=partnames             Skip reading partition with names != "partname1,partname2,etc."
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
     --skipstorageinit                  Skip storage initialisation
@@ -272,7 +273,10 @@ class main(metaclass=LogBase):
                     if args["memorydump"]:
                         time.sleep(0.5)
                         print("Device is in memory dump mode, dumping memory")
-                        self.sahara.debug_mode()
+                        if args["--partitions"]:
+                            self.sahara.debug_mode(args["--partitions"].split(","))
+                        else:
+                            self.sahara.debug_mode()
                         self.exit()
                     else:
                         print("Device is in streaming mode, uploading loader")

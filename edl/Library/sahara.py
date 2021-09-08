@@ -678,7 +678,7 @@ class sahara(metaclass=LogBase):
         self.cmd_reset()
         return True
 
-    def debug_mode(self):
+    def debug_mode(self, dump_partitions=None):
         if not self.cmd_hello(self.sahara_mode.SAHARA_MODE_MEMORY_DEBUG):
             return False
         if os.path.exists("memory"):
@@ -703,6 +703,8 @@ class sahara(metaclass=LogBase):
                                              self.parttbl_64bit)
                             desc = pd["desc"].replace(b"\x00", b"").decode('utf-8')
                             filename = pd["filename"].replace(b"\x00", b"").decode('utf-8')
+                            if dump_partitions and filename not in dump_partitions:
+                                continue
                             mem_base = pd["mem_base"]
                             save_pref = pd["save_pref"]
                             length = pd["length"]
@@ -729,6 +731,8 @@ class sahara(metaclass=LogBase):
                             pd = read_object(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize], self.parttbl)
                             desc = pd["desc"].replace(b"\x00", b"").decode('utf-8')
                             filename = pd["filename"].replace(b"\x00", b"").decode('utf-8')
+                            if dump_partitions and filename not in dump_partitions:
+                                continue
                             mem_base = pd["mem_base"]
                             save_pref = pd["save_pref"]
                             length = pd["length"]
