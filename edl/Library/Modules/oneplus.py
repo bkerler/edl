@@ -105,7 +105,7 @@ deviceconfig = {
     "20838": dict(version=2, cm="f498b60f", param_mode=0),
     # OP9 TMO, lemonadet
     "20854": dict(version=2, cm="16225d4e", param_mode=0),
-    # OP9 Pro TMO, lemonadep
+    # OP9 Pro TMO, lemonadept
     "2085A": dict(version=2, cm="7f19519a", param_mode=0),
 
     # dre8t
