@@ -671,7 +671,8 @@ class sahara(metaclass=LogBase):
             print(f"Dumping {filename}({desc}) at {hex(mem_base)}, length {hex(length)}")
             fname = os.path.join("memory", filename)
             with open(fname, "wb") as wf:
-                if self.read_memory(mem_base, length, True, wf):
+                self.read_memory(mem_base, length, True, wf)
+                if wf.tell() == length:
                     print("Done dumping memory")
                 else:
                     self.error("Error dumping memory")
