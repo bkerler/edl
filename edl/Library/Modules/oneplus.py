@@ -97,23 +97,26 @@ deviceconfig = {
     "19815": dict(version=2, cm="9c151c7f", param_mode=0),
     "20859": dict(version=2, cm="9c151c7f", param_mode=0),
     # OP9, lemonade
-    "19825": dict(version=2, cm="0898dcd6", param_mode=1),
-    "20852": dict(version=2, cm="0898dcd6", param_mode=1),
-    "20853": dict(version=2, cm="0898dcd6", param_mode=1),
+    "19825": dict(version=2, cm="0898dcd6", param_mode=0),
+    "20852": dict(version=2, cm="0898dcd6", param_mode=0),
+    "20853": dict(version=2, cm="0898dcd6", param_mode=0),
     # OP9R, lemonades
-    "20828": dict(version=2, cm="f498b60f", param_mode=1),
-    "20838": dict(version=2, cm="f498b60f", param_mode=1),
+    "20828": dict(version=2, cm="f498b60f", param_mode=0),
+    "20838": dict(version=2, cm="f498b60f", param_mode=0),
     # OP9 TMO, lemonadet
-    "20854": dict(version=2, cm="16225d4e", param_mode=1),
-    # OP9 Pro TMO, lemonadept
-    "2085A": dict(version=2, cm="7f19519a", param_mode=1),
+    "20854": dict(version=2, cm="16225d4e", param_mode=0),
+    # OP9 Pro TMO, lemonadep
+    "2085A": dict(version=2, cm="7f19519a", param_mode=0),
 
     # dre8t
-    "20818": dict(version=1, cm=None, param_mode=1),
+    "20818": dict(version=1, cm=None, param_mode=0),
     # dre8m
-    "2083C": dict(version=1, cm=None, param_mode=1),
+    "2083C": dict(version=1, cm=None, param_mode=0),
     # dre9
-    "2083D": dict(version=1, cm=None, param_mode=1)
+    "2083D": dict(version=1, cm=None, param_mode=0),
+
+    # op nord ce, ebba
+    "20813": dict(version=2, cm="48ad7b61", param_mode=0)
 }
 
 
