@@ -692,12 +692,15 @@ class firehose_client(metaclass=LogBase):
                     break
                 if "partentries" in dir(guid_gpt):
                     for filename in filenames:
+                        found=False
+                        partname = filename[filename.rfind("/") + 1:]
+                        if partname[-4:] in [".bin",".img",".mbn"]:
+                           partname = partname[:-4]
                         for partition in guid_gpt.partentries:
-                            partname = filename[filename.rfind("/") + 1:]
-                            if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
-                                partname = partname[:-4]
                             if partition.name == partname:
+                                found=True
                                 if partition.name in skip:
+                                    self.info(f"Skipping {partition.name}")
                                     continue
                                 sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
                                 if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
@@ -708,6 +711,8 @@ class firehose_client(metaclass=LogBase):
                                     return False
                                 self.printer(f"Writing {filename} to partition {str(partition.name)}.")
                                 self.firehose.cmd_program(lun, partition.sector, filename)
+                        if not found:
+                            self.info(f"Couldn't find any partition with name {partname}, skipping.")
                 else:
                     self.printer("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
                     return False
