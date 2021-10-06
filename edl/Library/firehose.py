@@ -942,7 +942,7 @@ class firehose(metaclass=LogBase):
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
         else:
-            self.supported_functions = []
+            self.supported_functions = ["demacia", "setprojmodel"]
             for line in info:
                 if "chip serial num" in line.lower():
                     self.info(line)
