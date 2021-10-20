@@ -186,7 +186,10 @@ class firehose(metaclass=LogBase):
                         self.progtime = t0
             else:
                 if display:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                    print_progress(100, 100,
+                        prefix='Progress:',
+                        suffix=prefix+' Complete (Sector {0} of {0})'.format(total // self.cfg.SECTOR_SIZE_IN_BYTES),
+                        bar_length=50)
         except:
             pass
 
