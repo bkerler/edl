@@ -580,7 +580,10 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
 
-    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix))
+    progstring = '\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)
+    cols, _ = shutil.get_terminal_size()
+    progstring += " " * (cols - len(progstring) - 1)
+    sys.stdout.write(progstring)
 
     if iteration == total:
         sys.stdout.write('\n')
