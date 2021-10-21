@@ -575,12 +575,15 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
         decimals    - Optional  : positive number of decimals in percent complete (Int)
         bar_length  - Optional  : character length of bar (Int)
     """
-    str_format = "{0:." + str(decimals) + "f}"
+    str_format = "{:>5." + str(decimals) + "f}"
     percents = str_format.format(100 * (iteration / float(total)))
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
 
-    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix))
+    progstring = '\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)
+    cols, _ = shutil.get_terminal_size()
+    progstring += " " * (cols - len(progstring) - 1)
+    sys.stdout.write(progstring)
 
     if iteration == total:
         sys.stdout.write('\n')
