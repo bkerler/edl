@@ -98,6 +98,7 @@ deviceconfig = {
     "20859": dict(version=2, cm="9c151c7f", param_mode=0),
     # OP9, lemonade
     "19825": dict(version=2, cm="0898dcd6", param_mode=0),
+    "20851": dict(version=2, cm="0898dcd6", param_mode=0),
     "20852": dict(version=2, cm="0898dcd6", param_mode=0),
     "20853": dict(version=2, cm="0898dcd6", param_mode=0),
     # OP9R, lemonades
@@ -248,7 +249,7 @@ class oneplus1:
         self.prodkey = prodkey
         self.ModelVerifyPrjName = ModelVerifyPrjName
         self.fh = fh
-        self.random_postfix = "8MwDdWXZO7sj0PF3"
+        self.random_postfix = "0iyFR00pPnoqjVNL"
         self.Version = "guacamoles_21_O.22_191107"
         self.cf = str(cf)
         self.soc_sn = str(serial)

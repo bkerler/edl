@@ -551,17 +551,26 @@ class sahara(metaclass=LogBase):
                         # exit(0)
                 elif self.hwidstr is not None and self.pkhash is not None:
                     msmid = self.hwidstr[:8]
+                    found = False
                     for hwidstr in self.loaderdb:
                         if msmid == hwidstr[:8]:
-                            for pkhash in self.loaderdb[hwidstr]:
-                                if self.pkhash[0:16] == pkhash:
-                                    self.programmer = self.loaderdb[hwidstr][pkhash]
-                                    self.info(f"Trying loader: {self.programmer}")
-                                    self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
-                                    return True
-                    self.error(
-                        f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
-                        "_[FHPRG/ENPRG].bin) :(")
+                            if self.pkhash[0:16] in self.loaderdb[hwidstr]:
+                                self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
+                                self.info(f"Found loader: {self.programmer}")
+                                self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
+                                return True
+                        else:
+                            if self.pkhash[0:16] in self.loaderdb[hwidstr]:
+                                self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
+                                self.info(f"Found possible loader: {self.programmer}")
+                                found = True
+                    if found:
+                        self.cmd_modeswitch(self.sahara_mode.SAHARA_MODE_COMMAND)
+                        return True
+                    else:
+                        self.error(
+                            f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
+                            "_[FHPRG/ENPRG].bin) :(")
                     return False
                 else:
                     self.error(f"Couldn't find a suitable loader :(")

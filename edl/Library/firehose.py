@@ -22,20 +22,20 @@ except ImportError as e:
 
 
 class nand_partition:
-    partentries = []
+    partentries = {}
 
     def __init__(self, parent, printer=None):
         if printer is None:
             self.printer = print
         else:
             self.printer = printer
-        self.partentries = []
+        self.partentries = {}
         self.partitiontblsector = None
         self.parent = parent
         self.storage_info = {}
 
     def parse(self, partdata):
-        self.partentries = []
+        self.partentries = {}
 
         class partf:
             sector = 0
@@ -62,14 +62,15 @@ class nand_partition:
                 np.attr2 = attr2
                 np.attr3 = attr3
                 np.which_flash = which_flash
-                self.partentries.append(np)
+                self.partentries[np.name]=np
             return True
         return False
 
     def print(self):
         self.printer("Name            Offset\t\tLength\t\tAttr\t\t\tFlash")
         self.printer("-------------------------------------------------------------")
-        for partition in self.partentries:
+        for selpart in self.partentries:
+            partition = self.partentries[selpart]
             name = partition.name
             for i in range(0x10 - len(partition.name)):
                 name += " "
@@ -173,23 +174,17 @@ class firehose(metaclass=LogBase):
                         tdiff=t0-self.progtime
                         datasize=(pos-self.progpos)/1024/1024
                         throughput=(((datasize)/(tdiff)))
-                        max_pos_len = len(str(total // self.cfg.SECTOR_SIZE_IN_BYTES))
-                        print_progress(prog, 100,
-                            prefix='Progress:',
-                            suffix=prefix+' (Sector {} of {}) {:0.2f} MB/s'.format(
-                                '{0:>{1}d}'.format(pos // self.cfg.SECTOR_SIZE_IN_BYTES, max_pos_len),
-                                total // self.cfg.SECTOR_SIZE_IN_BYTES,
-                                throughput),
-                            bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:',
+                                       suffix=prefix+' (Sector %d of %d) %0.2f MB/s' %
+                                       (pos // self.cfg.SECTOR_SIZE_IN_BYTES,
+                                        total // self.cfg.SECTOR_SIZE_IN_BYTES,
+                                        throughput), bar_length=50)
                         self.prog = prog
                         self.progpos = pos
                         self.progtime = t0
             else:
                 if display:
-                    print_progress(100, 100,
-                        prefix='Progress:',
-                        suffix=prefix+' Complete (Sector {0} of {0})'.format(total // self.cfg.SECTOR_SIZE_IN_BYTES),
-                        bar_length=50)
+                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         except:
             pass
 
@@ -204,10 +199,10 @@ class firehose(metaclass=LogBase):
             if guid_gpt is None:
                 break
             else:
-                for partition in guid_gpt.partentries:
-                    fpartitions[lunname].append(partition.name)
-                    if partition.name == partitionname:
-                        return [True, lun, partition]
+                if partitionname in guid_gpt.partentries:
+                    return [True, lun, guid_gpt.partentries[partitionname]]
+            for part in guid_gpt.partentries:
+                fpartitions[lunname].append(part)
         return [False, fpartitions]
 
     def getstatus(self, resp):
@@ -914,41 +909,16 @@ class firehose(metaclass=LogBase):
             return self.lunsizes[lun]
         return guid_gpt.totalsectors
 
-    def connect(self):
-        v = b'-1'
-        if platform.system() == 'Windows':
-            self.cdc.timeout = 50
-        elif platform.system() == 'Darwin':
-            # must ensure the timeout is enough to fill the buffer we alloc
-            # which is 1MB, othwise some data are dropped in the underlying usb libraries
-            self.cdc.timeout = 50
-        else:
-            self.cdc.timeout = 50
-        info = []
-        while v != b'':
-            try:
-                v = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
-                if v == b'':
-                    break
-                data = self.xml.getlog(v)
-                if len(data) > 0:
-                    info.append(data[0])
-                if not info:
-                    break
-            except Exception as err:  # pylint: disable=broad-except
-                pass
+    def get_supported_functions(self):
         supfunc = False
-        if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
-            if len(info) > 0:
-                self.debug(info[0])
-            info = self.cmd_nop()
+        info = self.cmd_nop()
         if not info:
             self.info("No supported functions detected, configuring qc generic commands")
             self.supported_functions = ['configure', 'program', 'firmwarewrite', 'patch', 'setbootablestoragedrive',
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
         else:
-            self.supported_functions = ["demacia", "setprojmodel"]
+            self.supported_functions = []
             for line in info:
                 if "chip serial num" in line.lower():
                     self.info(line)
@@ -984,6 +954,84 @@ class firehose(metaclass=LogBase):
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
 
+    def connect(self):
+        v = b'-1'
+        if platform.system() == 'Windows':
+            self.cdc.timeout = 50
+        elif platform.system() == 'Darwin':
+            # must ensure the timeout is enough to fill the buffer we alloc
+            # which is 1MB, othwise some data are dropped in the underlying usb libraries
+            self.cdc.timeout = 50
+        else:
+            self.cdc.timeout = 50
+        info = []
+        while v != b'':
+            try:
+                v = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
+                if v == b'':
+                    break
+                data = self.xml.getlog(v)
+                if len(data) > 0:
+                    info.append(data[0])
+                if not info:
+                    break
+            except Exception as err:  # pylint: disable=broad-except
+                pass
+
+        if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
+            if len(info) > 0:
+                self.debug(info[0])
+        if self.serial is None or self.supported_functions is []:
+            try:
+                if os.path.exists("edl_config.json"):
+                    pinfo=json.loads(open("edl_config.json","rb").read())
+                    if self.supported_functions is []:
+                        if "supported_functions" in pinfo:
+                            self.supported_functions = pinfo["supported_functions"]
+                    if self.serial is None:
+                        if "serial" in pinfo:
+                            self.serial = pinfo["serial"]
+                else:
+                    self.get_supported_functions()
+            except:
+                self.get_supported_functions()
+                pass
+
+        else:
+            supfunc = False
+            for line in info:
+                if "chip serial num" in line.lower():
+                    self.info(line)
+                    try:
+                        serial = line.split("0x")[1][:-1]
+                        self.serial = int(serial, 16)
+                    except Exception as err:  # pylint: disable=broad-except
+                        self.debug(str(err))
+                        serial = line.split(": ")[2]
+                        self.serial = int(serial.split(" ")[0])
+                if supfunc and "end of supported functions" not in line.lower():
+                    rs = line.replace("\n", "")
+                    if rs != "":
+                        rs = rs.replace("INFO: ", "")
+                        self.supported_functions.append(rs)
+                if "supported functions" in line.lower():
+                    supfunc = True
+            try:
+                if os.path.exists(self.cfg.programmer):
+                    data = open(self.cfg.programmer, "rb").read()
+                    for cmd in [b"demacia", b"setprojmodel", b"setswprojmodel", b"setprocstart", b"SetNetType"]:
+                        if cmd in data:
+                            self.supported_functions.append(cmd.decode('utf-8'))
+                state={
+                    "supported_functions" : self.supported_functions,
+                    "programmer" : self.cfg.programmer,
+                    "serial" : self.serial
+                }
+                open("edl_config.json", "w").write(json.dumps(state))
+            except:
+                pass
+
+        #rsp = self.xmlsend(data, self.skipresponse)
         if "getstorageinfo" in self.supported_functions and self.args["--memory"] is None:
             storageinfo = self.cmd_getstorageinfo()
             if storageinfo is not None and storageinfo!=[]:
@@ -1051,6 +1099,18 @@ class firehose(metaclass=LogBase):
         else:
             self.warning("GetStorageInfo command isn't supported.")
             return None
+
+    def cmd_test(self, cmd):
+        token="1234"
+        pk="1234"
+        data = "<?xml version=\"1.0\" ?>\n<data>\n<"+cmd+" token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+        val = self.xmlsend(data)
+        if len(val)>1:
+            if b"raw hex token" in val[2]:
+                return True
+            if b"opcmd is not enabled" in val[2]:
+                return True
+        return False
 
     def cmd_getstorageinfo_string(self):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"

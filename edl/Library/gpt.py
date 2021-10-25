@@ -139,7 +139,7 @@ class gpt(metaclass=LogBase):
         self.totalsectors = None
         self.header = None
         self.sectorsize = None
-        self.partentries = []
+        self.partentries = {}
 
         self.error = self.__logger.error
         self.__logger.setLevel(loglevel)
@@ -165,7 +165,7 @@ class gpt(metaclass=LogBase):
             start = self.header.part_entry_start_lba * sectorsize
 
         entrysize = self.header.part_entry_size
-        self.partentries = []
+        self.partentries = {}
 
         class partf:
             unique = b""
@@ -202,7 +202,7 @@ class gpt(metaclass=LogBase):
             pa.name = partentry.name.replace(b"\x00\x00", b"").decode('utf-16')
             if pa.type == "EFI_UNUSED":
                 continue
-            self.partentries.append(pa)
+            self.partentries[pa.name]=pa
         self.totalsectors = self.header.last_usable_lba + 34
         return True
 
@@ -211,7 +211,8 @@ class gpt(metaclass=LogBase):
 
     def tostring(self):
         mstr = "\nGPT Table:\n-------------\n"
-        for partition in self.partentries:
+        for selpart in self.partentries:
+            partition=self.partentries[selpart]
             mstr += ("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:08x}, UUID {}, Type {}\n".format(
                 partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
                 partition.flags, partition.unique, partition.type))
@@ -226,7 +227,8 @@ class gpt(metaclass=LogBase):
             partofsingleimage = "false"
             readbackverify = "false"
             sparse = "false"
-            for partition in self.partentries:
+            for selpart in self.partentries:
+                partition = self.partentries[selpart]
                 filename = partition.name + ".bin"
                 mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" " + \
                         f"file_sector_offset=\"0\" " \
@@ -333,7 +335,8 @@ if __name__ == "__main__":
                     ssize = sectorsize
                     break
             if ssize is not None:
-                for partition in gp.partentries:
+                for selpart in gp.partentries:
+                    partition = gp.partentries[selpart]
                     if args.partition is not None:
                         if partition != args.partition:
                             continue

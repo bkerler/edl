@@ -62,9 +62,10 @@ class firehose_client(metaclass=LogBase):
         if "--devicemodel" in arguments:
             if arguments["--devicemodel"] is not None:
                 devicemodel = arguments["--devicemodel"]
-        self.firehose = firehose(cdc, xmlparser(), self.cfg, self.__logger.level, devicemodel, sahara.serial,
-                                 skipresponse,
-                                 self.getluns(arguments), arguments)
+        self.cfg.programmer = self.sahara.programmer
+        self.firehose = firehose(cdc=cdc, xml=xmlparser(), cfg=self.cfg, loglevel=self.__logger.level,
+                                 devicemodel=devicemodel, serial=sahara.serial, skipresponse=skipresponse,
+                                 luns=self.getluns(arguments), args=arguments)
         self.connected = False
         self.firehose.connect()
         if "hwid" in dir(sahara):
@@ -297,7 +298,8 @@ class firehose_client(metaclass=LogBase):
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, self.firehose.cfg.SECTOR_SIZE_IN_BYTES, storedir)
 
-                for partition in guid_gpt.partentries:
+                for selpart in guid_gpt.partentries:
+                    partition = guid_gpt.partentries[selpart]
                     partitionname = partition.name
                     if partition.name in skip:
                         continue
@@ -458,8 +460,9 @@ class firehose_client(metaclass=LogBase):
                 if guid_gpt is None:
                     break
                 pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2", "reserved3"]
-                for partition in guid_gpt.partentries:
-                    if partition.name in pnames:
+                for pname in pnames:
+                    if pname in guid_gpt.partentries:
+                        partition = guid_gpt.partentries[pname]
                         self.printer(f"Detected partition: {partition.name}")
                         data = self.firehose.cmd_read_buffer(lun,
                                                              partition.sector +
@@ -690,29 +693,23 @@ class firehose_client(metaclass=LogBase):
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
                     break
-                if "partentries" in dir(guid_gpt):
-                    for filename in filenames:
-                        found=False
-                        partname = filename[filename.rfind("/") + 1:]
-                        if partname[-4:] in [".bin",".img",".mbn"]:
-                           partname = partname[:-4]
-                        for partition in guid_gpt.partentries:
-                            if partition.name == partname:
-                                found=True
-                                if partition.name in skip:
-                                    self.info(f"Skipping {partition.name}")
-                                    continue
-                                sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                                if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                                    sectors += 1
-                                if sectors > partition.sectors:
-                                    self.error(f"Error: {filename} has {sectors} sectors but partition " +
-                                               f"only has {partition.sectors}.")
-                                    return False
-                                self.printer(f"Writing {filename} to partition {str(partition.name)}.")
-                                self.firehose.cmd_program(lun, partition.sector, filename)
-                        if not found:
-                            self.info(f"Couldn't find any partition with name {partname}, skipping.")
+                for filename in filenames:
+                    partname = filename[filename.rfind("/") + 1:]
+                    if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
+                        partname = partname[:-4]
+                    if partname in skip:
+                        continue
+                    if partname in guid_gpt.partentries:
+                        partition = guid_gpt.partentries[partname]
+                        sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                        if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                            sectors += 1
+                        if sectors > partition.sectors:
+                            self.error(f"Error: {filename} has {sectors} sectors but partition " +
+                                       f"only has {partition.sectors}.")
+                            return False
+                        self.printer(f"Writing {filename} to partition {str(partition.name)}.")
+                        self.firehose.cmd_program(lun, partition.sector, filename)
                 else:
                     self.printer("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
                     return False
@@ -770,16 +767,16 @@ class firehose_client(metaclass=LogBase):
                     break
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
-                if "partentries" in dir(guid_gpt):
-                    for partition in guid_gpt.partentries:
-                        if partition.name == partitionname:
-                            self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
-                            self.printer(
-                                f"Erased {partitionname} starting at sector {str(partition.sector)} " +
-                                f"with sector count {str(partition.sectors)}.")
-                            return True
+
+                if partitionname in guid_gpt.partentries:
+                    partition = guid_gpt.partentries[partitionname]
+                    self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
+                    self.printer(
+                        f"Erased {partitionname} starting at sector {str(partition.sector)} " +
+                        f"with sector count {str(partition.sectors)}.")
+                    return True
                 else:
-                    self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
+                    self.printer(f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
                     return False
             self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False
@@ -798,16 +795,16 @@ class firehose_client(metaclass=LogBase):
                     break
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
-                if "partentries" in dir(guid_gpt):
-                    for partition in guid_gpt.partentries:
-                        if partition.name == partitionname:
-                            self.firehose.cmd_erase(lun, partition.sector, sectors)
-                            self.printer(
-                                f"Erased {partitionname} starting at sector {str(partition.sector)} " +
-                                f"with sector count {str(sectors)}.")
-                            return True
+                if partitionname in guid_gpt.partentries:
+                    partition = guid_gpt.partentries[partitionname]
+                    self.firehose.cmd_erase(lun, partition.sector, sectors)
+                    self.printer(
+                        f"Erased {partitionname} starting at sector {str(partition.sector)} " +
+                        f"with sector count {str(sectors)}.")
+                    return True
                 else:
-                    self.printer("Couldn't erase partition. Either wrong memorytype given or no gpt partition.")
+                    self.printer(f"Couldn't erase partition {partitionname}. Either wrong memorytype " +
+                                 f"given or no gpt partition.")
                     return False
             self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False
