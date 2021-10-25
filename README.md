@@ -73,16 +73,16 @@ or from [here](https://github.com/bkerler/Loaders)
 ## Convert own EDL loaders for automatic usage
 
 - Make a subdirectory "newstuff", copy your edl loaders to this subdirectory
-- ```./Loaders/fhloaderparse.py newstuff Loaders```
+- ```fhloaderparse newstuff Loaders```
 
-- or sniff existing edl tools using Totalphase Beagle 480, set filter to ```filter({'inputs': False, 'usb3': False, 'chirps': False, 'dev': 26, 'usb2resets': False, 'sofs': False, 'ep': 1})```, export to binary file as "sniffeddata.bin" and then use ```beagle_to_loader.py sniffeddata.bin```
+- or sniff existing edl tools using Totalphase Beagle 480, set filter to ```filter({'inputs': False, 'usb3': False, 'chirps': False, 'dev': 26, 'usb2resets': False, 'sofs': False, 'ep': 1})```, export to binary file as "sniffeddata.bin" and then use ```beagle_to_loader sniffeddata.bin```
 
 
 ## Install EDL loaders
 
 - ```mkdir examples```
 - Copy all your loaders into the examples directory
-- ```./fhloaderparse.py examples Loaders``` -> will autodetect and rename loader structure and copy them to the "Loaders" directory
+- ```fhloaderparse examples Loaders``` -> will autodetect and rename loader structure and copy them to the "Loaders" directory
 - Or rename Loaders manually as "msmid_pkhash[8 bytes].bin" and put them into the Loaders directory
 
 ------------------------------------------------------------------------------------------------------------------------------------
@@ -176,12 +176,12 @@ or from [here](https://github.com/bkerler/Loaders)
 - ```edl --vid 1199 --pid 9070 --loader=loaders/NPRG9x35p.bin printgpt``` -> To show the partition table
 
 ##### Netgear MR1100
-- run ```python modem/boottodownload.py```, device will enter download mode (0x900E pid)
+- run ```boottodownload```, device will enter download mode (0x900E pid)
 - ```edl printgpt --loader=Loaders/qualcomm/patched/mdm9x5x/NPRG9x55p.bin```, device will reboot to 0x9008
 - now use edl regulary such as ```edl printgpt``` (do not use loader option)
 
 ##### ZTE MF920V, Quectel, Telit, etc.. Modem
-- run ```python modem/enableadb.sh```, or send to at port "AT+ZCDRUN=E", or send via ```qc_diag -sahara```
+- run ```enableadb```, or send to at port "AT+ZCDRUN=E", or send via ```qc_diag -sahara```
 - ```adb reboot edl```
 - ```edl printgpt``` -> To show the partition table
 
