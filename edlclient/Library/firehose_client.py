@@ -8,12 +8,12 @@ import logging
 import json
 from binascii import hexlify, unhexlify
 from struct import unpack, pack
-from edl.Library.firehose import firehose
-from edl.Library.xmlparser import xmlparser
-from edl.Library.utils import do_tcp_server
-from edl.Library.utils import LogBase, getint
-from edl.Config.qualcomm_config import memory_type
-from edl.Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
+from edlclient.Library.firehose import firehose
+from edlclient.Library.xmlparser import xmlparser
+from edlclient.Library.utils import do_tcp_server
+from edlclient.Library.utils import LogBase, getint
+from edlclient.Config.qualcomm_config import memory_type
+from edlclient.Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
 
 try:
     import xml.etree.cElementTree as ET
@@ -23,7 +23,7 @@ except ImportError:
     from xml.etree import ElementTree
 
 try:
-    from edl.Library.Modules.init import modules
+    from edlclient.Library.Modules.init import modules
 except ImportError as e:
     pass
 

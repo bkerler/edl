@@ -3,7 +3,7 @@
 # (c) B.Kerler 2018-2021
 
 import logging
-from edl.Library.utils import LogBase
+from edlclient.Library.utils import LogBase
 
 
 class generic(metaclass=LogBase):

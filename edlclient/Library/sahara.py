@@ -11,8 +11,8 @@ from struct import unpack, pack
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-from edl.Library.utils import read_object, print_progress, rmrf, LogBase
-from edl.Config.qualcomm_config import sochw, msmids, root_cert_hash
+from edlclient.Library.utils import read_object, print_progress, rmrf, LogBase
+from edlclient.Config.qualcomm_config import sochw, msmids, root_cert_hash
 
 
 

@@ -11,12 +11,12 @@ from struct import unpack
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
-from edl.Library.utils import *
-from edl.Library.gpt import gpt
-from edl.Library.sparse import QCSparse
+from edlclient.Library.utils import *
+from edlclient.Library.gpt import gpt
+from edlclient.Library.sparse import QCSparse
 
 try:
-    from edl.Library.Modules.init import modules
+    from edlclient.Library.Modules.init import modules
 except ImportError as e:
     pass
 
@@ -174,23 +174,17 @@ class firehose(metaclass=LogBase):
                         tdiff=t0-self.progtime
                         datasize=(pos-self.progpos)/1024/1024
                         throughput=(((datasize)/(tdiff)))
-                        max_pos_len = len(str(total // self.cfg.SECTOR_SIZE_IN_BYTES))
-                        print_progress(prog, 100,
-                            prefix='Progress:',
-                            suffix=prefix+' (Sector {} of {}) {:0.2f} MB/s'.format(
-                                '{0:>{1}d}'.format(pos // self.cfg.SECTOR_SIZE_IN_BYTES, max_pos_len),
-                                total // self.cfg.SECTOR_SIZE_IN_BYTES,
-                                throughput),
-                            bar_length=50)
+                        print_progress(prog, 100, prefix='Progress:',
+                                       suffix=prefix+' (Sector %d of %d) %0.2f MB/s' %
+                                       (pos // self.cfg.SECTOR_SIZE_IN_BYTES,
+                                        total // self.cfg.SECTOR_SIZE_IN_BYTES,
+                                        throughput), bar_length=50)
                         self.prog = prog
                         self.progpos = pos
                         self.progtime = t0
             else:
                 if display:
-                    print_progress(100, 100,
-                        prefix='Progress:',
-                        suffix=prefix+' Complete (Sector {0} of {0})'.format(total // self.cfg.SECTOR_SIZE_IN_BYTES),
-                        bar_length=50)
+                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         except:
             pass
 

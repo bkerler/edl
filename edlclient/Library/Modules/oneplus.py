@@ -19,10 +19,10 @@ import time
 import random
 from struct import pack
 import logging
-from edl.Library.utils import LogBase
+from edlclient.Library.utils import LogBase
 
 try:
-    from edl.Library.cryptutils import cryptutils
+    from edlclient.Library.cryptutils import cryptutils
 except Exception as e:
     print(e)
     from ..cryptutils import cryptutils
@@ -75,6 +75,7 @@ deviceconfig = {
 
     # OP Nord, avicii
     "20801": dict(version=2, cm="eacf50e7", param_mode=0),
+    
     # OP N10 5G Metro, billie8t
     "20885": dict(version=3, cm="3a403a71", param_mode=1),
     # OP N10 5G Global, billie8
@@ -153,7 +154,7 @@ class oneplus(metaclass=LogBase):
             logfilename = "log.txt"
             filehandler = logging.FileHandler(logfilename)
             self.__logger.addHandler(filehandler)
-        self.ops_parm = None
+            self.ops_parm = None
         self.ops = self.convert_projid(fh, projid, serial)
 
     def getprodkey(self, projid):

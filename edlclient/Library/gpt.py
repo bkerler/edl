@@ -10,7 +10,7 @@ from struct import unpack, pack
 from binascii import hexlify
 
 try:
-    from edl.Library.utils import LogBase, structhelper
+    from edlclient.Library.utils import LogBase, structhelper
 except:
     from utils import LogBase, structhelper
 

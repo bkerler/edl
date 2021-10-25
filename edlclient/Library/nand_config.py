@@ -3,7 +3,7 @@
 # (c) B.Kerler 2018-2019
 import ctypes
 from enum import Enum
-from edl.Config.qualcomm_config import secgen, secureboottbl
+from edlclient.Config.qualcomm_config import secgen, secureboottbl
 
 c_uint8 = ctypes.c_uint8
 

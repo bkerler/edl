@@ -3,22 +3,22 @@
 # (c) B.Kerler 2018-2021
 
 import logging
-from edl.Library.utils import LogBase
+from edlclient.Library.utils import LogBase
 
 try:
-    from edl.Library.Modules.generic import generic
+    from edlclient.Library.Modules.generic import generic
 except ImportError as e:
     generic = None
     pass
 
 try:
-    from edl.Library.Modules.oneplus import oneplus
+    from edlclient.Library.Modules.oneplus import oneplus
 except ImportError as e:
     oneplus = None
     pass
 
 try:
-    from edl.Library.Modules.xiaomi import xiaomi
+    from edlclient.Library.Modules.xiaomi import xiaomi
 except ImportError as e:
     xiaomi = None
     pass

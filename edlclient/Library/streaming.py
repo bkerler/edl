@@ -3,9 +3,9 @@
 # (c) B.Kerler 2018-2021
 from struct import pack
 from binascii import unhexlify
-from edl.Library.utils import *
-from edl.Library.hdlc import *
-from edl.Library.nand_config import BadFlags, SettingsOpt, nandregs, NandDevice
+from edlclient.Library.utils import *
+from edlclient.Library.hdlc import *
+from edlclient.Library.nand_config import BadFlags, SettingsOpt, nandregs, NandDevice
 
 
 class Streaming(metaclass=LogBase):

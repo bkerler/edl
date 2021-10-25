@@ -6,8 +6,8 @@ import os
 import logging
 from binascii import hexlify, unhexlify
 from struct import unpack, pack
-from edl.Library.streaming import Streaming
-from edl.Library.utils import do_tcp_server, LogBase, getint
+from edlclient.Library.streaming import Streaming
+from edlclient.Library.utils import do_tcp_server, LogBase, getint
 
 
 class streaming_client(metaclass=LogBase):

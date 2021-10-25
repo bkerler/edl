@@ -3,11 +3,11 @@ from setuptools import setup, find_packages
 import os
 
 setup(
-    name='edl',
-    version='3.5',
+    name='edlclient',
+    version='3.53',
     packages=find_packages(),
     long_description=open("README.md").read(),
-    scripts=['edl.py','diag.py','modem/sierrakeygen.py','modem/boottodwnload.py','modem/enableadb.py','Loaders/fhloaderparse.py','Loaders/beagle_to_loader.py'],
+    scripts=['edl','edlclient/Tools/qc_diag','edlclient/Tools/sierrakeygen','edlclient/Tools/boottodwnload','edlclient/Tools/enableadb','edlclient/Tools/fhloaderparse','edlclient/Tools/beagle_to_loader'],
     data_files = ['LICENSE','README.md'],
     long_description_content_type="text/markdown",
     url='https://github.com/bkerler/edl',
