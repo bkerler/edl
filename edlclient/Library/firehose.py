@@ -985,7 +985,7 @@ class firehose(metaclass=LogBase):
             try:
                 if os.path.exists("edl_config.json"):
                     pinfo=json.loads(open("edl_config.json","rb").read())
-                    if self.supported_functions is []:
+                    if self.supported_functions==[]:
                         if "supported_functions" in pinfo:
                             self.supported_functions = pinfo["supported_functions"]
                     if self.serial is None:
