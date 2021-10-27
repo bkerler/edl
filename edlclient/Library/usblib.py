@@ -102,7 +102,7 @@ class UsbClass(metaclass=LogBase):
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif sys.platform.startswith('win32'):
-            if calcsize("P") * 8 == 64:
+            if struct.calcsize("P") * 8 == 64:
                 self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
             else:
                 self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb32-1.0.dll")
