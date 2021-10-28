@@ -15,6 +15,7 @@ from enum import Enum
 from binascii import hexlify
 from ctypes import c_void_p, c_int
 from edlclient.Library.utils import *
+from struct import pack, calcsize
 
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
@@ -102,7 +103,7 @@ class UsbClass(metaclass=LogBase):
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif sys.platform.startswith('win32'):
-            if struct.calcsize("P") * 8 == 64:
+            if calcsize("P") * 8 == 64:
                 self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
             else:
                 self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb32-1.0.dll")
@@ -630,7 +631,7 @@ class Scsi:
             print("Sending FIH adb enable command")
             datasize = 0x24
             # reserve_cmd + 'FI' + flag + len + none
-            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + struct.pack("<H", datasize)
+            common_cmnd = bytes([self.SC_SWITCH_PORT]) + b"FI1" + pack("<H", datasize)
             '''
             Flag values:
                 common_cmnd[3]->1: Enable adb daemon from mass_storage
@@ -670,7 +671,7 @@ class Scsi:
             print("Sending FIH root command")
             datasize = 0x24
             # reserve_cmd + 'FIH' + len + flag + none
-            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + struct.pack("<H", datasize)
+            common_cmnd = bytes([self.SC_SWITCH_ROOT]) + b"FIH" + pack("<H", datasize)
             lun = 0
             # datasize = common_cmnd[4]
             timeout = 5000
