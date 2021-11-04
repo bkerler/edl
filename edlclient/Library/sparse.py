@@ -43,7 +43,10 @@ class QCSparse(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def readheader(self):
-        header = unpack("<I4H4I", self.rf.read(0x1C))
+        buf = self.rf.read(0x1C)
+        if len(buf) != 28:
+            return False
+        header = unpack("<I4H4I", buf)
         magic = header[0]
         self.major_version = header[1]
         self.minor_version = header[2]
