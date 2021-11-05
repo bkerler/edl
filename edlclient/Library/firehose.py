@@ -876,22 +876,23 @@ class firehose(metaclass=LogBase):
         self.info(f"MemoryName={self.cfg.MemoryName}")
         self.info(f"Version={self.cfg.Version}")
 
-        rsp = self.cmd_read_buffer(0, 1, 1, False)
-        if rsp == b"" and self.args["--memory"] is None:
-            if b"Failed to open the SDCC Device" in self.lasterror:
-                self.warning(
-                    "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
-                self.cfg.MemoryName = "UFS"
-                return self.configure(0)
-            if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
-                self.warning(
-                    "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
-                self.cfg.MemoryName = "eMMC"
-                return self.configure(0)
-            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
-                self.cfg.SECTOR_SIZE_IN_BYTES = 512
-            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
-                self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+        if not self.cfg.SkipStorageInit and self.args["--memory"] is not None:
+            rsp = self.cmd_read_buffer(0, 1, 1, False)
+            if rsp == b"" and self.args["--memory"] is None:
+                if b"Failed to open the SDCC Device" in self.lasterror:
+                    self.warning(
+                        "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
+                    self.cfg.MemoryName = "UFS"
+                    return self.configure(0)
+                if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
+                    self.warning(
+                        "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
+                    self.cfg.MemoryName = "eMMC"
+                    return self.configure(0)
+                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
+                    self.cfg.SECTOR_SIZE_IN_BYTES = 512
+                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
+                    self.cfg.SECTOR_SIZE_IN_BYTES = 4096
         self.luns = self.getluns(self.args)
         return True
 
