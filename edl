@@ -46,6 +46,7 @@ Usage:
     edl reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
     edl modules <command> <options> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
+    edl provision <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
     edl qfil <rawprogram> <patch> <imagedir> [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
 
 Description:
@@ -85,6 +86,7 @@ Description:
     reset                       # Send firehose reset command
     nop                         # Send firehose nop command
     modules                     # Enable submodules, for example: "oemunlock enable"
+    provision                   # UFS provision
     qfil                        # Write rawprogram xml files
                                 # <rawprogram> : program config xml, such as rawprogram_unsparse.xml or rawprogram*.xml
                                 # <patch> : patch config xml, such as patch0.xml or patch*.xml
@@ -140,7 +142,7 @@ def parse_cmd(rargs):
             "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword", "memcpy", "secureboot",
             "pbl",
             "qfp", "getstorageinfo", "setbootablestoragedrive", "send", "xml", "rawxml", "reset", "nop", "modules",
-            "memorydump", "qfil"]
+            "memorydump", "provision", "qfil"]
     for cmd in cmds:
         if rargs[cmd]:
             return cmd
@@ -337,8 +339,11 @@ class main(metaclass=LogBase):
 
         if mode == "firehose":
             self.cdc.timeout = None
-            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
             cmd = parse_cmd(args)
+            if cmd == 'provision':
+                args["--memory"] = 'ufs'
+                args["--skipstorageinit"] = 1
+            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
             options = parse_option(args)
             if cmd != "":
                 fh.handle_firehose(cmd, options)

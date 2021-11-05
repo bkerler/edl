@@ -917,6 +917,23 @@ class firehose_client(metaclass=LogBase):
                     self.info(
                         "[qfil] set partition({partition}) as bootable failed\n".format(partition=bootable))
 
+        elif cmd == "provision":
+            self.info("[ufs] provision...")
+            filename = options["<xmlfile>"]
+            if os.path.exists(filename):
+                fl = open(filename, "r")
+                for evt, elem in ET.iterparse(fl, events=["end"]):
+                    if elem.tag == "ufs":
+                        content = ElementTree.tostring(elem).decode("utf-8")
+                        CMD = "<?xml version=\"1.0\" ?><data>\n {content} </data>".format(
+                            content=content)
+                        print(CMD)
+                        self.firehose.xmlsend(CMD)
+            else:
+                self.error(f"File : {filename} not found.")
+                return False
+            self.info("[ufs] provision ok.")
+
         else:
             self.error("Unknown/Missing command, a command is required.")
             return False
