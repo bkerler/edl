@@ -161,7 +161,7 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
 
 def init_loader_db():
     loaderdb = {}
-    for (dirpath, dirnames, filenames) in os.walk(current_dir):
+    for (dirpath, dirnames, filenames) in os.walk(os.path.join(current_dir,"..","..","Loaders")):
         for filename in filenames:
             file_name = os.path.join(dirpath, filename)
             found = False
