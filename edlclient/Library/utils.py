@@ -11,6 +11,8 @@ import shutil
 import stat
 import colorama
 import copy
+import datetime as dt
+import time
 from struct import unpack, pack
 
 try:
@@ -23,8 +25,77 @@ except ImportError:
     print("Keystone library is missing (optional).")
 
 
+class progress:
+    def __init__(self, pagesize):
+        self.progtime = 0
+        self.prog = 0
+        self.progpos = 0
+        self.start = time.time()
+        self.pagesize = pagesize
 
+    def calcProcessTime(self, starttime, cur_iter, max_iter):
+        telapsed = time.time() - starttime
+        if telapsed > 0 and cur_iter > 0:
+            testimated = (telapsed / cur_iter) * (max_iter)
+            finishtime = starttime + testimated
+            finishtime = dt.datetime.fromtimestamp(finishtime).strftime("%H:%M:%S")  # in time
+            lefttime = testimated - telapsed  # in seconds
+            return int(telapsed), int(lefttime), finishtime
+        else:
+            return 0, 0, ""
 
+    def show_progress(self, prefix, pos, total, display=True):
+        if pos != 0:
+            prog = round(float(pos) / float(total) * float(100), 1)
+        else:
+            prog = 0
+        if prog == 0:
+            self.prog = 0
+            self.start = time.time()
+            self.progtime = time.time()
+            self.progpos = pos
+            print_progress(prog, 100, prefix='Done',
+                           suffix=prefix + ' (Sector 0x%X of 0x%X) %0.2f MB/s' %
+                                  (pos // self.pagesize,
+                                   total // self.pagesize,
+                                   0), bar_length=50)
+
+        if prog > self.prog:
+            if display:
+                t0 = time.time()
+                tdiff = t0 - self.progtime
+                datasize = (pos - self.progpos) / 1024 / 1024
+                if datasize != 0 and tdiff != 0:
+                    try:
+                        throughput = datasize / tdiff
+                    except:
+                        throughput = 0
+                else:
+                    throughput = 0
+                telapsed, lefttime, finishtime = self.calcProcessTime(self.start, prog, 100)
+                hinfo = ""
+                if lefttime > 0:
+                    sec = lefttime
+                    if sec > 60:
+                        min = sec // 60
+                        sec = sec % 60
+                        if min > 60:
+                            h = min // 24
+                            min = min % 24
+                            hinfo = "%02dh:%02dm:%02ds left" % (h, min, sec)
+                        else:
+                            hinfo = "%02dm:%02ds left" % (min, sec)
+                    else:
+                        hinfo = "%02ds left" % sec
+
+                print_progress(prog, 100, prefix='Progress:',
+                               suffix=prefix + f' (Sector 0x%X of 0x%X, {hinfo}) %0.2f MB/s' %
+                                      (pos // self.pagesize,
+                                       total // self.pagesize,
+                                       throughput), bar_length=50)
+                self.prog = prog
+                self.progpos = pos
+                self.progtime = t0
 
 class structhelper:
     pos = 0

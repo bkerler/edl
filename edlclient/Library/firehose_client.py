@@ -14,6 +14,7 @@ from edlclient.Library.utils import do_tcp_server
 from edlclient.Library.utils import LogBase, getint
 from edlclient.Config.qualcomm_config import memory_type
 from edlclient.Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
+import fnmatch
 
 try:
     import xml.etree.cElementTree as ET
@@ -297,11 +298,14 @@ class firehose_client(metaclass=LogBase):
 
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, self.firehose.cfg.SECTOR_SIZE_IN_BYTES, storedir)
-
+                skipped = []
+                for skippart in skip:
+                    filtered = fnmatch.filter(guid_gpt.partentries, skippart)
+                    skipped.append(filtered)
                 for selpart in guid_gpt.partentries:
                     partition = guid_gpt.partentries[selpart]
                     partitionname = partition.name
-                    if partition.name in skip:
+                    if partition.name in skipped:
                         continue
                     filename = os.path.join(storedir, partitionname + ".bin")
                     self.info(
@@ -916,23 +920,6 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.info(
                         "[qfil] set partition({partition}) as bootable failed\n".format(partition=bootable))
-
-        elif cmd == "provision":
-            self.info("[ufs] provision...")
-            filename = options["<xmlfile>"]
-            if os.path.exists(filename):
-                fl = open(filename, "r")
-                for evt, elem in ET.iterparse(fl, events=["end"]):
-                    if elem.tag == "ufs":
-                        content = ElementTree.tostring(elem).decode("utf-8")
-                        CMD = "<?xml version=\"1.0\" ?><data>\n {content} </data>".format(
-                            content=content)
-                        print(CMD)
-                        self.firehose.xmlsend(CMD)
-            else:
-                self.error(f"File : {filename} not found.")
-                return False
-            self.info("[ufs] provision ok.")
 
         else:
             self.error("Unknown/Missing command, a command is required.")

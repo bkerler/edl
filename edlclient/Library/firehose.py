@@ -14,6 +14,7 @@ from threading import Thread
 from edlclient.Library.utils import *
 from edlclient.Library.gpt import gpt
 from edlclient.Library.sparse import QCSparse
+from edlclient.Library.utils import progress
 
 try:
     from edlclient.Library.Modules.init import modules
@@ -62,7 +63,7 @@ class nand_partition:
                 np.attr2 = attr2
                 np.attr3 = attr3
                 np.which_flash = which_flash
-                self.partentries[np.name]=np
+                self.partentries[np.name] = np
             return True
         return False
 
@@ -159,34 +160,6 @@ class firehose(metaclass=LogBase):
             self.__logger.addHandler(fh)
         self.nandparttbl = None
         self.nandpart = nand_partition(parent=self, printer=print)
-
-    def show_progress(self, prefix, pos, total, display=True):
-        t0 = time.time()
-        if pos == 0:
-            self.prog = 0
-            self.progtime = time.time()
-            self.progpos=pos
-        try:
-            prog = round(float(pos) / float(total) * float(100), 2)
-            if pos != total:
-                if prog > self.prog:
-                    if display:
-                        tdiff=t0-self.progtime
-                        datasize=(pos-self.progpos)/1024/1024
-                        throughput=(((datasize)/(tdiff)))
-                        print_progress(prog, 100, prefix='Progress:',
-                                       suffix=prefix+' (Sector %d of %d) %0.2f MB/s' %
-                                       (pos // self.cfg.SECTOR_SIZE_IN_BYTES,
-                                        total // self.cfg.SECTOR_SIZE_IN_BYTES,
-                                        throughput), bar_length=50)
-                        self.prog = prog
-                        self.progpos = pos
-                        self.progtime = t0
-            else:
-                if display:
-                    print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-        except:
-            pass
 
     def detect_partition(self, arguments, partitionname):
         fpartitions = {}
@@ -423,6 +396,7 @@ class firehose(metaclass=LogBase):
             sparseformat = True
             total = sparse.getsize()
         bytestowrite = total
+        progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         with open(filename, "rb") as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = total // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -441,7 +415,7 @@ class firehose(metaclass=LogBase):
                 data += self.modules.addprogram()
             data += f"/>\n</data>"
             rsp = self.xmlsend(data, self.skipresponse)
-            self.show_progress("Write", 0, total, display)
+            progbar.show_progress(prefix="Write", pos=0, total=total, display=display)
             if rsp[0]:
                 old = 0
                 while bytestowrite > 0:
@@ -459,7 +433,7 @@ class firehose(metaclass=LogBase):
                         wdata += b"\x00" * (filllen - wlen)
 
                     self.cdc.write(wdata)
-                    self.show_progress("Write", total-bytestowrite, total, display)
+                    progbar.show_progress(prefix="Write", pos=total - bytestowrite, total=total, display=display)
                     self.cdc.write(b'')
                 # time.sleep(0.2)
 
@@ -497,7 +471,8 @@ class firehose(metaclass=LogBase):
             data += self.modules.addprogram()
         data += f"/>\n</data>"
         rsp = self.xmlsend(data, self.skipresponse)
-        self.show_progress("Write", 0, total, display)
+        progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
+        progbar.show_progress(prefix="Write", pos=0, total=total, display=display)
         if rsp[0]:
             old = 0
             pos = 0
@@ -515,7 +490,7 @@ class firehose(metaclass=LogBase):
 
                 self.cdc.write(wrdata)
 
-                self.show_progress("Write", total - bytestowrite, total, display)
+                progbar.show_progress(prefix="Write", pos=total - bytestowrite, total=total, display=display)
                 self.cdc.write(b'')
             # time.sleep(0.2)
 
@@ -552,12 +527,13 @@ class firehose(metaclass=LogBase):
         pos = 0
         bytestowrite = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
         total = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-        self.show_progress("Erase", 0, total, display)
+        progbar = progress(self.cfg.MaxPayloadSizeToTargetInBytes)
+        progbar.show_progress(prefix="Erase", pos=0, total=total, display=display)
         if rsp[0]:
             while bytestowrite > 0:
                 wlen = min(bytestowrite, self.cfg.MaxPayloadSizeToTargetInBytes)
                 self.cdc.write(empty[:wlen])
-                self.show_progress("Erase", total - bytestowrite, total, display)
+                progbar.show_progress(prefix="Erase", pos=total - bytestowrite, total=total, display=display)
                 bytestowrite -= wlen
                 pos += wlen
                 self.cdc.write(b'')
@@ -579,11 +555,11 @@ class firehose(metaclass=LogBase):
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
         self.lasterror = b""
         prog = 0
+        progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         if display:
             self.info(
                 f"\nReading from physical partition {str(physical_partition_number)}, " +
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
-            print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
 
         with open(file=filename, mode="wb", buffering=self.cfg.MaxPayloadSizeFromTargetInBytes) as wr:
 
@@ -602,15 +578,15 @@ class firehose(metaclass=LogBase):
                         return b""
                 bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
                 total = bytestoread
-                show_progress = self.show_progress
+                show_progress = progbar.show_progress
                 usb_read = self.cdc.read
-                self.show_progress("Read", 0, total, display)
+                progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
                 wMaxPacketSize = self.cdc.EP_IN.wMaxPacketSize
                 while bytestoread > 0:
-                    data=usb_read(min(wMaxPacketSize, bytestoread))
+                    data = usb_read(min(wMaxPacketSize, bytestoread))
                     wr.write(data)
                     bytestoread -= len(data)
-                    show_progress("Read", total - bytestoread, total, display)
+                    show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
                 # time.sleep(0.2)
                 wd = self.wait_for_data()
                 info = self.xml.getlog(wd)
@@ -644,6 +620,7 @@ class firehose(metaclass=LogBase):
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\"/>\n</data>"
 
+        progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         rsp = self.xmlsend(data, self.skipresponse)
         resData = bytearray()
         if rsp[0]:
@@ -655,13 +632,13 @@ class firehose(metaclass=LogBase):
             bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
             total = bytestoread
             if display:
-                print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+                progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
             while bytestoread > 0:
                 tmp = self.cdc.read(min(self.cdc.EP_IN.wMaxPacketSize, bytestoread))
-                size=len(tmp)
+                size = len(tmp)
                 bytestoread -= size
                 resData.extend(tmp)
-                self.show_progress("Read", total-bytestoread, total, display)
+                progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
 
             wd = self.wait_for_data()
             info = self.xml.getlog(wd)
@@ -681,7 +658,7 @@ class firehose(metaclass=LogBase):
         if len(rsp) > 2 and not rsp[0]:
             self.lasterror = rsp[2]
         if display and prog != 100:
-            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+            progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
         return resData  # Do not remove, needed for oneplus
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
@@ -805,9 +782,9 @@ class firehose(metaclass=LogBase):
                     self.info("Xiaomi EDL Auth detected.")
                     try:
                         self.modules = modules(fh=self, serial=self.serial,
-                                                        supported_functions=self.supported_functions,
-                                                        loglevel=self.__logger.level,
-                                                        devicemodel=self.devicemodel, args=self.args)
+                                               supported_functions=self.supported_functions,
+                                               loglevel=self.__logger.level,
+                                               devicemodel=self.devicemodel, args=self.args)
                     except Exception as err:  # pylint: disable=broad-except
                         self.modules = None
                     if self.modules.edlauth():
@@ -876,23 +853,22 @@ class firehose(metaclass=LogBase):
         self.info(f"MemoryName={self.cfg.MemoryName}")
         self.info(f"Version={self.cfg.Version}")
 
-        if not self.cfg.SkipStorageInit and self.args["--memory"] is not None:
-            rsp = self.cmd_read_buffer(0, 1, 1, False)
-            if rsp == b"" and self.args["--memory"] is None:
-                if b"Failed to open the SDCC Device" in self.lasterror:
-                    self.warning(
-                        "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
-                    self.cfg.MemoryName = "UFS"
-                    return self.configure(0)
-                if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
-                    self.warning(
-                        "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
-                    self.cfg.MemoryName = "eMMC"
-                    return self.configure(0)
-                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
-                    self.cfg.SECTOR_SIZE_IN_BYTES = 512
-                elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
-                    self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+        rsp = self.cmd_read_buffer(0, 1, 1, False)
+        if rsp == b"" and self.args["--memory"] is None:
+            if b"Failed to open the SDCC Device" in self.lasterror:
+                self.warning(
+                    "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
+                self.cfg.MemoryName = "UFS"
+                return self.configure(0)
+            if b"ERROR: Failed to initialize (open whole lun) UFS Device slot" in self.lasterror:
+                self.warning(
+                    "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
+                self.cfg.MemoryName = "eMMC"
+                return self.configure(0)
+            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in self.lasterror:
+                self.cfg.SECTOR_SIZE_IN_BYTES = 512
+            elif b"Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in self.lasterror:
+                self.cfg.SECTOR_SIZE_IN_BYTES = 4096
         self.luns = self.getluns(self.args)
         return True
 
@@ -985,8 +961,8 @@ class firehose(metaclass=LogBase):
         if self.serial is None or self.supported_functions is []:
             try:
                 if os.path.exists("edl_config.json"):
-                    pinfo=json.loads(open("edl_config.json","rb").read())
-                    if self.supported_functions==[]:
+                    pinfo = json.loads(open("edl_config.json", "rb").read())
+                    if self.supported_functions == []:
                         if "supported_functions" in pinfo:
                             self.supported_functions = pinfo["supported_functions"]
                     if self.serial is None:
@@ -1023,19 +999,19 @@ class firehose(metaclass=LogBase):
                     for cmd in [b"demacia", b"setprojmodel", b"setswprojmodel", b"setprocstart", b"SetNetType"]:
                         if cmd in data:
                             self.supported_functions.append(cmd.decode('utf-8'))
-                state={
-                    "supported_functions" : self.supported_functions,
-                    "programmer" : self.cfg.programmer,
-                    "serial" : self.serial
+                state = {
+                    "supported_functions": self.supported_functions,
+                    "programmer": self.cfg.programmer,
+                    "serial": self.serial
                 }
                 open("edl_config.json", "w").write(json.dumps(state))
             except:
                 pass
 
-        #rsp = self.xmlsend(data, self.skipresponse)
+        # rsp = self.xmlsend(data, self.skipresponse)
         if "getstorageinfo" in self.supported_functions and self.args["--memory"] is None:
             storageinfo = self.cmd_getstorageinfo()
-            if storageinfo is not None and storageinfo!=[]:
+            if storageinfo is not None and storageinfo != []:
                 for info in storageinfo:
                     if "storage_info" in info:
                         try:
@@ -1102,11 +1078,11 @@ class firehose(metaclass=LogBase):
             return None
 
     def cmd_test(self, cmd):
-        token="1234"
-        pk="1234"
-        data = "<?xml version=\"1.0\" ?>\n<data>\n<"+cmd+" token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+        token = "1234"
+        pk = "1234"
+        data = "<?xml version=\"1.0\" ?>\n<data>\n<" + cmd + " token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
         val = self.xmlsend(data)
-        if len(val)>1:
+        if len(val) > 1:
             if b"raw hex token" in val[2]:
                 return True
             if b"opcmd is not enabled" in val[2]:
