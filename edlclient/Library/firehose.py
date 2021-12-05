@@ -173,6 +173,8 @@ class firehose(metaclass=LogBase):
                     if display:
                         tdiff=t0-self.progtime
                         datasize=(pos-self.progpos)/1024/1024
+                        if tdiff == 0:
+                           tdiff = 0.001
                         throughput=(((datasize)/(tdiff)))
                         print_progress(prog, 100, prefix='Progress:',
                                        suffix=prefix+' (Sector %d of %d) %0.2f MB/s' %
