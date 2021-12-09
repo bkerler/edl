@@ -264,7 +264,7 @@ sochw = {
     0x9002: "kamorta",
     0x9003: "agatti",
     0x9004: "mannar"
-    #SDM662
+    0x7200: "SDM662"
 }
 
 secgen=[
