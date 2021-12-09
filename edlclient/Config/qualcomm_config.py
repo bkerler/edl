@@ -140,7 +140,7 @@ msmids = {
     0x13F0E1: "bitra_SDM", # soc_vers 0x6012 SDM690
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
-    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 662/460 SM4250/SM4350, bengal
+    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
     0x1350E1: "lahaina", # soc_vers 0x600F sm8350, SDM875
     0x1420E1: "lahaina_premier",
     0x14A0E1: "makena", # soc_vers 0x6014
@@ -174,7 +174,7 @@ msmids = {
     0x0B80E1: "sc8180x", # Snapdragon 8CX
     0x1560E1: "SM8250", # HDK 8250
     0x1510E1: "SA2150p",
-    0x14D0E1: "SDM662",
+    0x14D0E1: "SDM662", # sm6115
 
     # Unknown root hash
     0x0B70E1: "SDM850",
@@ -401,12 +401,12 @@ infotbl = {
     "mannar": secgen[7],
     "rennell": secgen[7],
     "sd7250": secgen[7],
-    #"SDM662": secgen[7],
 
     "nicobar": secgen[8],
     "agatti": secgen[8],
     "kamorta": secgen[8],
     "kamortap": secgen[8],
+    "SDM662": secgen[8],
 
 
     # "MSM7227A": [[], [], []],
@@ -545,12 +545,12 @@ class memory_type:
         "rennell": ufs,
         "sd7250": ufs,
         "SA2150p": emmc,
-        "SDM662": emmc,
 
         "nicobar": ufs,
         "agatti": ufs,
         "kamorta": ufs,
         "kamortap": ufs,
+        "SDM662": emmc,
 
         # "MSM7227A": [[], [], []],
         # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
@@ -672,6 +672,7 @@ secureboottbl = {
     "nicobar": 0x01B40458,
     "kamorta": 0x01B40458,
     "kamorta_p": 0x01B40458,
+    "SDM662": 0x01B40458,
     "lahaina": 0x780668,
     "lahaina_premier": 0x780668,
     "mannar": 0x01B40458,
@@ -682,5 +683,4 @@ secureboottbl = {
     # "MSM8212":
     # "MSM8926": [[], [], []],
     # "MSM8928": [[], [], []],
-    # SDM662
 }
