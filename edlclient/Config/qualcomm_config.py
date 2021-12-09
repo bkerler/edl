@@ -173,7 +173,8 @@ msmids = {
     0x0CE0E1: "SM8250:CD90-PH806-1A", # Kona 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
     0x0B80E1: "sc8180x", # Snapdragon 8CX
     0x1560E1: "SM8250", # HDK 8250
-    0x1510e1: "SA2150p",
+    0x1510E1: "SA2150p",
+    0x14D0E1: "SDM662",
 
     # Unknown root hash
     0x0B70E1: "SDM850",
@@ -263,6 +264,7 @@ sochw = {
     0x9002: "kamorta",
     0x9003: "agatti",
     0x9004: "mannar"
+    #SDM662
 }
 
 secgen=[
@@ -399,6 +401,7 @@ infotbl = {
     "mannar": secgen[7],
     "rennell": secgen[7],
     "sd7250": secgen[7],
+    #"SDM662": secgen[7],
 
     "nicobar": secgen[8],
     "agatti": secgen[8],
@@ -542,6 +545,7 @@ class memory_type:
         "rennell": ufs,
         "sd7250": ufs,
         "SA2150p": emmc,
+        "SDM662": emmc,
 
         "nicobar": ufs,
         "agatti": ufs,
@@ -678,4 +682,5 @@ secureboottbl = {
     # "MSM8212":
     # "MSM8926": [[], [], []],
     # "MSM8928": [[], [], []],
+    # SDM662
 }
