@@ -102,7 +102,8 @@ msmids = {
     0x16A0E1: "FSM10051",
     0x16B0E1: "FSM10056",
     0x1530E1: "ipq5018",
-    0x1610E1: "olympic_manar",
+    0x1610E1: "olympic",
+    0x1720E1: "olympic_hybrid",
     0x1060E1: "qm215",
     0x0BE0E1: "SDM429",
     0x0BF0E1: "SDM439",
@@ -141,15 +142,21 @@ msmids = {
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
     0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
+    0x1370E1: "kamorta_P", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
+    0x1730E1: "kamorta_IoT_modem", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
+    0x1740E1: "kamorta_IoT_APQ", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
     0x1350E1: "lahaina", # soc_vers 0x600F sm8350, SDM875
     0x1420E1: "lahaina_premier",
-    0x14A0E1: "makena", # soc_vers 0x6014
+    0x14A0E1: "SC8280X", # soc_vers 0x6014, makena
     0x14B0E1: "SA8295P",
     0x14C0E1: "SA8540P",
-    #0x1610E1: "mannar", # soc_vers 0x9004
+    0x16F0E1: "mannar", # soc_vers 0x9004
+    0x16E0E1: "mannar_P", # soc_vers 0x9004
     0x1470E1: "moselle", # soc_vers 0x4014
     0x10A0E1: "nicobar",  # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit
-    0x10B0E1: "qcn90xx", # soc_vers 0x400D
+    0x1750E1: "nicobar_IoT_modem",  # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit
+    0x1760E1: "nicobar_IoT_APQ",  # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit
+    0x10B0E1: "QCN9000", # soc_vers 0x400D
     0x10C0E1: "QCN9001",
     0x1150E1: "QCN9002",
     0x10D0E1: "QCN9003",
@@ -157,8 +164,12 @@ msmids = {
     0x10F0E1: "QCN9011",
     0x1110E1: "QCN9012",
     0x1140E1: "QCN9013",
+    0x0E30E1: "qcs401", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
+    0x0E40E1: "qcs403", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
+    0x1040E1: "qcs404", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
     0x0AF0E1: "qcs405",  # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
-    0x0400E1: "rennell", # soc_vers 0x600E7T A11 CB
+    0x0EB0E1: "qcs407", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
+    0x0400E1: "rennell_cb", # soc_vers 0x600E7T A11 CB
     0x12A0E1: "rennell",
     0x12B0E1: "rennell_premier",
     0x1490E1: "rennell_v1.1",
@@ -166,15 +177,25 @@ msmids = {
     0x11E0E1: "saipan", # 0x600D0100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit, SM7250 Snapdragon 765G
     0x0950E1: "SM6150",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0EC0E1: "SM6150p",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0F50E1: "SM6155",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x100EE0E1: "SM6155p",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x1011C0E1: "SM6150_IoT_High",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x001290E1: "SM6150_IoT_Low",  # 0x60070100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0E60E1: "SM7150",  # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0A50E1: "SDM855_SM8150", # Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0A60E1: "SDM855p_SM8150p", # Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0A50E1: "SM8150", # SDM855 Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
+    0x0A60E1: "SM8150p", # SDM855p Hana 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0C30E1: "SM8250:CD90-PH805-1A", # Kona, 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
     0x0CE0E1: "SM8250:CD90-PH806-1A", # Kona 0x60080100 soc_hw_version, 0x808FF000 sec.elf 64Bit, 0x1C000000 dbgpolicy, 64Bit
-    0x0B80E1: "sc8180x", # Snapdragon 8CX
+    0x0B80E1: "sc8180x", # Snapdragon 8CX, soc_vers 0x6006
     0x1560E1: "SM8250", # HDK 8250
     0x1510E1: "SA2150p",
     0x14D0E1: "SDM662", # sm6115
+    0x18A0E1: "fraser", #soc_vers 0x600D
+    0x1920E1: "sm7325", #soc_vers 0x6018
+    0x1930E1: "sc7280", #soc_vers 0x6018
+    0x1940E1: "sc7295", #soc_vers 0x6018
+    0x18B0E1: "qtang2", #soc_vers 0x7001
+    0x12C0E1: "sc7180", #soc_vers 0x600E
 
     # Unknown root hash
     0x0B70E1: "SDM850",
@@ -183,9 +204,7 @@ msmids = {
     0x0E70E1: "SM7150p", # 0x600C0100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0E80E1: "SA8155", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
     0x0E90E1: "SA8155p", # 0x60030100 soc_hw_version, 0x85FFF000 sec.elf 64Bit, 0x1C1FF000 dbgpolicy, 64Bit
-    0x0E40E1: "qcs403", # 0x20140000 soc_hw_version, 0x863DB000 sec.elf 64Bit, 0x863DE000 dbgpolicy, 64Bit
     0x1440E1: "chitwan", # soc_vers 0x6013
-    0x1370E1: "kamortap",
     0x6220E1: "MSM7227A",
     0x8040E1: "APQ8026",
     0x0550E1: "APQ8017",
@@ -233,7 +252,7 @@ sochw = {
     0x4004: "IPQ8074,QCA6290",
     0x400A: "QCA6390",
     0x400B: "QCN7605,QCA6595,QCN7606",
-    0x400D: "qcn90xx",
+    0x400D: "QCN9000,QCN9001,QCN9002,QCN9003,QCN9010,QCN9011,QCN9012,QCN9013",
     0x4014: "moselle",
 
     #: "SDM632",
@@ -242,29 +261,31 @@ sochw = {
     0x6000: "SDM845",
     0x6001: "SDA845",
     0x6002: "SDX24,SDX24M",
-    0x6003: "SDM855_SM8150,SDM855p_SM8150p",
+    0x6003: "SM8150,SM8150p",
     0x6004: "SDA670,SDM670,SDM710",
     0x6005: "SDM670",
     #: "SDX50M",
     0x6006: "sc8180x",
-    0x6007: "SM6150,SM6150p",
+    0x6007: "SM6150,SM6150p,SM6150_IoT_High,SM6150_IoT_Low,SM6155,SM6155p",
     0x6008: "SM8250:CD90-PH805-1A,SM8250:CD90-PH806-1A,SM8250",
     0x6009: "SDM670",
     0x600B: "SDX55:CD90-PG591,SDX55:CD90-PH809",
     0x600C: "SM7150,SM7150p",
-    0x600D: "saipan",
-    0x600E: "rennell",
+    0x600D: "saipan,fraser",
+    0x600E: "rennell,rennell_premier,rennell_v1.1,sc7180",
     0x600F: "lahaina",
     0x6012: "bitra_SDM",
     0x6013: "chitwan",
-    0x6014: "makena",
-    0x6016: "olympic",
+    0x6014: "SC8280X,SA8295P,SA8540P", #makena
+    0x6016: "olympic,olympic_hybrid",
     0x6017: "cedros",
-    0x9001: "nicobar",
-    0x9002: "kamorta",
+    0x6018: "sm7325,sc7280,sc7295", #kodiak
+    0x7001: "qtang2",
+    0x7200: "SDM662",
+    0x9001: "nicobar,nicobar_IoT_APQ,nicobar_IoT_modem",
+    0x9002: "kamorta,kamorta_P,kamorta_IoT_APQ,kamorta_IoT_modem",
     0x9003: "agatti",
-    0x9004: "mannar",
-    0x7200: "SDM662"
+    0x9004: "mannar,mannar_P"
 }
 
 secgen=[
@@ -350,8 +371,10 @@ infotbl = {
     "SDM632": secgen[5],
     "SDA632": secgen[5],
     "SDX50M": secgen[5],
+    "qcs401": secgen[5],
     "qcs403": secgen[5],
     "qcs405": secgen[5],
+    "qcs407": secgen[5],
     "ipq5018": secgen[5],
     "ipq6018": secgen[5],
     "qm215": secgen[5],
@@ -382,10 +405,14 @@ infotbl = {
     "SA515M": secgen[7],
     "SM6150": secgen[7],
     "SM6150p": secgen[7],
+    "SM6150_IoT_High": secgen[7],
+    "SM6150_IoT_Low" : secgen[7],
+    "SM6155" : secgen[7],
+    "SM6155p" : secgen[7],
     "SM7150": secgen[7],
     "SM7150p": secgen[7],
-    "SDM855_SM8150": secgen[7],
-    "SDM855p_SM8150p": secgen[7],
+    "SM8150": secgen[7],
+    "SM8150p": secgen[7],
     "SA2150p": secgen[7],
     "SM8250": secgen[7],
     "SM8250p": secgen[7],
@@ -399,14 +426,30 @@ infotbl = {
     "lahaina": secgen[7],
     "lahaina_premier": secgen[7],
     "mannar": secgen[7],
+    "mannar_P": secgen[7],
     "rennell": secgen[7],
+    "rennell_premier": secgen[7],
+    "rennell_v1.1": secgen[7],
+    "sc7180": secgen[7],
     "sd7250": secgen[7],
 
     "nicobar": secgen[8],
+    "nicobar_IoT_APQ": secgen[8],
+    "nicobar_IoT_modem": secgen[8],
     "agatti": secgen[8],
     "kamorta": secgen[8],
-    "kamortap": secgen[8],
+    "kamorta_P": secgen[8],
+    "kamorta_IoT_modem": secgen[8],
+    "kamorta_IoT_APQ": secgen[8],
     "SDM662": secgen[8],
+    "sm7235": secgen[8],
+    "sc7280": secgen[8],
+    "sm7295": secgen[8],
+    "SC8280X": secgen[8],
+    "SA8295P": secgen[8],
+    "SA8540P": secgen[8],
+    "olympic": secgen[8],
+    "olympic_hybrid": secgen[8]
 
 
     # "MSM7227A": [[], [], []],
@@ -494,8 +537,11 @@ class memory_type:
         "SDM632": emmc,
         "SDA632": emmc,
         "SDX50M": emmc,
+        "qcs401": emmc,
         "qcs403": emmc,
+        "qcs404": emmc,
         "qcs405": emmc,
+        "qcs407": emmc,
         "ipq5018": emmc,
         "ipq6018": emmc,
         "qm215": emmc,
@@ -526,10 +572,14 @@ class memory_type:
         "SA515M": emmc,
         "SM6150": emmc,
         "SM6150p": emmc,
+        "SM6155": emmc,
+        "SM6155p": emmc,
+        "SM6150_IoT_High": emmc,
+        "SM6150_IoT_Low": emmc,
         "SM7150": emmc,
         "SM7150p": emmc,
-        "SDM855_SM8150": ufs,
-        "SDM855p_SM8150p": ufs,
+        "SM8150": ufs,
+        "SM8150p": ufs,
         "SM8250": ufs,
         "SM8250p": ufs,
         "SM8250:CD90-PH805-1A": ufs,
@@ -542,14 +592,20 @@ class memory_type:
         "lahaina": ufs,
         "lahaina_premier": ufs,
         "mannar": ufs,
+        "mannar_P": ufs,
         "rennell": ufs,
+        "rennell_premier": ufs,
+        "rennell_V1.1": ufs,
+        "sc7180": ufs,
         "sd7250": ufs,
         "SA2150p": emmc,
 
         "nicobar": ufs,
         "agatti": ufs,
         "kamorta": ufs,
-        "kamortap": ufs,
+        "kamorta_P": ufs,
+        "kamorta_IoT_APQ": emmc,
+        "kamorta_IoT_modem": emmc,
         "SDM662": emmc,
 
         # "MSM7227A": [[], [], []],
@@ -649,10 +705,14 @@ secureboottbl = {
     "SA515M" : 0x007804D0,
     "SM6150": 0x00780360,
     "SM6150p": 0x00780360,
+    "SM6155": 0x00780360,
+    "SM6155p": 0x00780360,
+    "SM6150_IoT_High": 0x00780360,
+    "SM6150_IoT_Low": 0x00780360,
     "SM7150": 0x00780460,
     "SM7150p": 0x00780460,
-    "SDM855_SM8150": 0x007804D0,
-    "SDM855p_SM8150p": 0x007804D0,
+    "SM8150": 0x007804D0,
+    "SM8150p": 0x007804D0,
     "SA2150p": 0x7804D0,
     "SM8250:CD90-PH805-1A": 0x007805E8,
     "SM8250:CD90-PH806-1A": 0x007805E8,
@@ -667,17 +727,26 @@ secureboottbl = {
     "saipan": 0x007805E8,
     "sd7250": 0x007805E8,
     "sc8180x": 0x007805E8,
+    "qcs401": 0x000a0310,
     "qcs403": 0x000a0310,
+    "qcs404": 0x000a0310,
     "qcs405": 0x000a0310,
+    "qcs407": 0x000a0310,
     "nicobar": 0x01B40458,
     "kamorta": 0x01B40458,
-    "kamorta_p": 0x01B40458,
+    "kamorta_P": 0x01B40458,
+    "kamorta_IoT_APQ": 0x01B40458,
+    "kamorta_IoT_modem": 0x01B40458,
     "SDM662": 0x01B40458,
     "lahaina": 0x780668,
     "lahaina_premier": 0x780668,
     "mannar": 0x01B40458,
+    "mannar_P": 0x01B40458,
     "qm215": 0x000a01d0,
-    "rennell":0x000780498
+    "rennell":0x000780498,
+    "rennell_premier":0x000780498,
+    "rennell_V1.1":0x000780498,
+    "sc7180": 0x000780498
     # "MSM7227A":[[], [], []],
     # "MSM8210": [[], [], []],
     # "MSM8212":
