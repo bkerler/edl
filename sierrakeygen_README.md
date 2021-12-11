@@ -25,6 +25,14 @@ MIT License
     "MDM9x06": ["WP77xx"],
     "MDM9x07": ["SWI9X07Y", "WP76xx"]
     
+## Installation
+
+- Get python >=3.6 64-Bit
+
+    ```bash
+    ~> pip3 install -r requirements.txt
+    ```
+
 ## Usage
 
 - Get a specific challenge for your task from the modem
