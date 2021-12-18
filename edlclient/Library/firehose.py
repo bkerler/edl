@@ -216,7 +216,7 @@ class firehose(metaclass=LogBase):
         resp = {"value": "NAK"}
         status = False
         if not skipresponse:
-            while b"<response" not in rdata:
+            while b"<response value" not in rdata:
                 try:
                     tmp = self.cdc.read(self.cfg.MaxXMLSizeInBytes)
                     if tmp == b"" in rdata:
@@ -581,9 +581,9 @@ class firehose(metaclass=LogBase):
                 show_progress = progbar.show_progress
                 usb_read = self.cdc.read
                 progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
-                wMaxPacketSize = self.cdc.EP_IN.wMaxPacketSize
                 while bytestoread > 0:
-                    data = usb_read(min(wMaxPacketSize, bytestoread))
+                    size=min(self.cfg.MaxPayloadSizeToTargetInBytes, bytestoread)
+                    data = usb_read(size)
                     wr.write(data)
                     bytestoread -= len(data)
                     show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
@@ -704,8 +704,8 @@ class firehose(metaclass=LogBase):
                         sectors += 1
                     if sectors == 0:
                         return None, None
-                    if sectors > 34:
-                        sectors = 34
+                    if sectors > 64:
+                        sectors = 64
                     data = self.cmd_read_buffer(lun, 0, sectors, False)
                     if data == b"":
                         return None, None
@@ -766,6 +766,7 @@ class firehose(metaclass=LogBase):
                      f"ZLPAwareHost=\"{str(self.cfg.ZLPAwareHost)}\" " + \
                      f"SkipStorageInit=\"{str(int(self.cfg.SkipStorageInit))}\" " + \
                      f"SkipWrite=\"{str(int(self.cfg.SkipWrite))}\" " + \
+                     f"Verbose=\"True\" " + \
                      f"MaxPayloadSizeToTargetInBytes=\"{str(self.cfg.MaxPayloadSizeToTargetInBytes)}\"/>" + \
                      "</data>"
         '''

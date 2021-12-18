@@ -398,14 +398,16 @@ class UsbClass(metaclass=LogBase):
             self.verify_data(bytearray(command), "TX:")
         return True
 
-    def read(self, length=0x80, timeout=None):
+    def read(self, length=None, timeout=None):
+        if length is None:
+            length=self.EP_IN.wMaxPacketSize
         if self.loglevel==logging.DEBUG:
             self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
         tmp = bytearray()
         extend = tmp.extend
         if timeout is None:
             timeout = self.timeout
-        buffer = self.buffer
+        buffer = self.buffer[:length]
         ep_read = self.EP_IN.read
         while len(tmp) == 0:
             try:
