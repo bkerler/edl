@@ -89,6 +89,19 @@ or from [here](https://github.com/bkerler/Loaders)
 
 ## Run EDL (examples)
 
+Your device needs to have a usb pid of 0x9008 in order to make the edl tool work.
+If your device is semi bricked and entered the usb pid 0x900E, there are several options
+to get back the 0x9008 mode :
+
+1. Use a edl cable (Short D+ with GND) and force reboot the phone (either vol up + power pressing for more than 20 seconds or disconnect battery), works with emmc + ufs flash (this will only work if XBL/SBL isn't broken)
+
+2. If emmc flash is used, remove battery, short DAT0 with gnd, connect battery, then remove short.
+
+3. If a ufs flash is used, things are very much more complicated. You will need to open the ufs die and short the clk line on boot, some boards have special test points for that.
+
+4. Some devices have boot config resistors, if you find the right ones you may enforce booting to sdcard instead of flash.
+
+
 ### Generic
 
 - ```edl -h``` -> to see help with all options
