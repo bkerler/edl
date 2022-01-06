@@ -110,7 +110,7 @@ to get back the 0x9008 mode :
 - ```edl reset``` -> To reboot the phone
 - ```edl rawxml <xmlstring>``` -> To send own xml string, example :
    ```edl rawxml "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data><response value=\"ACK\" /></data>```
-- ```edl [anycommand] --debugmode``` -> enables Verbose. Only do that is REALLY needed as it will print out everything happening !
+- ```edl [anycommand] --debugmode``` -> enables Verbose. Do that only when REALLY needed as it will print out everything happening!
 
 ### For EMMC Flash
 
