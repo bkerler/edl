@@ -13,6 +13,7 @@ import colorama
 import copy
 import datetime as dt
 import time
+from io import BytesIO
 from struct import unpack, pack
 
 try:
@@ -24,6 +25,85 @@ try:
 except ImportError:
     print("Keystone library is missing (optional).")
 
+
+class structhelper_io:
+    pos = 0
+
+    def __init__(self, data: BytesIO = None, direction='little'):
+        self.data = data
+        self.direction = direction
+
+    def setdata(self, data, offset=0):
+        self.pos = offset
+        self.data = data
+
+    def qword(self):
+        dat = int.from_bytes(self.data.read(8), self.direction)
+        return dat
+
+    def dword(self):
+        dat = int.from_bytes(self.data.read(4), self.direction)
+        return dat
+
+    def dwords(self, dwords=1):
+        dat = [int.from_bytes(self.data.read(4), self.direction) for _ in range(dwords)]
+        return dat
+
+    def short(self):
+        dat = int.from_bytes(self.data.read(2), self.direction)
+        return dat
+
+    def shorts(self, shorts):
+        dat = [int.from_bytes(self.data.read(2), self.direction) for _ in range(shorts)]
+        return dat
+
+    def bytes(self, rlen=1):
+        dat = self.data.read(rlen)
+        if dat == b'':
+            return dat
+        if rlen == 1:
+            return dat[0]
+        return dat
+
+    def string(self, rlen=1):
+        dat = self.data.read(rlen)
+        return dat
+
+    def getpos(self):
+        return self.data.tell()
+
+    def seek(self, pos):
+        self.data.seek(pos)
+
+def find_binary(data, strf, pos=0):
+    t = strf.split(b".")
+    pre = 0
+    offsets = []
+    while pre != -1:
+        pre = data[pos:].find(t[0], pre)
+        if pre == -1:
+            if len(offsets) > 0:
+                for offset in offsets:
+                    error = 0
+                    rt = offset + len(t[0])
+                    for i in range(1, len(t)):
+                        if t[i] == b'':
+                            rt += 1
+                            continue
+                        rt += 1
+                        prep = data[rt:].find(t[i])
+                        if prep != 0:
+                            error = 1
+                            break
+                        rt += len(t[i])
+                    if error == 0:
+                        return offset + pos
+            else:
+                return None
+        else:
+            offsets.append(pre)
+            pre += 1
+    return None
 
 class progress:
     def __init__(self, pagesize):
@@ -45,6 +125,8 @@ class progress:
             return 0, 0, ""
 
     def show_progress(self, prefix, pos, total, display=True):
+        if pos > total:
+            pos = total
         if pos != 0:
             prog = round(float(pos) / float(total) * float(100), 1)
         else:
@@ -54,13 +136,14 @@ class progress:
             self.start = time.time()
             self.progtime = time.time()
             self.progpos = pos
-            print_progress(prog, 100, prefix='Done',
-                           suffix=prefix + ' (Sector 0x%X of 0x%X) %0.2f MB/s' %
-                                  (pos // self.pagesize,
-                                   total // self.pagesize,
-                                   0), bar_length=50)
+            if display:
+                print_progress(prog, 100, prefix='Done',
+                               suffix=prefix + ' (Sector 0x%X of 0x%X) %0.2f MB/s' %
+                                      (pos // self.pagesize,
+                                       total // self.pagesize,
+                                       0), bar_length=50)
 
-        if prog > self.prog:
+        if prog > self.prog or prog==100.0:
             if display:
                 t0 = time.time()
                 tdiff = t0 - self.progtime
@@ -87,12 +170,12 @@ class progress:
                             hinfo = "%02dm:%02ds left" % (min, sec)
                     else:
                         hinfo = "%02ds left" % sec
-
-                print_progress(prog, 100, prefix='Progress:',
-                               suffix=prefix + f' (Sector 0x%X of 0x%X, {hinfo}) %0.2f MB/s' %
-                                      (pos // self.pagesize,
-                                       total // self.pagesize,
-                                       throughput), bar_length=50)
+                if display:
+                    print_progress(prog, 100, prefix='Progress:',
+                                   suffix=prefix + f' (Sector 0x%X of 0x%X, {hinfo}) %0.2f MB/s' %
+                                          (pos // self.pagesize,
+                                           total // self.pagesize,
+                                           throughput), bar_length=50)
                 self.prog = prog
                 self.progpos = pos
                 self.progtime = t0
@@ -104,28 +187,39 @@ class structhelper:
         self.pos = 0
         self.data = data
 
-    def qword(self):
-        dat = unpack("<Q", self.data[self.pos:self.pos + 8])[0]
+    def qword(self, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + "Q", self.data[self.pos:self.pos + 8])[0]
         self.pos += 8
         return dat
 
-    def dword(self):
-        dat = unpack("<I", self.data[self.pos:self.pos + 4])[0]
+    def dword(self, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + "I", self.data[self.pos:self.pos + 4])[0]
         self.pos += 4
         return dat
 
-    def dwords(self, dwords=1):
-        dat = unpack("<" + str(dwords) + "I", self.data[self.pos:self.pos + 4 * dwords])
+    def dwords(self, dwords=1, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + str(dwords) + "I", self.data[self.pos:self.pos + 4 * dwords])
         self.pos += 4 * dwords
         return dat
 
-    def short(self):
-        dat = unpack("<H", self.data[self.pos:self.pos + 2])[0]
+    def qwords(self, qwords=1, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + str(qwords) + "Q", self.data[self.pos:self.pos + 8 * qwords])
+        self.pos += 8 * qwords
+        return dat
+
+    def short(self, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + "H", self.data[self.pos:self.pos + 2])[0]
         self.pos += 2
         return dat
 
-    def shorts(self, shorts):
-        dat = unpack("<" + str(shorts) + "H", self.data[self.pos:self.pos + 2*shorts])
+    def shorts(self, shorts, big=False):
+        e = ">" if big else "<"
+        dat = unpack(e + str(shorts) + "H", self.data[self.pos:self.pos + 2 * shorts])
         self.pos += 2 * shorts
         return dat
 

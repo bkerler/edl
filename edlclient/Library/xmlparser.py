@@ -12,8 +12,13 @@ class xmlparser:
             if line == b'':
                 continue
             line = b"<?xml" + line
+            if b"\xf0\xe9\x88\x14" in line:
+                line=line.replace(b"\xf0\xe9\x88\x14",b"")
             parser = ET.XMLParser(encoding="utf-8")
-            tree = ET.fromstring(line, parser=parser)
+            try:
+                tree = ET.fromstring(line, parser=parser)
+            except Exception as err:
+                continue
             e = ET.ElementTree(tree).getroot()
             for atype in e.findall('response'):
                 for field in atype.attrib:
@@ -27,8 +32,13 @@ class xmlparser:
             if line == b'':
                 continue
             line = b"<?xml" + line
+            if b"\xf0\xe9\x88\x14" in line:
+                line=line.replace(b"\xf0\xe9\x88\x14",b"")
             parser = ET.XMLParser(encoding="utf-8")
-            tree = ET.fromstring(line, parser=parser)
+            try:
+                tree = ET.fromstring(line, parser=parser)
+            except Exception as err:
+                continue
             e = ET.ElementTree(tree).getroot()
             for atype in e.findall('log'):
                 if 'value' in atype.attrib:

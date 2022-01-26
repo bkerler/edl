@@ -10,8 +10,10 @@ current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfra
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import elf
-from edlclient.Library.sahara import convertmsmid
+from edlclient.Library.loader_db import loader_utils
 from edlclient.Config.qualcomm_config import vendor
+
+lu=loader_utils()
 
 class MBN:
     def __init__(self, memory):
@@ -176,7 +178,7 @@ def init_loader_db():
                 msmid = hwid[:8]
                 devid = hwid[8:]
                 pkhash = filename.split("_")[1].lower()
-                msmdb = convertmsmid(msmid)
+                msmdb = lu.convertmsmid(msmid)
                 for msmid in msmdb:
                     mhwid = (msmid + devid).lower()
                     if mhwid not in loaderdb:
@@ -195,7 +197,7 @@ def is_duplicate(loaderdb, sign_info):
     msmid = sign_info.hw_id[:8].lower()
     devid = sign_info.hw_id[8:].lower()
     hwid = sign_info.hw_id.lower()
-    for msmid in convertmsmid(msmid):
+    for msmid in lu.convertmsmid(msmid):
         rid = (msmid + devid).lower()
         if hwid in loaderdb:
             loader = loaderdb[hwid]
@@ -355,7 +357,7 @@ def main(argv):
                         print(info)
                         msmid = loader_info.hw_id[:8]
                         devid = loader_info.hw_id[8:]
-                        for msmid in convertmsmid(msmid):
+                        for msmid in lu.convertmsmid(msmid):
                             hwid = (msmid + devid).lower()
                             auth = ""
                             with open(item.filename, "rb") as rf:

@@ -65,6 +65,17 @@ pip3 install -r requirements.txt
 - Test on device connect using "UsbDkController -n" if you see a device with pid 0x9008
 - Works fine under Windows 10 and 11 :D
 
+#### Using serial port instead of usb
+With Port autodetection
+```bash
+edl --serial
+```
+
+or Port name
+```bash
+edl --portname \\.\COM1
+```
+
 ------------------------------------------------------------------------------------------------------------------------------------
 ## Get Loaders
 You should get these automatically if you do a ``` git submodule update --init --recursive ```

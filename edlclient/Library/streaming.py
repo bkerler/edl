@@ -6,6 +6,9 @@ from binascii import unhexlify
 from edlclient.Library.utils import *
 from edlclient.Library.hdlc import *
 from edlclient.Library.nand_config import BadFlags, SettingsOpt, nandregs, NandDevice
+from edlclient.Library.utils import progress
+
+STREAMING_DLOAD_PARTITION_TABLE_SIZE = 512
 
 
 class Streaming(metaclass=LogBase):
@@ -27,6 +30,7 @@ class Streaming(metaclass=LogBase):
         self.error = self.__logger.error
         self.warning = self.__logger.warning
         self.modules = None
+        self.hp = None
         self.Qualcomm = 0
         self.Patched = 1
         self.streaming_mode = None
@@ -81,12 +85,12 @@ class Streaming(metaclass=LogBase):
         self.regs.NAND_ADDR0 = 0
         self.regs.NAND_ADDR1 = 0
         self.regs.NAND_DEV0_CFG0 = 0 << self.nanddevice.CW_PER_PAGE | 512 << self.nanddevice.UD_SIZE_BYTES | \
-            5 << self.nanddevice.NUM_ADDR_CYCLES | 0 << self.nanddevice.SPARE_SIZE_BYTES
+                                   5 << self.nanddevice.NUM_ADDR_CYCLES | 0 << self.nanddevice.SPARE_SIZE_BYTES
         self.regs.NAND_DEV1_CFG1 = 7 << self.nanddevice.NAND_RECOVERY_CYCLES | 0 << self.nanddevice.CS_ACTIVE_BSY | \
-            17 << self.nanddevice.BAD_BLOCK_BYTE_NUM | \
-            1 << self.nanddevice.BAD_BLOCK_IN_SPARE_AREA | 2 << self.nanddevice.WR_RD_BSY_GAP | \
-            0 << self.nanddevice.WIDE_FLASH | \
-            1 << self.nanddevice.DEV0_CFG1_ECC_DISABLE
+                                   17 << self.nanddevice.BAD_BLOCK_BYTE_NUM | \
+                                   1 << self.nanddevice.BAD_BLOCK_IN_SPARE_AREA | 2 << self.nanddevice.WR_RD_BSY_GAP | \
+                                   0 << self.nanddevice.WIDE_FLASH | \
+                                   1 << self.nanddevice.DEV0_CFG1_ECC_DISABLE
         self.regs.NAND_EBI2_ECC_BUF_CFG = 1 << self.nanddevice.ECC_CFG_ECC_DISABLE
         self.regs.NAND_DEV_CMD_VLD = self.regs.NAND_DEV_CMD_VLD & ~(1 << self.nanddevice.READ_START_VLD)
         self.regs.NAND_DEV_CMD1 = (self.regs.NAND_DEV_CMD1 & ~(
@@ -144,60 +148,73 @@ class Streaming(metaclass=LogBase):
             self.mempoke(self.nanddevice.NAND_FLASH_BUFFER + i, 0xffffffff)
 
     def secure_mode(self):
-        self.send(b"\x17\x01", True)
-        return 0
+        resp = self.send(b"\x17\x01", True)  # 0x00 = Untrusted, 0x01 = Trusted
+        if resp[1] == 0x18:
+            return True
+        return False
 
     def qclose(self, errmode):
         resp = self.send(b"\x15")
-        if not errmode:
+        if len(resp) > 0 and resp[0] == 0x16:
             time.sleep(0.5)
             return True
-        if len(resp) > 2 and resp[1] == 0x16:
-            time.sleep(0.5)
-            return True
-        self.error("Error on closing stream")
+        if errmode:
+            self.error("Error on closing stream")
         return False
 
     def send_section_header(self, name):
         # 0x1b open muliimage, 0xe for user-defined partition
-        resp = self.send(b"\x1b\x0e" + name + b"\x00")
-        if resp[1] == 0x1c:
+        resp = self.send(b"\x1b\x0e" + bytes("0:"+name, 'utf-8') + b"\x00")
+        if resp[0] == 0x1c:
             return True
         self.error("Error on sending section header")
         return False
 
     def enter_flash_mode(self, ptable=None):
+        self.info("Entering flash mode ...")
         self.secure_mode()
-        self.qclose(0)
-        if ptable is None:
-            self.send_ptable(ptable, 0)  # 1 for fullflash
+        if not self.qclose(0):
+            data = self.cdc.usbread(timeout=0)
+        if ptable is not None:
+            if self.send_ptable(ptable, 0):  # 1 for fullflash
+                return True
+        else:
+            return True
+        return False
 
-    def write_flash(self, partname, filename):
+    def write_flash(self, lba:int=0, partname="", filename="", info=True):
         wbsize = 1024
         filesize = os.stat(filename).st_size
+        total = filesize
+        progbar = progress(1)
+        progbar.show_progress(prefix="Write", pos=0, total=total, display=info)
         with open(filename, 'rb') as rf:
             if self.send_section_header(partname):
-                adr = 0
+                adr = lba
                 while filesize > 0:
                     subdata = rf.read(wbsize)
-                    if len(subdata) < wbsize + 1:
-                        subdata += b'\xFF' * ((wbsize + 1) - len(subdata))
+                    if len(subdata)<1024:
+                        subdata += (1024-len(subdata))*b'\xFF'
                     scmd = b"\x07" + pack("<I", adr) + subdata
                     resp = self.send(scmd)
-                    if len(resp) == 0 or resp[1] != 0x8:
+                    if len(resp) == 0 or resp[0] != 0x8:
                         self.error("Error on sending data at address %08X" % adr)
                         return False
-                    adr += len(subdata)
+                    progbar.show_progress(prefix="Write", pos=adr, total=total, display=info)
+                    adr += 1024
                     filesize -= len(subdata)
-            if not self.qclose(0):
+            progbar.show_progress(prefix="Write", pos=total, total=total, display=info)
+            if not self.qclose(1):
                 self.error("Error on closing data stream")
                 return False
+            else:
+                return True
 
     def read_sectors(self, sector, sectors, filename, info=False):
         old = 0
         sectorsize = self.settings.PAGESIZE // self.settings.sectors_per_page
-        if info:
-            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        progbar = progress(sectorsize)
+        progbar.show_progress(prefix="Read", pos=0, total=sectors, display=info)
         with open(filename, "wb") as write_handle:
             while sector < sectors:
                 offset = (sector // self.settings.sectors_per_page) * self.settings.PAGESIZE
@@ -214,24 +231,23 @@ class Streaming(metaclass=LogBase):
                     data = data[sectorsize * sector:]
                 write_handle.write(data)
                 sector += sectorstoread
-                if info:
-                    prog = round(float(sector) / float(sectors) * float(100), 1)
-                    if prog > old:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Sector %d)' % sector,
-                                       bar_length=50)
-                        old = prog
+                progbar.show_progress(prefix="Read", pos=sector, total=sectors, display=info)
         self.nand_post()
-        if info:
-            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        progbar.show_progress(prefix="Read", pos=sectors, total=sectors, display=info)
         return True
 
-    def send_ptable(self, parttable, mode):
+    def send_ptable(self, parttable, mode=0):
         cmdbuf = b"\x19" + pack("<B", mode) + parttable
+        # mode 0x01 = override existing table
         resp = self.send(cmdbuf)
-        if resp[1] != 0x1a:
+        if resp[0] != 0x1a and resp[1] != 0x00:
             self.error("Error on sending raw partition table")
             return False
-        elif resp[2] == 0x0:
+        else:
+            # 0x0 – Partition table accepted
+            # 0x1 – Partition table differs, override is accepted
+            # 0x2 – Partition table format not recognized, does not accept override
+            # 0x3 – Erase operation failed
             return True
         self.error("Partition tables do not match - you need to fully flash the modem")
         return False
@@ -635,16 +651,29 @@ class Streaming(metaclass=LogBase):
                 partdata = rf.read()
         if partdata != -1:
             data = partdata[0x10:]
-            for i in range(0, len(data) // 0x1C):
-                name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
-                                                                                data[i * 0x1C:(i * 0x1C) + 0x1C])
+            magic1, magic2, version, partcount = unpack("<IIII", partdata[:0x10])
+            partitions["magic1"] = magic1
+            partitions["magic2"] = magic2
+            partitions["version"] = version
+            partitions["partcount"] = partcount
+            offset = 0
+            for i in range(partcount):
+                if magic1 == 0xAA7D1B9a and magic2 == 0x1F7D48BC:
+                    name, length, spare, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
+                                                                                    data[i * 0x1C:(i * 0x1C) + 0x1C])
+                else:
+                    name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
+                                                                                    data[i * 0x1C:(i * 0x1C) + 0x1C])
+                    spare = 0
                 if name[1] != 0x3A:
                     break
-                partitions[name[2:].rstrip(b"\x00").decode('utf-8').lower()] = dict(offset=offset,
-                                                                                    length=length & 0xFFFF,
+                partitions[name[2:].rstrip(b"\x00").decode('utf-8')] = dict(offset=offset,
+                                                                                    length=(length+spare) & 0xFFFF,
                                                                                     attr1=attr1, attr2=attr2,
                                                                                     attr3=attr3,
                                                                                     which_flash=which_flash)
+                if magic1 == 0xAA7D1B9a and magic2 == 0x1F7D48BC:
+                    offset += length + spare
             return partitions
         return {}
 
@@ -728,6 +757,7 @@ class Streaming(metaclass=LogBase):
             data = unpack(str(hp.numberOfSectors) + "I", resp[offset + 4:offset + 4 + (4 * hp.numberOfSectors)])
             hp.sectorSizes = data
             hp.featureBits = resp[offset + 4 + hp.numberOfSectors * 4:offset + 4 + hp.numberOfSectors * 4 + 1]
+            self.hp = hp
             """
             self.settings.PAGESIZE=512
             self.settings.UD_SIZE_BYTES=512
@@ -740,7 +770,7 @@ class Streaming(metaclass=LogBase):
             return False, hp
 
     def connect(self, mode=1):
-        time.sleep(0.200)
+        # time.sleep(0.200)
         self.memread = self.patched_memread
         if mode == 0:
             cmdbuf = bytearray(
@@ -826,7 +856,10 @@ class Streaming(metaclass=LogBase):
                            self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
 
             val = resp[1].flashId.decode('utf-8') if resp[1].flashId[0] != 0x65 else ""
-            self.info("Flash memory: %s %s, %s" % (self.settings.flash_mfr, val, self.settings.flash_descr))
+            self.info("Flash memory: %s %s, %s (vendor: 0x%02X id: 0x%02X)" % (self.settings.flash_mfr, val,
+                                                                               self.settings.flash_descr,
+                                                                               self.settings.flash_pid,
+                                                                               self.settings.flash_fid))
             # self.info("Maximum packet size: %i byte",*((unsigned int*)&rbuf[0x24]))
             self.info(
                 "Page size: %d bytes (%d sectors)" % (self.settings.PAGESIZE, self.settings.sectors_per_page))
@@ -852,8 +885,8 @@ class Streaming(metaclass=LogBase):
         old = 0
         pos = 0
         toread = length
-        if info:
-            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        progbar = progress(1)
+        progbar.show_progress(prefix="Read", pos=0, total=length, display=info)
         with open(filename, "wb") as wf:
             while toread > 0:
                 size = 0x20000
@@ -868,44 +901,39 @@ class Streaming(metaclass=LogBase):
                     break
                 toread -= size
                 pos += size
+                progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
                 if info:
                     prog = round(float(pos) / float(length) * float(100), 1)
                     if prog > old:
                         print_progress(prog, 100, prefix='Progress:', suffix='Complete (Offset: %08X)' % (offset + pos),
                                        bar_length=50)
                         old = prog
-        if info:
-            print_progress(100, 100, prefix='Progress:', suffix='Complete', bar_length=50)
+        progbar.show_progress(prefix="Read", pos=length, total=length, display=info)
         return True
 
     def read_blocks(self, fw, block, length, cwsize, savespare=False, info=True):
         badblocks = 0
         old = 0
         pos = 0
+        progbar = progress(1)
         totallength = length * self.settings.num_pages_per_blk * self.settings.PAGESIZE
-        if info:
-            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-        startoffset = block * self.settings.num_pages_per_blk * self.settings.PAGESIZE
-        endoffset = startoffset + totallength
+        progbar.show_progress(prefix="Read", pos=pos, total=totallength, display=info)
 
-        for offset in range(startoffset, endoffset, self.settings.PAGESIZE):
-            pages = int(offset / self.settings.PAGESIZE)
-            curblock = int(pages / self.settings.num_pages_per_blk)
-            curpage = int(pages - curblock * self.settings.num_pages_per_blk)
-            data, spare = self.flash_read(curblock, curpage, self.settings.sectors_per_page, cwsize)
-            if self.bbtbl[curblock] != 1 or (self.settings.bad_processing_flag != BadFlags.BAD_SKIP.value):
-                fw.write(data)
-                if savespare:
-                    fw.write(spare)
+        for curblock in range(block,block+length):
+            for curpage in range(self.settings.num_pages_per_blk):
+                data, spare = self.flash_read(curblock, curpage, self.settings.sectors_per_page, cwsize)
+                pos = (curblock * self.settings.num_pages_per_blk + curpage) * self.settings.PAGESIZE
+                progbar.show_progress(prefix="Read", pos=pos, total=totallength, display=info)
+                if self.bbtbl[curblock] != 1 or (self.settings.bad_processing_flag != BadFlags.BAD_SKIP.value):
+                    fw.write(data)
+                    if savespare:
+                        fw.write(spare)
             else:
                 self.debug("Bad block at block %d" % curblock)
                 badblocks += 1
             pos += self.settings.PAGESIZE
-            if info:
-                prog = round(float(pos) / float(totallength) * float(100), 1)
-                if prog > old:
-                    print_progress(prog, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-                    old = prog
+
+        progbar.show_progress(prefix="Read", pos=totallength, total=totallength, display=info)
         return badblocks
 
     """

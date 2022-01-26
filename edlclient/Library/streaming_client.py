@@ -50,12 +50,12 @@ class streaming_client(metaclass=LogBase):
         self.printer("-------------------------------------------------------------")
         for name in partitions:
             partition = partitions[name]
+            if not isinstance(partition,dict):
+                continue
             for i in range(0x10 - len(name)):
                 name += " "
-            offset = partition[
-                         "offset"] * self.streaming.settings.num_pages_per_blk * self.streaming.settings.PAGESIZE
-            length = partition[
-                         "length"] * self.streaming.settings.num_pages_per_blk * self.streaming.settings.PAGESIZE
+            offset = partition["offset"] * self.streaming.settings.num_pages_per_blk * self.streaming.settings.PAGESIZE
+            length = partition["length"] * self.streaming.settings.num_pages_per_blk * self.streaming.settings.PAGESIZE
             attr1 = partition["attr1"]
             attr2 = partition["attr2"]
             attr3 = partition["attr3"]
@@ -108,7 +108,7 @@ class streaming_client(metaclass=LogBase):
                 i = 0
                 rpartitions = self.streaming.get_partitions()
                 for partition in partitions:
-                    if partition.lower() in rpartitions:
+                    if partition in rpartitions:
                         spartition = rpartitions[partition]
                         offset = spartition["offset"]
                         length = spartition["length"]
@@ -314,17 +314,45 @@ class streaming_client(metaclass=LogBase):
                 partitionfilename = ""
                 if "--partitionfilename" in options:
                     partitionfilename = options["--partitionfilename"]
-                    if not os.path.exists(partitionfilename):
-                        self.error(f"Error: Couldn't find partition file: {partitionfilename}")
-                        return False
+                    if partitionfilename is not None:
+                        if not os.path.exists(partitionfilename):
+                            self.error(f"Error: Couldn't find partition file: {partitionfilename}")
+                            return False
+                        else:
+                            ptable = open(partitionfilename,"rb").read()
+                else:
+                    self.error("Partition file is needed for writing (--partitionfilename)")
+                    sys.exit(1)
                 if not os.path.exists(filename):
                     self.error(f"Error: Couldn't find file: {filename}")
                     return False
-                if partitionfilename == "":
+                """
+                if partitionfilename is None:
+                    ptable = None
                     rpartitions = self.streaming.get_partitions()
+                    if partitionname in rpartitions:
+                        spartition = rpartitions[partitionname]
+                        offset = spartition["offset"]
+                        length = spartition["length"]
+                        attr1 = spartition["attr1"]
+                        attr2 = spartition["attr2"]
+                        attr3 = spartition["attr3"]
+                        which_flash = spartition["which_flash"]
+                        numparts = 1
+                        pname = bytes("0:"+partitionname,'utf-8')
+                        pname += (16-len(pname))*b"\x00"
+                        ptable = pack("<IIII",0xAA7D1B9A,0x1F7D48BC,rpartitions["version"],numparts)
+                        ptable += pname
+                        ptable += pack("<IIBBBB",offset,length,attr1,attr2,attr3,which_flash)
+                        while len(ptable)%4!=0:
+                            ptable += b"\xFF"
+                    else:
+                        self.error(f"Partition {partitionname} not found. Aborting.")
+                        return False
                 else:
-                    rpartitions = self.streaming.get_partitions(partitionfilename)
-                if self.streaming.enter_flash_mode():
+                """
+                rpartitions = self.streaming.get_partitions(partitionfilename)
+                if self.streaming.enter_flash_mode(ptable=ptable):
                     if partitionname in rpartitions:
                         spartition = rpartitions[partitionname]
                         offset = spartition["offset"]
@@ -341,7 +369,7 @@ class streaming_client(metaclass=LogBase):
                             return False
                         if self.streaming.modules is not None:
                             self.streaming.modules.writeprepare()
-                        if self.streaming.write_flash(partitionname, filename):
+                        if self.streaming.write_flash(lba=0, partname=partitionname, filename=filename):
                             self.printer(f"Wrote {filename} to sector {str(offset)}.")
                             return True
                         else:

@@ -68,6 +68,8 @@ class firehose_client(metaclass=LogBase):
                                  devicemodel=devicemodel, serial=sahara.serial, skipresponse=skipresponse,
                                  luns=self.getluns(arguments), args=arguments)
         self.connected = False
+
+    def connect(self, sahara):
         self.firehose.connect()
         if "hwid" in dir(sahara):
             if sahara.hwid is not None:
@@ -88,18 +90,22 @@ class firehose_client(metaclass=LogBase):
                             elif type == memory_type.ufs:
                                 self.cfg.MemoryName = "UFS"
                             self.warning("Based on the chipset, we assume " +
-                                self.cfg.MemoryName + " as default memory type..., if it fails, try using " +
-                                "--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
+                                         self.cfg.MemoryName + " as default memory type..., if it fails, try using " +
+                                         "--memory\" with \"UFS\",\"NAND\" or \"spinor\" instead !")
                 elif socid in sochw:
                     self.target_name = sochw[socid].split(",")[0]
-
         # We assume ufs is fine (hopefully), set it as default
         if self.cfg.MemoryName == "":
-            self.warning(
-                "No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" " +
-                "with \"UFS\",\"NAND\" or \"spinor\" instead !")
-            self.cfg.MemoryName = "eMMC"
-
+            if "ufs" in self.firehose.supported_functions:
+                self.warning(
+                    "No --memory option set, we assume \"UFS\" as default ..., if it fails, try using \"--memory\" " +
+                    "with \"UFS\",\"NAND\" or \"spinor\" instead !")
+                self.cfg.MemoryName = "UFS"
+            else:
+                self.warning(
+                    "No --memory option set, we assume \"eMMC\" as default ..., if it fails, try using \"--memory\" " +
+                    "with \"UFS\",\"NAND\" or \"spinor\" instead !")
+                self.cfg.MemoryName = "eMMC"
         if self.firehose.configure(0):
             funcs = "Supported functions:\n-----------------\n"
             for function in self.firehose.supported_functions:
@@ -116,6 +122,7 @@ class firehose_client(metaclass=LogBase):
                                                     devicemodel=self.firehose.devicemodel, args=self.arguments)
             except Exception as err:  # pylint: disable=broad-except
                 self.firehose.modules = None
+        return self.connected
 
     def check_cmd(self, func):
         if not self.firehose.supported_functions:
@@ -167,16 +174,15 @@ class firehose_client(metaclass=LogBase):
         return True
 
     def get_storage_info(self):
-        if "getstorageinfo" in self.firehose.supported_functions:
-            storageinfo = self.firehose.cmd_getstorageinfo()
-            for info in storageinfo:
-                if "storage_info" in info:
-                    rs = info.replace("INFO: ", "")
-                    field = json.loads(rs)
-                    if "storage_info" in field:
-                        info = field["storage_info"]
-                        return info
-        return None
+        storageinfo = self.firehose.cmd_getstorageinfo()
+        for info in storageinfo:
+            if "storage_info" in info:
+                rs = info.replace("INFO: ", "")
+                field = json.loads(rs)
+                if "storage_info" in field:
+                    info = field["storage_info"]
+                    return info
+        return False
 
     def handle_firehose(self, cmd, options):
         if cmd == "gpt":
@@ -229,10 +235,10 @@ class firehose_client(metaclass=LogBase):
                 return False
             i = 0
             for partition in partitions:
-                if partition=="gpt":
+                if partition == "gpt":
                     luns = self.getluns(options)
                     for lun in luns:
-                        partfilename=filenames[i]+".lun%d" % lun
+                        partfilename = filenames[i] + ".lun%d" % lun
                         if self.firehose.cmd_read(lun, 0, 32, partfilename):
                             self.printer(
                                 f"Dumped sector {str(0)} with sector count {str(32)} " +
@@ -302,10 +308,9 @@ class firehose_client(metaclass=LogBase):
                 for skippart in skip:
                     filtered = fnmatch.filter(guid_gpt.partentries, skippart)
                     skipped.append(filtered)
-                for selpart in guid_gpt.partentries:
-                    partition = guid_gpt.partentries[selpart]
-                    partitionname = partition.name
-                    if partition.name in skipped:
+                for partitionname in guid_gpt.partentries:
+                    partition = guid_gpt.partentries[partitionname]
+                    if partitionname in skipped:
                         continue
                     filename = os.path.join(storedir, partitionname + ".bin")
                     self.info(
@@ -319,33 +324,34 @@ class firehose_client(metaclass=LogBase):
             if not self.check_param(["<filename>"]):
                 return False
             filename = options["<filename>"]
-            storageinfo = self.get_storage_info()
-            if storageinfo is not None and self.cfg.MemoryName.lower() in ["spinor" , "nand"]:
-                totalsectors = None
-                if "total_blocks" in storageinfo:
-                    totalsectors = storageinfo["total_blocks"]
-                if "num_physical" in storageinfo:
-                    num_physical = storageinfo["num_physical"]
-                    luns = [0]
-                    if num_physical > 0:
-                        luns=[]
-                        for i in range(num_physical):
-                            luns.append(i)
+            #storageinfo = self.firehose.parse_storage()
+            if self.cfg.MemoryName.lower() in ["spinor", "nand"]:
+                luns = [0]
+                totalsectors = (self.cfg.block_size * self.cfg.total_blocks) // self.cfg.SECTOR_SIZE_IN_BYTES
+                if self.cfg.num_physical > 0:
+                    luns = []
+                    for i in range(self.cfg.num_physical):
+                        luns.append(i)
+                elif 99 > self.cfg.maxlun > 0:
+                    luns = []
+                    for i in range(self.cfg.maxlun):
+                        luns.append(i)
                 if totalsectors is not None:
                     for lun in luns:
-                        buffer=self.firehose.cmd_read_buffer(physical_partition_number=lun,
-                                                      start_sector=0, num_partition_sectors=1, display=False)
-                        storageinfo = self.get_storage_info()
-                        if "total_blocks" in storageinfo:
-                            totalsectors = storageinfo["total_blocks"]
-                        if len(luns) > 1:
-                            sfilename = filename + f".lun{str(lun)}"
-                        else:
-                            sfilename = filename
-                        self.printer(f"Dumping sector 0 with sector count {str(totalsectors)} as {filename}.")
-                        if self.firehose.cmd_read(lun, 0, totalsectors, sfilename):
-                            self.printer(
-                                f"Dumped sector 0 with sector count {str(totalsectors)} as {filename}.")
+                        buffer = self.firehose.cmd_read_buffer(physical_partition_number=lun,
+                                                               start_sector=0, num_partition_sectors=1, display=False)
+                        if self.get_storage_info():
+                            totalsectors = (self.cfg.block_size *
+                                            self.cfg.total_blocks ) // self.cfg.SECTOR_SIZE_IN_BYTES
+
+                            if len(luns) > 1:
+                                sfilename = filename + f".lun{str(lun)}"
+                            else:
+                                sfilename = filename
+                            self.printer(f"Dumping sector 0 with sector count {str(totalsectors)} as {filename}.")
+                            if self.firehose.cmd_read(lun, 0, totalsectors, sfilename):
+                                self.printer(
+                                    f"Dumped sector 0 with sector count {str(totalsectors)} as {filename}.")
             else:
                 luns = self.getluns(options)
                 for lun in luns:
@@ -356,11 +362,17 @@ class firehose_client(metaclass=LogBase):
                         break
                     if len(luns) > 1:
                         sfilename = filename + f".lun{str(lun)}"
+                        self.printer(f"Dumping lun {lun} with sector count {str(guid_gpt.totalsectors)} as {filename}.")
                     else:
                         sfilename = filename
-                    self.printer(f"Dumping sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+                        self.printer(f"Dumping flash with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+
                     if self.firehose.cmd_read(lun, 0, guid_gpt.totalsectors, sfilename):
-                        self.printer(f"Dumped sector 0 with sector count {str(guid_gpt.totalsectors)} as {filename}.")
+                        if len(luns) > 1:
+                            self.printer(f"Dumped lun {lun} with sector count " +
+                                         f"{str(guid_gpt.totalsectors)} as {filename}.")
+                        else:
+                            self.printer(f"Dumped flash with sector count {str(guid_gpt.totalsectors)} as {filename}.")
                 return True
         elif cmd == "pbl":
             if not self.check_param(["<filename>"]):
@@ -465,8 +477,9 @@ class firehose_client(metaclass=LogBase):
                     break
                 pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2", "reserved3"]
                 for pname in pnames:
-                    if pname in guid_gpt.partentries:
-                        partition = guid_gpt.partentries[pname]
+                    for partition in guid_gpt.partentries:
+                        if partition.name != pname:
+                            continue
                         self.printer(f"Detected partition: {partition.name}")
                         data = self.firehose.cmd_read_buffer(lun,
                                                              partition.sector +
@@ -602,7 +615,10 @@ class firehose_client(metaclass=LogBase):
                 else:
                     return False
         elif cmd == "reset":
-            return self.firehose.cmd_reset()
+            mode = "reset"
+            if not self.check_param(["<resetmode>"]):
+                return False
+            return self.firehose.cmd_reset(options["<resetmode>"])
         elif cmd == "nop":
             if not self.check_cmd("nop"):
                 self.error("Nop command isn't supported by edl loader")
@@ -617,6 +633,11 @@ class firehose_client(metaclass=LogBase):
                 return False
             else:
                 return self.firehose.cmd_setbootablestoragedrive(int(options["<lun>"]))
+        elif cmd == "setactiveslot":
+            if not self.check_param(["<slot>"]):
+                return False
+            else:
+                return self.firehose.cmd_setactiveslot(options["<slot>"])
         elif cmd == "getstorageinfo":
             if not self.check_cmd("getstorageinfo"):
                 self.error("getstorageinfo command isn't supported by edl loader")
@@ -668,9 +689,9 @@ class firehose_client(metaclass=LogBase):
                     for lun in fpartitions:
                         for partition in fpartitions[lun]:
                             if self.cfg.MemoryName == "emmc":
-                                self.error("\t" + partition)
+                                self.error("\t" + partition.name)
                             else:
-                                self.error(lun + ":\t" + partition)
+                                self.error(lun + ":\t" + partition.name)
             return False
         elif cmd == "wl":
             if not self.check_param(["<directory>"]):
@@ -780,7 +801,8 @@ class firehose_client(metaclass=LogBase):
                         f"with sector count {str(partition.sectors)}.")
                     return True
                 else:
-                    self.printer(f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
+                    self.printer(
+                        f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
                     return False
             self.error(f"Error: Couldn't detect partition: {partitionname}")
             return False

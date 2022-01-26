@@ -143,7 +143,7 @@ class oneplus(metaclass=LogBase):
                 lun = res[1]
                 rpartition = res[2]
                 data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1, False)
-                value = data[24:24 + 5]
+                value = data.data[24:24 + 5]
                 try:
                     test = int(value.decode('utf-8'))
                     self.info("Oneplus protection with prjid %d detected" % test)
@@ -155,7 +155,7 @@ class oneplus(metaclass=LogBase):
             logfilename = "log.txt"
             filehandler = logging.FileHandler(logfilename)
             self.__logger.addHandler(filehandler)
-            self.ops_parm = None
+        self.ops_parm = None
         self.ops = self.convert_projid(fh, projid, serial)
 
     def getprodkey(self, projid):
@@ -226,9 +226,6 @@ class oneplus(metaclass=LogBase):
     def demacia(self):
         if self.ops.demacia():
             return self.ops.demacia()
-
-    def enable_ops(self, data, enable, projid, serial):
-        return None
 
     def addpatch(self):
         if "setprojmodel" in self.supported_functions or "setswprojmodel" in self.supported_functions:
