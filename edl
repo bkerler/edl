@@ -295,8 +295,8 @@ class main(metaclass=LogBase):
         if mode == "sahara":
             cmd = conninfo["cmd"]
             data = conninfo["data"]
-            if cmd == cmd_t.SAHARA_END_TRANSFER:
-                if data.status == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
+            if cmd == cmd_t.SAHARA_HELLO_REQ:
+                if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
                     if args["memorydump"]:
                         time.sleep(0.5)
                         print("Device is in memory dump mode, dumping memory")
@@ -325,24 +325,18 @@ class main(metaclass=LogBase):
                                     print("Error, couldn't find suitable enprg/nprg loader :(")
                                     self.exit()
                 else:
-                    self.error("Device is in an unknown sahara state, rebooting...")
-                    self.sahara.cmd_reset()
-                    data = self.cdc.read(timeout=None)
-                    self.debug(hexlify(data).decode('utf-8'))
-                    self.exit()
-            elif cmd == cmd_t.SAHARA_HELLO_REQ:
-                sahara_info = self.sahara.cmd_info()
-                if sahara_info is not None:
-                    resp = self.sahara.connect()
-                    mode = resp["mode"]
-                    if "data" in resp:
-                        data = resp["data"]
-                    if mode == "sahara":
-                        mode = self.sahara.upload_loader()
-                else:
-                    print("Error on sahara handshake, resetting.")
-                    self.sahara.cmd_reset()
-                    sys.exit(1)
+                    sahara_info = self.sahara.cmd_info()
+                    if sahara_info is not None:
+                        resp = self.sahara.connect()
+                        mode = resp["mode"]
+                        if "data" in resp:
+                            data = resp["data"]
+                        if mode == "sahara":
+                            mode = self.sahara.upload_loader()
+                    else:
+                        print("Error on sahara handshake, resetting.")
+                        self.sahara.cmd_reset()
+                        sys.exit(1)
         if mode == "error":
             print("Connection detected, quiting.")
             sys.exit(1)
