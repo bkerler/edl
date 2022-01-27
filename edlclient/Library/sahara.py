@@ -431,34 +431,34 @@ class sahara(metaclass=LogBase):
         if os.path.exists("memory"):
             rmrf("memory")
         os.mkdir("memory")
-        cmd, pkt = self.get_rsp()
-        if cmd["cmd"] == cmd_t.SAHARA_MEMORY_DEBUG or cmd["cmd"] == cmd_t.SAHARA_64BIT_MEMORY_DEBUG:
-            memory_table_addr = pkt["memory_table_addr"]
-            memory_table_length = pkt["memory_table_length"]
+        res = self.get_rsp()
+        if res["cmd"] == cmd_t.SAHARA_MEMORY_DEBUG or res["cmd"] == cmd_t.SAHARA_64BIT_MEMORY_DEBUG:
+            memory_table_addr = res["data"].memory_table_addr
+            memory_table_length = res["data"].memory_table_length
             if self.bit64:
                 pktsize = 8 + 8 + 8 + 20 + 20
                 if memory_table_length % pktsize == 0:
                     if memory_table_length != 0:
                         print(
                             f"Reading 64-Bit partition from {hex(memory_table_addr)} with length of " +
-                            "{hex(memory_table_length)}")
+                            f"{hex(memory_table_length)}")
                         ptbldata = self.read_memory(memory_table_addr, memory_table_length)
                         num_entries = len(ptbldata) // pktsize
                         partitions = []
                         for id_entry in range(0, num_entries):
                             pd = self.ch.parttbl_64bit(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
-                            desc = pd["desc"].replace(b"\x00", b"").decode('utf-8')
-                            filename = pd["filename"].replace(b"\x00", b"").decode('utf-8')
+                            desc = pd.desc.replace(b"\x00", b"").decode('utf-8')
+                            filename = pd.filename.replace(b"\x00", b"").decode('utf-8')
                             if dump_partitions and filename not in dump_partitions:
                                 continue
-                            mem_base = pd["mem_base"]
-                            save_pref = pd["save_pref"]
-                            length = pd["length"]
+                            mem_base = pd.mem_base
+                            save_pref = pd.save_pref
+                            length = pd.length
                             partitions.append(dict(desc=desc, filename=filename, mem_base=mem_base, length=length,
                                                    save_pref=save_pref))
                             print(
                                 f"{filename}({desc}): Offset {hex(mem_base)}, Length {hex(length)}, " +
-                                "SavePref {hex(save_pref)}")
+                                f"SavePref {hex(save_pref)}")
 
                         self.dump_partitions(partitions)
                         return True
@@ -475,13 +475,13 @@ class sahara(metaclass=LogBase):
                         partitions = []
                         for id_entry in range(0, num_entries):
                             pd = self.parttbl(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
-                            desc = pd["desc"].replace(b"\x00", b"").decode('utf-8')
-                            filename = pd["filename"].replace(b"\x00", b"").decode('utf-8')
+                            desc = pd.desc.replace(b"\x00", b"").decode('utf-8')
+                            filename = pd.filename.replace(b"\x00", b"").decode('utf-8')
                             if dump_partitions and filename not in dump_partitions:
                                 continue
-                            mem_base = pd["mem_base"]
-                            save_pref = pd["save_pref"]
-                            length = pd["length"]
+                            mem_base = pd.mem_base
+                            save_pref = pd.save_pref
+                            length = pd.length
                             partitions.append(dict(desc=desc, filename=filename, mem_base=mem_base, length=length,
                                                    save_pref=save_pref))
                             print(f"{filename}({desc}): Offset {hex(mem_base)}, " +
@@ -489,8 +489,8 @@ class sahara(metaclass=LogBase):
 
                         self.dump_partitions(partitions)
                     return True
-        elif "status" in pkt:
-            self.error(self.get_error_desc(pkt["status"]))
+        elif res["data"].status:
+            self.error(self.get_error_desc(res["data"].status))
             return False
         return False
 

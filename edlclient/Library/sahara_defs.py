@@ -303,7 +303,7 @@ class CommandHandler:
 
         class req:
             save_pref = st.dword()
-            msm_base = st.dword()
+            mem_base = st.dword()
             length = st.dword()
             desc = st.string(20)
             filename = st.string(20)
@@ -317,7 +317,7 @@ class CommandHandler:
 
         class req:
             save_pref = st.qword()
-            msm_base = st.qword()
+            mem_base = st.qword()
             length = st.qword()
             desc = st.string(20)
             filename = st.string(20)
