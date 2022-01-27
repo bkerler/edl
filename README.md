@@ -9,7 +9,7 @@
 
 ### Use Re LiveDVD (everything ready to go, based on Ubuntu):
 [Download Re Live DVD V3](https://drive.google.com/file/d/1OoGWFSZTqWqwfU35W6UAUwc20CJrK95t/view?usp=sharing)
-User: livedvd, Password:livedvd
+User: user, Password:user
 
 ## Installation
 
