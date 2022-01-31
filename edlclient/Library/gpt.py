@@ -409,7 +409,8 @@ class gpt(metaclass=LogBase):
             partofsingleimage = "false"
             readbackverify = "false"
             sparse = "false"
-            for partition in self.partentries:
+            for partname in self.partentries:
+                partition = self.partentries[partname]
                 filename = partition.name + ".bin"
                 mstr += f"\t<program SECTOR_SIZE_IN_BYTES=\"{sectorsize}\" " + \
                         f"file_sector_offset=\"0\" " \
