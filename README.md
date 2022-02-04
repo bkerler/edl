@@ -8,8 +8,8 @@
 - Because memory dumping helps to find issues :)
 
 ### Use Re LiveDVD (everything ready to go, based on Ubuntu):
-[Download Re Live DVD V2](https://drive.google.com/file/d/1VUK0toC6I0jhJ4ZTFPREhSXFTkSe9_gl/view?usp=sharing)
-User: livedvd, Password:livedvd
+[Download Re Live DVD V3](https://drive.google.com/file/d/1OoGWFSZTqWqwfU35W6UAUwc20CJrK95t/view?usp=sharing)
+User: user, Password:user
 
 ## Installation
 
@@ -64,6 +64,17 @@ pip3 install -r requirements.txt
 - Get usbdk installer (.msi) from [here](https://github.com/daynix/UsbDk/releases/) and install it
 - Test on device connect using "UsbDkController -n" if you see a device with pid 0x9008
 - Works fine under Windows 10 and 11 :D
+
+#### Using serial port instead of usb
+With Port autodetection
+```bash
+edl --serial
+```
+
+or Port name
+```bash
+edl --portname \\.\COM1
+```
 
 ------------------------------------------------------------------------------------------------------------------------------------
 ## Get Loaders

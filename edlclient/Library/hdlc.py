@@ -134,15 +134,15 @@ class hdlc:
         replybuf = bytearray()
         if timeout is None:
             timeout = self.timeout
-        tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
+        tmp = self.cdc.read(timeout=timeout)
         if tmp == bytearray():
-            return 0
+            return b""
         if tmp == b"":
-            return 0
+            return b""
         retry = 0
         while tmp[-1] != 0x7E:
             time.sleep(0.01)
-            tmp += self.cdc.read(MAX_PACKET_LEN, timeout)
+            tmp += self.cdc.read(timeout=timeout)
             retry += 1
             if retry > 5:
                 break
@@ -150,13 +150,15 @@ class hdlc:
         data = unescape(replybuf)
         # print(hexlify(data))
         if len(data) > 3:
+            if data[0]==0x7E:
+                data=data[1:]
             crc16val = crc16(0xFFFF, data[:-3])
             reccrc = int(data[-3]) + (int(data[-2]) << 8)
             if crc16val != reccrc:
                 return -1
         else:
             time.sleep(0.01)
-            data = self.cdc.read(MAX_PACKET_LEN, timeout)
+            data = self.cdc.read(timeout=timeout)
             if len(data) > 3:
                 crc16val = crc16(0xFFFF, data[:-3])
                 reccrc = int(data[-3]) + (int(data[-2]) << 8)
@@ -169,15 +171,15 @@ class hdlc:
         replybuf = bytearray()
         if timeout is None:
             timeout = self.timeout
-        tmp = self.cdc.read(MAX_PACKET_LEN, timeout)
+        tmp = self.cdc.read(timeout=timeout)
         if tmp == bytearray():
-            return 0
+            return b""
         if tmp == b"":
-            return 0
+            return b""
         retry = 0
         while tmp[-1] != 0x7E:
             # time.sleep(0.05)
-            tmp += self.cdc.read(MAX_PACKET_LEN, timeout)
+            tmp += self.cdc.read(timeout=timeout)
             retry += 1
             if retry > 5:
                 break
@@ -190,7 +192,7 @@ class hdlc:
             return data[:-3]
         else:
             time.sleep(0.5)
-            data = self.cdc.read(MAX_PACKET_LEN, timeout)
+            data = self.cdc.read(timeout=timeout)
             if len(data) > 3:
                 # crc16val = self.crc16(0xFFFF, data[:-3])
                 # reccrc = int(data[-3]) + (int(data[-2]) << 8)
@@ -212,6 +214,7 @@ class hdlc:
         if isinstance(outdata, str):
             outdata = bytes(outdata, 'utf-8')
         packet = convert_cmdbuf(bytearray(outdata))
+        self.cdc.flush()
         if self.send_unframed_buf(packet, prefixflag):
             if nocrc:
                 return self.receive_reply_nocrc()
@@ -229,12 +232,9 @@ class hdlc:
         if len(pktbuf) == 0:
             return
         logging.error("Error: %s " % descr)
-
         if pktbuf[1] == 0x0e:
             pktbuf[-4] = 0
             # puts(pktbuf+2)
             ret = self.receive_reply()
             errorcode = unpack("<I", ret[2:2 + 4])
             logging.error("Error code = %08x\n\n", errorcode)
-        else:
-            print(hexlify(pktbuf))

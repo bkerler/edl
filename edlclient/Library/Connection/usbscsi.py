@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2021
 import argparse
-from edlclient.Library.usblib import *
+from edlclient.Library.Connection.usblib import *
 
 
 def main():

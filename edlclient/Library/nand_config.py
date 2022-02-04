@@ -245,6 +245,8 @@ class SettingsOpt:
         self.sectorsize = 512
         self.flash_mfr = ""
         self.flash_descr = ""
+        self.flash_fid = 0
+        self.flash_pid = 0
         self.IsWideFlash = 0
         self.badsector = 0
         self.badflag = 0
@@ -559,7 +561,8 @@ class NandDevice:
 
         fid = (nandid >> 8) & 0xff
         pid = nandid & 0xff
-
+        self.settings.flash_fid = fid
+        self.settings.flash_pid = pid
         self.settings.flash_mfr = ""
         for info in nand_manuf_ids:
             if info[0] == pid:

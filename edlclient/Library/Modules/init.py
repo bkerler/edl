@@ -23,15 +23,17 @@ except ImportError as e:
     xiaomi = None
     pass
 
+
 class modules(metaclass=LogBase):
     def __init__(self, fh, serial, supported_functions, loglevel, devicemodel, args):
         self.fh = fh
         self.args = args
         self.serial = serial
         self.error = self.__logger.error
+        self.info = self.__logger.info
         self.supported_functions = supported_functions
         self.__logger.setLevel(loglevel)
-        if loglevel==logging.DEBUG:
+        if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
@@ -45,10 +47,10 @@ class modules(metaclass=LogBase):
         self.ops = None
         try:
             self.ops = oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial,
-                               supported_functions=self.supported_functions, args=self.args,loglevel=loglevel)
+                               supported_functions=self.supported_functions, args=self.args, loglevel=loglevel)
         except Exception as e:
             pass
-        self.xiaomi=None
+        self.xiaomi = None
         try:
             self.xiaomi = xiaomi(fh=self.fh)
         except Exception as e:
@@ -84,7 +86,7 @@ class modules(metaclass=LogBase):
                     options[option[0]] = option[1]
             else:
                 options[args[i]] = True
-        if command=="":
+        if command == "":
             print("Valid commands are:\noemunlock\n")
             return False
         if self.generic is not None and command == "oemunlock":
@@ -96,4 +98,3 @@ class modules(metaclass=LogBase):
                 self.error("Unknown mode given. Available are: enable, disable.")
                 return False
             return self.generic.oem_unlock(enable)
-        return False

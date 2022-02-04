@@ -4,10 +4,10 @@ import os
 
 setup(
     name='edlclient',
-    version='3.53',
+    version='3.60',
     packages=find_packages(),
     long_description=open("README.md").read(),
-    scripts=['edl','edlclient/Tools/qc_diag','edlclient/Tools/sierrakeygen','edlclient/Tools/boottodwnload','edlclient/Tools/enableadb','edlclient/Tools/fhloaderparse','edlclient/Tools/beagle_to_loader'],
+    scripts=['edl','edlclient/Tools/qc_diag.py','edlclient/Tools/sierrakeygen.py','edlclient/Tools/boottodwnload','edlclient/Tools/enableadb','edlclient/Tools/fhloaderparse','edlclient/Tools/beagle_to_loader'],
     data_files = ['LICENSE','README.md'],
     long_description_content_type="text/markdown",
     url='https://github.com/bkerler/edl',

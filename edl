@@ -4,50 +4,51 @@
 """
 Usage:
     edl -h | --help
-    edl [--vid=vid] [--pid=pid]
-    edl [--loader=filename] [--memory=memtype]
-    edl [--debugmode]
-    edl [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number]
-    edl [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes]
-    edl server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl memorydump [--partitions=partnames] [--debugmode] [--vid=vid] [--pid=pid]
-    edl printgpt [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl r <partitionname> <filename> [--memory=memtype] [--sectorsize==bytes] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl rl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl rf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl rs <start_sector> <sectors> <filename> [--lun=lun] [--sectorsize==bytes] [--memory=memtype] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl w <partitionname> <filename> [--partitionfilename=filename] [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl wl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl wf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl ep <partitionname> <sectors> [--memory=memtype] [--skipwrite] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl peekdword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl peekqword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl memtbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl poke <offset> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl pokehex <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl pokedword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl pokeqword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl memcpy <offset> <size> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl getstorageinfo [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit]
-    edl reset [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid]
-    edl nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit]
-    edl modules <command> <options> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value]
-    edl provision <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
-    edl qfil <rawprogram> <patch> <imagedir> [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid]
+    edl [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl [--loader=filename] [--memory=memtype] [--portname=portname] [--serial]
+    edl [--debugmode] [--portname=portname] [--serial]
+    edl [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number] [--portname=portname] [--serial]
+    edl [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes] [--portname=portname] [--serial]
+    edl server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl memorydump [--partitions=partnames] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl printgpt [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl r <partitionname> <filename> [--memory=memtype] [--sectorsize==bytes] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl rl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--genxml]  [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl rf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl rs <start_sector> <sectors> <filename> [--lun=lun] [--sectorsize==bytes] [--memory=memtype] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl w <partitionname> <filename> [--partitionfilename=filename] [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl wl <directory> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skip=partnames] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl wf <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl ws <start_sector> <filename> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--skipresponse] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl e <partitionname> [--memory=memtype] [--skipwrite] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl es <start_sector> <sectors> [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--skipwrite] [--loader=filename] [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl ep <partitionname> <sectors> [--memory=memtype] [--skipwrite] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl footer <filename> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl peek <offset> <length> <filename> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl peekhex <offset> <length> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl peekdword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl peekqword <offset> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl memtbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl poke <offset> <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl pokehex <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl pokedword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl pokeqword <offset> <data> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl memcpy <offset> <size> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl secureboot [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl pbl <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl getstorageinfo [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl setactiveslot <slot> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
+    edl reset <resetmode> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
+    edl modules <command> <options> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--portname=portname] [--serial]
+    edl provision <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl qfil <rawprogram> <patch> <imagedir> [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
 
 Description:
     server                      # Run tcp/ip server
@@ -83,9 +84,10 @@ Description:
     send                        # Send firehose command
     xml                         # Send firehose xml file
     rawxml                      # Send firehose xml raw string
-    reset                       # Send firehose reset command
+    reset                       # Send firehose reset command, reset modes: reset, off, edl
     nop                         # Send firehose nop command
     modules                     # Enable submodules, for example: "oemunlock enable"
+    setactiveslot               # Set partition as active (Slot A/B)
     provision                   # UFS provision
     qfil                        # Write rawprogram xml files
                                 # <rawprogram> : program config xml, such as rawprogram_unsparse.xml or rawprogram*.xml
@@ -113,6 +115,9 @@ Options:
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
     --devicemodel=value                Set device model
+    --portname=portname                Set serial port name (/dev/ttyUSB0 for Linux/MAC; \\.\COM1 for Windows)
+    --serial                           Use serial port (port autodetection)
+    --slot                             Set active slot for setactiveslot [a or b]
 """
 
 import os
@@ -124,25 +129,25 @@ import re
 from docopt import docopt
 from edlclient.Config.usb_ids import default_ids
 from edlclient.Library.utils import LogBase
-from edlclient.Library.usblib import UsbClass
+from edlclient.Library.Connection.usblib import usb_class
+from edlclient.Library.Connection.seriallib import serial_class
 from edlclient.Library.sahara import sahara
 from edlclient.Library.streaming_client import streaming_client
 from edlclient.Library.firehose_client import firehose_client
 from edlclient.Library.streaming import Streaming
+from edlclient.Library.sahara_defs import cmd_t, sahara_mode_t
 from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.53 (c) B.Kerler 2018-2021.")
+print("Qualcomm Sahara / Firehose Client V3.60 (c) B.Kerler 2018-2022.")
 
 
 def parse_cmd(rargs):
     cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
-            "peek", "peekhex",
-            "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword", "memcpy", "secureboot",
-            "pbl",
-            "qfp", "getstorageinfo", "setbootablestoragedrive", "send", "xml", "rawxml", "reset", "nop", "modules",
-            "memorydump", "provision", "qfil"]
+            "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
+            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "setactiveslot",
+            "send", "xml", "rawxml", "reset", "nop", "modules", "memorydump", "provision", "qfil"]
     for cmd in cmds:
         if rargs[cmd]:
             return cmd
@@ -177,9 +182,9 @@ class main(metaclass=LogBase):
         self.cdc = None
         self.sahara = None
 
-    def doconnect(self, loop, mode, resp):
+    def doconnect(self, loop):
         while not self.cdc.connected:
-            self.cdc.connected = self.cdc.connect()
+            self.cdc.connected = self.cdc.connect(portname=self.portname)
             if not self.cdc.connected:
                 sys.stdout.write('.')
                 if loop == 5:
@@ -199,24 +204,39 @@ class main(metaclass=LogBase):
             else:
                 self.info("Device detected :)")
                 try:
-                    mode, resp = self.sahara.connect()
+                    resp = self.sahara.connect()
                 except Exception as err:  # pylint: disable=broad-except
                     self.debug(str(err))
-                    if mode == "" or resp == -1:
-                        mode, resp = self.sahara.connect()
-                if mode == -1:
-                    mode, resp = self.sahara.connect()
-                if mode == "":
-                    self.info("Unknown mode. Aborting.")
-                    self.exit()
-                self.info(f"Mode detected: {mode}")
-                break
-
-        return mode, resp
+                    continue
+                if "mode" in resp:
+                    mode = resp["mode"]
+                    self.info(f"Mode detected: {mode}")
+                    return resp
+        return {"mode":"error"}
 
     def exit(self):
         self.cdc.close()
         sys.exit()
+
+    def handle_streaming(self, mode):
+        self.cdc.timeout = None
+        sahara_info = self.sahara.streaminginfo()
+        if sahara_info:
+            mode, resp = self.sahara.connect()
+            if mode == "sahara":
+                mode = self.sahara.upload_loader()
+                if "enprg" in self.sahara.programmer.lower():
+                    mode = "load_enandprg"
+                elif "nprg" in self.sahara.programmer.lower():
+                    mode = "load_nandprg"
+                elif mode != "":
+                    mode = "load_" + mode
+                if "load_" in mode:
+                    time.sleep(0.3)
+                else:
+                    print("Error, couldn't find suitable enprg/nprg loader :(")
+                    self.exit()
+        return mode
 
     def run(self):
         if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
@@ -243,7 +263,20 @@ class main(metaclass=LogBase):
         else:
             self.__logger.setLevel(logging.INFO)
 
-        self.cdc = UsbClass(portconfig=portconfig, loglevel=self.__logger.level)
+        if args["--serial"]:
+            self.serial = True
+        else:
+            self.serial = False
+        if args["--portname"]:
+            self.portname = args["--portname"]
+            self.serial = True
+        else:
+            self.portname = ""
+        if self.serial:
+            self.cdc = serial_class(loglevel=self.__logger.level,portconfig=portconfig)
+        else:
+            self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level)
+
         self.sahara = sahara(self.cdc, loglevel=self.__logger.level)
 
         if args["--loader"] == 'None':
@@ -256,25 +289,14 @@ class main(metaclass=LogBase):
 
         self.info("Waiting for the device")
         resp = None
-        self.cdc.timeout = 100
-        mode, resp = self.doconnect(loop, mode, resp)
-        if resp == -1:
-            mode, resp = self.doconnect(loop, mode, resp)
-            if resp == -1:
-                self.error("USB desync, please rerun command !")
-                self.exit()
-        # print((mode, resp))
+        self.cdc.timeout = 1500
+        conninfo = self.doconnect(loop)
+        mode = conninfo["mode"]
         if mode == "sahara":
-            if resp is None:
-                if mode == "sahara":
-                    print("Sahara in error state, resetting ...")
-                    self.sahara.cmd_reset()
-                    data = self.cdc.read(5)
-                    self.debug(hexlify(data).decode('utf-8'))
-                    self.exit()
-            elif "mode" in resp:
-                mode = resp["mode"]
-                if mode == self.sahara.sahara_mode.SAHARA_MODE_MEMORY_DEBUG:
+            cmd = conninfo["cmd"]
+            data = conninfo["data"]
+            if cmd == cmd_t.SAHARA_HELLO_REQ:
+                if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
                     if args["memorydump"]:
                         time.sleep(0.5)
                         print("Device is in memory dump mode, dumping memory")
@@ -303,54 +325,35 @@ class main(metaclass=LogBase):
                                     print("Error, couldn't find suitable enprg/nprg loader :(")
                                     self.exit()
                 else:
-                    print("Device is in EDL mode .. continuing.")
-                    self.cdc.timeout = None
                     sahara_info = self.sahara.cmd_info()
-                    if sahara_info:
-                        mode, resp = self.sahara.connect()
+                    if sahara_info is not None:
+                        resp = self.sahara.connect()
+                        mode = resp["mode"]
+                        if "data" in resp:
+                            data = resp["data"]
                         if mode == "sahara":
                             mode = self.sahara.upload_loader()
-                            if mode == "firehose":
-                                if "enprg" in self.sahara.programmer.lower():
-                                    mode = "enandprg"
-                                elif "nprg" in self.sahara.programmer.lower():
-                                    mode = "nandprg"
-                            if mode != "":
-                                if mode != "firehose":
-                                    streaming = Streaming(self.cdc, self.sahara, self.__logger.level)
-                                    if streaming.connect(1):
-                                        print("Successfully uploaded programmer :)")
-                                        mode = "nandprg"
-                                    else:
-                                        print("Device is in an unknown state")
-                                        self.exit()
-                                else:
-                                    print("Successfully uploaded programmer :)")
-                            else:
-                                print("No suitable loader found :(")
-                                self.exit()
                     else:
-                        print("Device is in an unknown sahara state, resetting")
-                        print("resp={0}".format(resp))
+                        print("Error on sahara handshake, resetting.")
                         self.sahara.cmd_reset()
-                        self.exit()
-            else:
-                print("Device is in an unknown state")
-                self.exit()
-        else:
-            self.sahara.bit64 = True
-
-        if mode == "firehose":
-            self.cdc.timeout = None
-            cmd = parse_cmd(args)
-            if cmd == 'provision':
-                args["--memory"] = 'ufs'
-                args["--skipstorageinit"] = 1
-            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
-            options = parse_option(args)
-            if cmd != "":
-                fh.handle_firehose(cmd, options)
-        elif mode == "nandprg" or mode == "enandprg" or mode == "load_nandprg" or mode == "load_enandprg":
+                        sys.exit(1)
+        if mode == "error":
+            print("Connection detected, quiting.")
+            sys.exit(1)
+        elif mode == "firehose":
+            if "enprg" in self.sahara.programmer.lower():
+                mode = "enandprg"
+            elif "nprg" in self.sahara.programmer.lower():
+                mode = "nandprg"
+            if mode != "firehose":
+                streaming = Streaming(self.cdc, self.sahara, self.__logger.level)
+                if streaming.connect(1):
+                    print("Successfully uploaded programmer :)")
+                    mode = "nandprg"
+                else:
+                    print("No suitable loader found :(")
+                    self.exit()
+        if mode != "firehose":
             sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level, print)
             cmd = parse_cmd(args)
             options = parse_option(args)
@@ -360,10 +363,17 @@ class main(metaclass=LogBase):
                 options["<mode>"] = 0
             sc.handle_streaming(cmd, options)
         else:
-            self.error("Sorry, couldn't talk to Sahara, please reboot the device !")
-
-        self.exit()
-
+            self.cdc.timeout = None
+            cmd = parse_cmd(args)
+            if cmd == 'provision':
+                args["--memory"] = 'ufs'
+                args["--skipstorageinit"] = 1
+            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
+            options = parse_option(args)
+            if cmd != "":
+                self.info("Trying to connect to firehose loader ...")
+                if fh.connect(sahara):
+                    fh.handle_firehose(cmd, options)
 
 if __name__ == '__main__':
     base = main()

@@ -16,7 +16,8 @@ from binascii import hexlify
 from ctypes import c_void_p, c_int
 from edlclient.Library.utils import *
 from struct import pack, calcsize
-
+import traceback
+from edlclient.Library.Connection.devicehandler import DeviceClass
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
 
@@ -52,55 +53,15 @@ CDC_CMDS = {
 }
 
 
-class UsbClass(metaclass=LogBase):
-    
-    def load_windows_dll(self):
-        if os.name == 'nt':
-            windows_dir = None
-            try:
-                # add pygame folder to Windows DLL search paths
-                windows_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "Windows")
-                try:
-                    os.add_dll_directory(windows_dir)
-                except Exception:
-                    pass
-                os.environ['PATH'] = windows_dir + ';' + os.environ['PATH']
-            except Exception:
-                pass
-            del windows_dir
+class usb_class(DeviceClass):
 
     def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
+        super().__init__(loglevel, portconfig, devclass)
         self.load_windows_dll()
-        self.connected = False
-        self.timeout = None
-        self.vid = None
-        self.pid = None
-        self.device = None
         self.EP_IN = None
         self.EP_OUT = None
-        self.interface = None
-        self.stopbits = None
-        self.databits = None
-        self.baudrate = None
-        self.parity = None
-        self.configuration = None
-        self.backend = None
-        self.loglevel = loglevel
-        self.portconfig = portconfig
-        self.devclass = devclass
-        self.__logger = self.__logger
-        self.info = self.__logger.info
-        self.error = self.__logger.error
-        self.warning = self.__logger.warning
-        self.debug = self.__logger.debug
-        self.__logger.setLevel(loglevel)
-        self.buffer = array.array('B', [0]) * 1048576
-        if loglevel == logging.DEBUG:
-            logfilename = "log.txt"
-            fh = logging.FileHandler(logfilename)
-            self.__logger.addHandler(fh)
-
-        if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
+        self.is_serial = False
+        if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif sys.platform.startswith('win32'):
             if calcsize("P") * 8 == 64:
@@ -114,50 +75,40 @@ class UsbClass(metaclass=LogBase):
             except:
                 self.backend = None
 
-    def verify_data(self, data, pre="RX:"):
-        self.debug("", stack_info=True)
-        if isinstance(data, bytes) or isinstance(data, bytearray):
-            if data[:5] == b"<?xml":
+    def load_windows_dll(self):
+        if os.name == 'nt':
+            windows_dir = None
+            try:
+                # add pygame folder to Windows DLL search paths
+                windows_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../..", "Windows")
                 try:
-                    rdata = b""
-                    for line in data.split(b"\n"):
-                        try:
-                            self.debug(pre + line.decode('utf-8'))
-                            rdata += line + b"\n"
-                        except Exception as e:  # pylint: disable=broad-except
-                            v = hexlify(line)
-                            self.debug(str(e))
-                            self.debug(pre + v.decode('utf-8'))
-                    return rdata
-                except Exception as e:  # pylint: disable=broad-except
-                    self.debug(str(e))
+                    os.add_dll_directory(windows_dir)
+                except Exception:
                     pass
-            if logging.DEBUG >= self.__logger.level:
-                self.debug(pre + hexlify(data).decode('utf-8'))
-        else:
-            if logging.DEBUG >= self.__logger.level:
-                self.debug(pre + data)
-        return data
+                os.environ['PATH'] = windows_dir + ';' + os.environ['PATH']
+            except Exception:
+                pass
+            del windows_dir
 
-    def getinterfacecount(self):
+    def getInterfaceCount(self):
         if self.vid is not None:
-            self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid)
+            self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid, backend=self.backend)
             if self.device is None:
                 self.debug("Couldn't detect the device. Is it connected ?")
                 return False
             try:
                 self.device.set_configuration()
-            except Exception as e:
-                self.debug(str(e))
+            except Exception as err:
+                self.debug(str(err))
                 pass
             self.configuration = self.device.get_active_configuration()
             self.debug(2, self.configuration)
             return self.configuration.bNumInterfaces
         else:
-            self.error("No device detected. Is it connected ?")
+            self.__logger.error("No device detected. Is it connected ?")
         return 0
 
-    def setlinecoding(self, baudrate=None, parity=0, databits=8, stopbits=1):
+    def setLineCoding(self, baudrate=None, parity=0, databits=8, stopbits=1):
         sbits = {1: 0, 1.5: 1, 2: 2}
         dbits = {5, 6, 7, 8, 16}
         pmodes = {0, 1, 2, 3, 4}
@@ -213,7 +164,7 @@ class UsbClass(metaclass=LogBase):
         data = bytearray(linecode)
         wlen = self.device.ctrl_transfer(
             req_type, CDC_CMDS["SET_LINE_CODING"],
-            data_or_wlength=data, windex=1)
+            data_or_wLength=data, wIndex=1)
         self.debug("Linecoding set, {}b sent".format(wlen))
 
     def setbreak(self):
@@ -222,51 +173,54 @@ class UsbClass(metaclass=LogBase):
         recipient = 1  # 0:device, 1:interface, 2:endpoint, 3:other
         req_type = (txdir << 7) + (req_type << 5) + recipient
         wlen = self.device.ctrl_transfer(
-            bmrequesttype=req_type, brequest=CDC_CMDS["SEND_BREAK"],
-            wvalue=0, data_or_wlength=0, windex=1)
+            bmRequestType=req_type, bRequest=CDC_CMDS["SEND_BREAK"],
+            wValue=0, data_or_wLength=0, wIndex=1)
         self.debug("Break set, {}b sent".format(wlen))
 
-    def setcontrollinestate(self, rts=None, dtr=None, isftdi=False):
-        ctrlstate = (2 if rts else 0) + (1 if dtr else 0)
-        if isftdi:
-            ctrlstate += (1 << 8) if dtr is not None else 0
-            ctrlstate += (2 << 8) if rts is not None else 0
+    def setcontrollinestate(self, RTS=None, DTR=None, isFTDI=False):
+        ctrlstate = (2 if RTS else 0) + (1 if DTR else 0)
+        if isFTDI:
+            ctrlstate += (1 << 8) if DTR is not None else 0
+            ctrlstate += (2 << 8) if RTS is not None else 0
         txdir = 0  # 0:OUT, 1:IN
-        req_type = 2 if isftdi else 1  # 0:std, 1:class, 2:vendor
+        req_type = 2 if isFTDI else 1  # 0:std, 1:class, 2:vendor
         # 0:device, 1:interface, 2:endpoint, 3:other
-        recipient = 0 if isftdi else 1
+        recipient = 0 if isFTDI else 1
         req_type = (txdir << 7) + (req_type << 5) + recipient
 
         wlen = self.device.ctrl_transfer(
-            bmrequesttype=req_type,
-            brequest=1 if isftdi else CDC_CMDS["SET_CONTROL_LINE_STATE"],
-            wvalue=ctrlstate,
-            windex=1,
-            data_or_wlength=0)
+            bmRequestType=req_type,
+            bRequest=1 if isFTDI else CDC_CMDS["SET_CONTROL_LINE_STATE"],
+            wValue=ctrlstate,
+            wIndex=1,
+            data_or_wLength=0)
         self.debug("Linecoding set, {}b sent".format(wlen))
 
-    def connect(self, EP_IN=-1, EP_OUT=-1):
+    def flush(self):
+        return
+
+    def connect(self, EP_IN=-1, EP_OUT=-1, portname:str=""):
         if self.connected:
             self.close()
             self.connected = False
-        for usbid in self.portconfig:
-            vid = usbid[0]
-            pid = usbid[1]
-            interface = usbid[2]
-            self.device = usb.core.find(idVendor=vid, idProduct=pid, backend=self.backend)
+        self.device = None
+        self.EP_OUT = None
+        self.EP_IN = None
+        devices = usb.core.find(find_all=True, backend=self.backend)
+        for dev in devices:
+            for usbid in self.portconfig:
+                if dev.idProduct == usbid[1] and dev.idVendor == usbid[0]:
+                    self.device = dev
+                    self.vid = dev.idVendor
+                    self.pid = dev.idProduct
+                    self.interface = usbid[2]
+                    break
             if self.device is not None:
-                self.vid = vid
-                self.pid = pid
-                self.interface = interface
                 break
 
         if self.device is None:
             self.debug("Couldn't detect the device. Is it connected ?")
             return False
-        # try:
-        #    self.device.set_configuration()
-        # except:
-        #    pass
 
         try:
             self.configuration = self.device.get_active_configuration()
@@ -280,70 +234,61 @@ class UsbClass(metaclass=LogBase):
         if self.configuration is None:
             self.error("Couldn't get device configuration.")
             return False
-        if self.interface == -1:
-            for interfacenum in range(0, self.configuration.bNumInterfaces):
-                itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=interfacenum)
-                if self.devclass != -1:
-                    if itf.bInterfaceClass == self.devclass:  # MassStorage
-                        self.interface = interfacenum
-                        break
-                else:
-                    self.interface = interfacenum
-                    break
-
-        self.debug(self.configuration)
         if self.interface > self.configuration.bNumInterfaces:
             print("Invalid interface, max number is %d" % self.configuration.bNumInterfaces)
             return False
+        for itf in self.configuration:
+            if self.devclass == -1:
+                self.devclass = 0xFF
+            if itf.bInterfaceClass == self.devclass:
+                if self.interface == -1 or self.interface == itf.bInterfaceNumber:
+                    self.interface = itf
+                    self.EP_OUT = EP_OUT
+                    self.EP_IN = EP_IN
+                    for ep in itf:
+                        edir = usb.util.endpoint_direction(ep.bEndpointAddress)
+                        if (edir == usb.util.ENDPOINT_OUT and EP_OUT == -1) or ep.bEndpointAddress == (EP_OUT & 0xF):
+                            self.EP_OUT = ep
+                        elif (edir == usb.util.ENDPOINT_IN and EP_IN == -1) or ep.bEndpointAddress == (EP_OUT & 0xF):
+                            self.EP_IN = ep
+                    break
 
-        if self.interface != -1:
-            itf = usb.util.find_descriptor(self.configuration, bInterfaceNumber=self.interface)
+        if self.EP_OUT is not None and self.EP_IN is not None:
+            self.maxsize = self.EP_IN.wMaxPacketSize
+            self.debug(self.configuration)
+            if self.interface != 0:
+                try:
+                    usb.util.claim_interface(self.device, 0)
+                except:
+                    try:
+                        if self.device.is_kernel_driver_active(0):
+                            self.debug("Detaching kernel driver")
+                            self.device.detach_kernel_driver(0)
+                    except Exception as err:
+                        self.debug("No kernel driver supported: " + str(err))
+                    try:
+                        usb.util.claim_interface(self.device, 0)
+                    except:
+                        pass
             try:
-                if self.device.is_kernel_driver_active(0):
-                    self.debug("Detaching kernel driver")
-                    self.device.detach_kernel_driver(0)
-            except Exception as err:
-                self.debug("No kernel driver supported: " + str(err))
-            try:
-                usb.util.claim_interface(self.device, 0)
-            except:
-                pass
-
-            try:
-                if self.device.is_kernel_driver_active(self.interface):
-                    self.debug("Detaching kernel driver")
-                    self.device.detach_kernel_driver(self.interface)
-            except Exception as err:
-                self.debug("No kernel driver supported: " + str(err))
-            try:
-                if self.interface != 0:
                     usb.util.claim_interface(self.device, self.interface)
             except:
-                pass
-
-            if EP_OUT == -1:
-                self.EP_OUT = usb.util.find_descriptor(itf,
-                                                       # match the first OUT endpoint
-                                                       custom_match=lambda e: \
-                                                           usb.util.endpoint_direction(e.bEndpointAddress) ==
-                                                           usb.util.ENDPOINT_OUT)
-            else:
-                self.EP_OUT = EP_OUT
-            if EP_IN == -1:
-                self.EP_IN = usb.util.find_descriptor(itf,
-                                                      # match the first OUT endpoint
-                                                      custom_match=lambda e: \
-                                                          usb.util.endpoint_direction(e.bEndpointAddress) ==
-                                                          usb.util.ENDPOINT_IN)
-            else:
-                self.EP_IN = EP_IN
-
+                try:
+                    if self.device.is_kernel_driver_active(self.interface):
+                        self.debug("Detaching kernel driver")
+                        self.device.detach_kernel_driver(self.interface)
+                except Exception as err:
+                    self.debug("No kernel driver supported: " + str(err))
+                try:
+                    if self.interface != 0:
+                        usb.util.claim_interface(self.device, self.interface)
+                except:
+                    pass
             self.connected = True
             return True
-        else:
-            print("Couldn't find MassStorage interface. Aborting.")
-            self.connected = False
-            return False
+        print("Couldn't find CDC interface. Aborting.")
+        self.connected = False
+        return False
 
     def close(self, reset=False):
         if self.connected:
@@ -358,88 +303,117 @@ class UsbClass(metaclass=LogBase):
                 pass
             usb.util.dispose_resources(self.device)
             del self.device
+            if reset:
+                time.sleep(2)
             self.connected = False
 
-    def write(self, command):
-        pktsize=self.EP_OUT.wMaxPacketSize
+    def write(self, command, pktsize=None):
+        if pktsize is None:
+            pktsize = self.EP_OUT.wMaxPacketSize
         if isinstance(command, str):
             command = bytes(command, 'utf-8')
+        pos = 0
         if command == b'':
             try:
                 self.EP_OUT.write(b'')
-            except usb.core.USBError as e:
-                error = str(e.strerror)
+            except usb.core.USBError as err:
+                error = str(err.strerror)
                 if "timeout" in error:
-                    time.sleep(0.01)
+                    # time.sleep(0.01)
                     try:
                         self.EP_OUT.write(b'')
-                    except Exception as e:  # pylint: disable=broad-except
-                        self.debug(str(e))
+                    except Exception as err:
+                        self.debug(str(err))
                         return False
                 return True
         else:
             i = 0
-            try:
-                buffer=array.array('B',command)
-                self.EP_OUT.write(buffer)
-            except Exception as e:  # pylint: disable=broad-except
-                # print("Error while writing")
-                if "timed out" in str(e):
-                    self.debug(str(e))
-                    time.sleep(0.01)
+            while pos < len(command):
+                try:
+                    ctr = self.EP_OUT.write(command[pos:pos + pktsize])
+                    if ctr <= 0:
+                        self.info(ctr)
+                    pos += pktsize
+                except Exception as err:
+                    self.debug(str(err))
+                    # print("Error while writing")
+                    # time.sleep(0.01)
                     i += 1
                     if i == 3:
                         return False
                     pass
-                else:
-                    self.error(str(e))
-                    return False
-        if self.loglevel == logging.DEBUG:
-            self.verify_data(bytearray(command), "TX:")
+        self.verify_data(bytearray(command), "TX:")
         return True
 
-    def read(self, length=None, timeout=None):
-        if length is None:
-            length=self.EP_IN.wMaxPacketSize
-        if self.loglevel==logging.DEBUG:
-            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(length))
-        tmp = bytearray()
-        extend = tmp.extend
-        if timeout is None:
-            timeout = self.timeout
-        buffer = self.buffer[:length]
-        ep_read = self.EP_IN.read
-        while len(tmp) == 0:
+    def usbread(self, resplen=None, timeout=0):
+        if timeout == 0:
+            timeout = 1
+        if resplen is None:
+            resplen = self.maxsize
+        if resplen <= 0:
+            self.info("Warning !")
+        res = bytearray()
+        loglevel = self.loglevel
+        epr = self.EP_IN.read
+        extend = res.extend
+        while len(res) < resplen:
             try:
-                length=ep_read(buffer, timeout)
-                extend(buffer[:length])
-                if len(tmp)>0:
-                    if self.loglevel == logging.DEBUG:
-                        self.verify_data(tmp, "RX:")
-                    return tmp
+                extend(epr(resplen, timeout))
+                if resplen == self.EP_IN.wMaxPacketSize:
+                    break
             except usb.core.USBError as e:
                 error = str(e.strerror)
                 if "timed out" in error:
-                    # if platform.system()=='Windows':
-                    # time.sleep(0.05)
-                    # print("Waiting...")
+                    if timeout is None:
+                        return b""
                     self.debug("Timed out")
-                    self.debug(tmp)
-                    return tmp
+                    if timeout == 10:
+                        return b""
+                    timeout += 1
+                    pass
                 elif "Overflow" in error:
                     self.error("USB Overflow")
-                    sys.exit(0)
-                elif e.errno is not None:
-                    print(repr(e), type(e), e.errno)
-                    sys.exit(0)
+                    return b""
                 else:
-                    break
-        return tmp
+                    self.info(repr(e))
+                    return b""
 
-    def ctrl_transfer(self, bmrequesttype, brequest, wvalue, windex, data_or_wlength):
-        ret = self.device.ctrl_transfer(bmrequesttype=bmrequesttype, brequest=brequest, wvalue=wvalue, windex=windex,
-                                        data_or_wlength=data_or_wlength)
+        if loglevel == logging.DEBUG:
+            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(resplen))
+            if self.loglevel == logging.DEBUG:
+                self.verify_data(res[:resplen], "RX:")
+        return res[:resplen]
+
+    def ctrl_transfer(self, bmRequestType, bRequest, wValue, wIndex, data_or_wLength):
+        ret = self.device.ctrl_transfer(bmRequestType=bmRequestType, bRequest=bRequest, wValue=wValue, wIndex=wIndex,
+                                        data_or_wLength=data_or_wLength)
         return ret[0] | (ret[1] << 8)
+
+    class deviceclass:
+        vid = 0
+        pid = 0
+
+        def __init__(self, vid, pid):
+            self.vid = vid
+            self.pid = pid
+
+    def detectdevices(self):
+        dev = usb.core.find(find_all=True, backend=self.backend)
+        ids = [self.deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
+        return ids
+
+    def usbwrite(self, data, pktsize=None):
+        if pktsize is None:
+            pktsize = len(data)
+        res = self.write(data, pktsize)
+        # port->flush()
+        return res
+
+    def usbreadwrite(self, data, resplen):
+        self.usbwrite(data)  # size
+        # port->flush()
+        res = self.usbread(resplen)
+        return res
 
 
 class ScsiCmds(Enum):
@@ -528,7 +502,7 @@ class Scsi:
         self.loglevel = loglevel
 
     def connect(self):
-        self.usb = UsbClass(loglevel=self.loglevel, portconfig=[self.vid, self.pid, self.interface], devclass=8)
+        self.usb = usb_class(loglevel=self.loglevel, portconfig=[self.vid, self.pid, self.interface], devclass=8)
         if self.usb.connect():
             return True
         return False
@@ -561,7 +535,6 @@ class Scsi:
         else:
             data = write_object(command_block_wrapper, b"USBC", tag, data_length, direction, lun, cdb_len, cdb)[
                 'raw_data']
-            print(hexlify(data))
             if len(data) != 31:
                 print("Error, invalid data packet length, should be 31 bytes, but length is %d" % len(data))
                 return 0

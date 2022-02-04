@@ -141,10 +141,10 @@ msmids = {
     0x13F0E1: "bitra_SDM", # soc_vers 0x6012 SDM690
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
-    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
-    0x1370E1: "kamorta_P", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
-    0x1730E1: "kamorta_IoT_modem", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
-    0x1740E1: "kamorta_IoT_APQ", # soc_vers 0x9002 SnapDragon 460 SM4350, bengal
+    0x1360E1: "kamorta", # soc_vers 0x9002 SnapDragon 460 SM4350
+    0x1370E1: "kamorta_P", # soc_vers 0x9002 SnapDragon 460 SM4350
+    0x1730E1: "kamorta_IoT_modem", # soc_vers 0x9002 SnapDragon 460 SM4350
+    0x1740E1: "kamorta_IoT_APQ", # soc_vers 0x9002 SnapDragon 460 SM4350
     0x1350E1: "lahaina", # soc_vers 0x600F sm8350, SDM875
     0x1420E1: "lahaina_premier",
     0x14A0E1: "SC8280X", # soc_vers 0x6014, makena
@@ -189,7 +189,7 @@ msmids = {
     0x0B80E1: "sc8180x", # Snapdragon 8CX, soc_vers 0x6006
     0x1560E1: "SM8250", # HDK 8250
     0x1510E1: "SA2150p",
-    0x14D0E1: "SDM662", # sm6115
+    0x14D0E1: "SDM662", # sm6115, bengal
     0x18A0E1: "fraser", #soc_vers 0x600D
     0x1920E1: "sm7325", #soc_vers 0x6018
     0x1930E1: "sc7280", #soc_vers 0x6018
