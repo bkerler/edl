@@ -307,7 +307,8 @@ class firehose_client(metaclass=LogBase):
                 skipped = []
                 for skippart in skip:
                     filtered = fnmatch.filter(guid_gpt.partentries, skippart)
-                    skipped.append(filtered)
+                    if len(filtered) > 0:
+                        skipped.append(filtered[0])
                 for partitionname in guid_gpt.partentries:
                     partition = guid_gpt.partentries[partitionname]
                     if partitionname in skipped:
