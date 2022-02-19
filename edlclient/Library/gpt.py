@@ -12,6 +12,7 @@ from enum import Enum
 from binascii import hexlify
 from struct import calcsize, unpack, pack
 from io import BytesIO
+from binascii import crc32
 
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
@@ -206,6 +207,7 @@ class gpt(metaclass=LogBase):
             self.part_entry_start_lba = sh.qword()
             self.num_part_entries = sh.dword()
             self.part_entry_size = sh.dword()
+            self.crc32_part_entries = sh.dword()
 
     class gpt_partition:
         def __init__(self, data):
@@ -494,13 +496,25 @@ class gpt(metaclass=LogBase):
                             else:
                                 flags |= AB_PARTITION_ATTR_UNBOOTABLE << (AB_FLAG_OFFSET*8)
                             partentry.flags = flags
-                            data = partentry.create()
-                            return data, partition.entryoffset
+                            pdata = partentry.create()
+                            return pdata, partition.entryoffset
                     break
             return None, None
         except Exception as e:
             self.error(str(e))
         return None, None
+
+    def fix_gpt_crc(self, data):
+        partentry_size = self.header.num_part_entries * self.header.part_entry_size
+        partentry_offset = self.header.part_entry_start_lba * self.sectorsize
+        partdata = data[partentry_offset:partentry_offset + partentry_size]
+        headeroffset = self.header.current_lba * self.sectorsize
+        headerdata = bytearray(data[headeroffset:headeroffset + self.header.header_size])
+        headerdata[0x58:0x58 + 4] = pack("<I", crc32(partdata))
+        headerdata[0x10:0x10 + 4] = pack("<I", 0)
+        headerdata[0x10:0x10 + 4] = pack("<I", crc32(headerdata))
+        data[headeroffset:headeroffset + self.header.header_size] = headerdata
+        return data
 
     def get_flag(self, filename, imagename):
         if "." in imagename:
@@ -559,12 +573,13 @@ if __name__ == "__main__":
         with open(args.image, "rb") as rf:
             size = min(32 * 4096, filesize)
             data = bytearray(rf.read(size))
-            pdata, offset = gp.patch(data,partitition, active=active)
+            pdata, poffset = gp.patch(data,partitition, active=active)
+            data[poffset:poffset + len(pdata)] = pdata
+            wdata = gp.fix_gpt_crc(data)
             if data is not None:
-                data[offset:offset + len(pdata)] = pdata
                 wfilename = args.image + ".patched"
                 with open(wfilename,"wb") as wf:
-                    wf.write(data)
+                    wf.write(wdata)
                 print(f"Successfully wrote patched gpt to {wfilename}")
             else:
                 print("Error on setting bootable mode")

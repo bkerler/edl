@@ -1261,11 +1261,17 @@ class firehose(metaclass=LogBase):
                     gp = gpt()
                     slot = partitionname.lower()[-2:]
                     if "_a" in slot or "_b" in slot:
-                        pdata, offset = gp.patch(data, partitionname, active=partslots[slot])
-                        if data is not None:
-                            start_sector = offset // self.cfg.SECTOR_SIZE_IN_BYTES
-                            byte_offset = offset % self.cfg.SECTOR_SIZE_IN_BYTES
-                            self.cmd_patch(lun,start_sector,byte_offset,pdata,len(pdata),True)
+                        pdata, poffset = gp.patch(data, partitionname, active=partslots[slot])
+                        data[poffset:poffset + len(pdata)] = pdata
+                        wdata = gp.fix_gpt_crc(data)
+                        if wdata is not None:
+                            start_sector_patch = poffset // self.cfg.SECTOR_SIZE_IN_BYTES
+                            byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
+                            headeroffset = gp.header.current_lba * gp.sectorsize
+                            start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
+                            header = wdata[start_sector_hdr:start_sector_hdr+gp.header.header_size]
+                            self.cmd_patch(lun,start_sector_patch,byte_offset_patch,pdata,len(pdata),True)
+                            self.cmd_patch(lun, headeroffset, 0, header, len(pdata), True)
                 return True
         return False
 
