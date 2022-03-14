@@ -1,8 +1,0 @@
-include README.md
-include LICENSE
-include fastpwn
-recursive-include Loaders *
-include edlclient/Windows/*.dll
-include edlclient/Config/nvitems.xml
-recursive-include edlclient/Library/TestFiles *
-
