@@ -1,4 +1,0 @@
-[submodule "Loaders"]
-	path = Loaders
-	url = https://github.com/bkerler/Loaders
-        branch = main
