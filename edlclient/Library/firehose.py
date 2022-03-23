@@ -848,8 +848,12 @@ class firehose(metaclass=LogBase):
         rsp = self.xmlsend(connectcmd)
         if not rsp.resp:
             if rsp.error=="":
-                if "MemoryName" in rsp.data:
-                    self.cfg.MemoryName = rsp.data["MemoryName"]
+                try:
+                    if "MemoryName" in rsp.data:
+                       self.cfg.MemoryName = rsp.data["MemoryName"]
+                except TypeError:
+                    self.warning("!DEBUG! rsp.data: '%s'" % (rsp.data,))
+                    return self.configure(lvl + 1)
                 if "MaxPayloadSizeFromTargetInBytes" in rsp.data:
                     self.cfg.MaxPayloadSizeFromTargetInBytes = int(rsp.data["MaxPayloadSizeFromTargetInBytes"])
                 if "MaxPayloadSizeToTargetInBytes" in rsp.data:
