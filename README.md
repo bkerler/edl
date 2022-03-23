@@ -8,7 +8,7 @@
 - Because memory dumping helps to find issues :)
 
 ### Use Re LiveDVD (everything ready to go, based on Ubuntu):
-[Download Re Live DVD V3](https://drive.google.com/file/d/1OoGWFSZTqWqwfU35W6UAUwc20CJrK95t/view?usp=sharing)
+[Download Re Live DVD V3](https://androidfilehost.com/?fid=2981970449027578109)
 User: user, Password:user
 
 ## Installation
