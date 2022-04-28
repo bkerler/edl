@@ -20,10 +20,14 @@ sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
 sudo apt purge modemmanager
 # Fedora/CentOS/etc
 sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
+# Arch/Manjaro/etc
+sudo pacman -S android-tools python python-pip git xz
+sudo pacman -R modemmanager
 
 sudo systemctl stop ModemManager
 sudo systemctl disable ModemManager
 sudo apt purge ModemManager
+
 
 git clone https://github.com/bkerler/edl.git
 cd edl
