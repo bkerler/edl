@@ -4,7 +4,6 @@
 # If you use my code, make sure you refer to my name
 # If you want to use in a commercial product, ask me before integrating it
 
-import serial
 import sys
 import argparse
 import time
@@ -15,7 +14,7 @@ from binascii import hexlify, unhexlify
 try:
     from edlclient.Library.utils import LogBase
 except Exception as e:
-    import os,sys,inspect
+    import os,inspect
     current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     parent_dir = os.path.dirname(current_dir)
     sys.path.insert(0, parent_dir)
@@ -147,12 +146,12 @@ class SierraGenerator():
     rtbl = bytearray()
 
     def __init__(self):
-        for i in range(0, 0x14):
+        for _ in range(0, 0x14):
             self.rtbl.append(0x0)
-        for i in range(0, 0x100):
+        for _ in range(0, 0x100):
             self.tbl.append(0x0)
 
-    def run(self, devicegeneration, challenge, type):
+    def run(self, devicegeneration, challenge, _type):
         challenge = bytearray(unhexlify(challenge))
 
         self.devicegeneration = devicegeneration
@@ -165,14 +164,14 @@ class SierraGenerator():
         lockid = prodtable[devicegeneration]["openlock"]
         clen = prodtable[devicegeneration]["clen"]
         if len(challenge) < clen:
-            challenge=[0 for i in range(0, clen - len(challenge))]
+            challenge=[0 for _ in range(0, clen - len(challenge))]
 
         challengelen = len(challenge)
-        if type == 0:  # lockkey
+        if _type == 0:  # lockkey
             idf = lockid
-        elif type == 1:  # mepkey
+        elif _type == 1:  # mepkey
             idf = mepid
-        elif type == 2:  # cndkey
+        elif _type == 2:  # cndkey
             idf = cndid
 
         key = keytable[idf * 16:(idf * 16) + 16]
@@ -310,10 +309,10 @@ class SierraGenerator():
 
     def SierraKeygen(self, challenge:bytearray, key: bytearray, challengelen:int, keylen:int):
         challenge = challenge
-        resultbuffer=bytearray([0 for i in range(0, 0x100 + 1)])
+        resultbuffer=bytearray([0 for _ in range(0, 0x100 + 1)])
         ret, keylen = self.SierraInit(key, keylen)
         if ret:
-            for i in range(0, challengelen):
+            for _ in range(0, challengelen):
                 exec(prodtable[self.devicegeneration]["run"]) # uses challenge
             self.SierraFinish()
         return resultbuffer
@@ -404,12 +403,12 @@ class SierraKeygen(metaclass=LogBase):
             info = self.cn.send("ATI")
             if info != -1:
                 revision = ""
-                model = ""
+                _model = ""
                 for line in info:
                     if "Revision" in line:
                         revision = line.split(":")[1].strip()
                     if "Model" in line:
-                        model = line.split(":")[1].strip()
+                        _model = line.split(":")[1].strip()
                 if revision != "":
                     if "9200" in revision:
                         devicegeneration = "MDM9200" #AC762S NTG9200H2_03.05.14.12ap
@@ -445,6 +444,8 @@ class SierraKeygen(metaclass=LogBase):
                         if "NTGX55" in revision: #MR5100 NTGX55_10.25.15.02
                             devicegeneration = "SDX55"
                         devicegeneration = "SDX55"
+                    else:
+                        devicegeneration = ""
                     #Missing:
                     # SDX24 Sierra
                     # MR2100 NTGX24_10.17.03.00
@@ -470,13 +471,13 @@ class SierraKeygen(metaclass=LogBase):
         if info != -1:
             if len(info) > 2:
                 challenge = info[1]
-                print("Recieved challenge: "+info[1])
+                print("Received challenge: "+info[1])
         else:
             print("Error on AT!OPENLOCK? request. Aborting.")
-            return
+            return False
         if challenge == "":
             print("Error: Couldn't get challenge. Aborting.")
-            return
+            return False
         resp = self.keygen.run(self.devicegeneration, challenge, 0)
         print("Sending AT!OPENLOCK=\"" + resp + "\" response.")
         info = self.cn.send("AT!OPENLOCK=\"" + resp + "\"")
@@ -509,7 +510,7 @@ def main(args):
 
     parser.add_argument(
         '-devicegeneration', '-d',
-        help='Device devicegeneration generation',
+        help='device generation',
         default="")
 
     parser.add_argument(
