@@ -312,9 +312,9 @@ class main(metaclass=LogBase):
                         if sahara_info:
                             sahara_connnect = self.sahara.connect()
                                 if len(sahara_connnect) == 3:
-                                    mode, cmd, resp = self.sahara.connect()
+                                    mode, cmd, resp = sahara_connnect
                                 else:
-                                    mode, resp = self.sahara.connect()
+                                    mode, resp = sahara_connnect
                             if mode == "sahara":
                                 mode = self.sahara.upload_loader()
                                 if "enprg" in self.sahara.programmer.lower():
