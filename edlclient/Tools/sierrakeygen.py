@@ -61,8 +61,7 @@ prodtable = {
     "SDX55": dict(openlock=22, openmep=21, opencnd=22, clen=8, init=[7, 3, 0, 1, 5], #MR5100
                        run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),
     "MDM9x15A": dict(openlock=24, openmep=23, opencnd=24, clen=8, init=[7, 3, 0, 1, 5], #AC779S
-                       run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)"),
-
+                       run="resultbuffer[i]=self.SierraAlgo(challenge[i], 4, 2, 1, 0, 3, 2, 0, 0)")
 }
 
 infotable = {
@@ -194,7 +193,7 @@ class SierraGenerator():
             {"challenge": "BE96CBBEE0829BCA", "devicegeneration": "MDM9x30_V1", "response": "6A5E4C9CBCBDA7DC"},
             {"challenge": "BE96CBBEE0829BCA", "devicegeneration": "MDM9200", "response": "EEDBF8BFF8DAE346"},
             {"challenge": "20E253156762DACE", "devicegeneration": "SDX55", "response": "03940D7067145323"},
-            {"challenge": "2387885E7D290FEE", "devicegeneration": "MDM9x15A", "response": "DC3E51897BAA9C1E"},
+            {"challenge": "2387885E7D290FEE", "devicegeneration": "MDM9x15A", "response": "DC3E51897BAA9C1E"}
         ]
         for test in test_table:
             challenge = test["challenge"]
@@ -312,7 +311,7 @@ class SierraGenerator():
         resultbuffer=bytearray([0 for _ in range(0, 0x100 + 1)])
         ret, keylen = self.SierraInit(key, keylen)
         if ret:
-            for _ in range(0, challengelen):
+            for i in range(0, challengelen):
                 exec(prodtable[self.devicegeneration]["run"]) # uses challenge
             self.SierraFinish()
         return resultbuffer
