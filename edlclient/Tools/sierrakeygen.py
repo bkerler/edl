@@ -312,7 +312,7 @@ class SierraGenerator():
         resultbuffer=bytearray([0 for _ in range(0, 0x100 + 1)])
         ret, keylen = self.SierraInit(key, keylen)
         if ret:
-            for _ in range(0, challengelen):
+            for i in range(0, challengelen):    #@UnusedVariable
                 exec(prodtable[self.devicegeneration]["run"]) # uses challenge
             self.SierraFinish()
         return resultbuffer
