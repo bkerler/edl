@@ -6,6 +6,7 @@ import hashlib
 from struct import unpack, pack
 from shutil import copyfile
 import os, sys, inspect
+from io import BytesIO
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -50,7 +51,7 @@ def grabtext(data):
     return text
 
 
-def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
+def extract_hdr(memsection, version, sign_info, mem_section, code_size, signature_size, hdr1, hdr2, hdr3, hdr4):
     try:
         md_size = \
             unpack("<I", mem_section[memsection.file_start_addr + 0x2C:memsection.file_start_addr + 0x2C + 0x4])[0]
@@ -85,7 +86,10 @@ def extract_hdr(memsection, sign_info, mem_section, code_size, signature_size):
         anti_rollback_version=unpack("<I", mm[md_offset:md_offset + 4])[0]
         '''
 
-        signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
+        if version==6:
+            signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
+        elif version==7:
+            signatureoffset = memsection.file_start_addr + 0x28 + hdr1 + hdr2 + hdr3 + md_size + code_size + hdr4
         try:
             if mem_section[signatureoffset] != 0x30:
                 print("Error on " + sign_info.filename + ", unknown signaturelength")
@@ -262,37 +266,46 @@ def main(argv):
     filelist = []
     rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
     for filename in file_list:
+        filesize=os.stat(filename).st_size
+        elfpos = 0
         with open(filename, 'rb') as rhandle:
-            mem_section = rhandle.read()
-            sha256 = hashlib.sha256()
-            sha256.update(mem_section)
-
+            data = rhandle.read()
+            if len(data) < 4:
+                continue
             signinfo = Signed()
+            sha256 = hashlib.sha256()
+            sha256.update(data)
             signinfo.hash = sha256.digest()
             signinfo.filename = filename
             signinfo.filesize = os.stat(filename).st_size
-            if len(mem_section) < 4:
-                continue
-            hdr = unpack("<I", mem_section[0:4])[0]
 
-            if hdr&0xFFFFFF == 0x4C457F:
+            while elfpos<filesize:
+                if elfpos==-1:
+                    break
+                mem_section = data[elfpos:]
                 elfheader = elf(mem_section, signinfo.filename)
+                if len(elfheader.pentry)<4:
+                    elfpos = data.find(b"\x7FELF", elfpos+1)
+                    continue
+                idx = 0
+                for entry in elfheader.pentry:
+                    if entry.p_type==0 and entry.p_flags&0xF000000==0x2000000:
+                        break
+                    idx+=1
                 if 'memorylayout' in dir(elfheader):
-                    memsection = elfheader.memorylayout[1]
+                    memsection = elfheader.memorylayout[idx]
                     try:
-                        version = unpack("<I", mem_section[
-                                               memsection.file_start_addr + 0x04:memsection.file_start_addr + 0x04 + 0x4])[
-                            0]
-                        code_size = \
-                            unpack("<I", mem_section[
-                                         memsection.file_start_addr + 0x14:memsection.file_start_addr + 0x14 + 0x4])[
-                                0]
-                        signature_size = \
-                            unpack("<I", mem_section[
-                                         memsection.file_start_addr + 0x1C:memsection.file_start_addr + 0x1C + 0x4])[
-                                0]
+                        sect=BytesIO(mem_section[memsection.file_start_addr+0x4:])
+                        version = int.from_bytes(sect.read(4),'little')
+                        hdr1 = int.from_bytes(sect.read(4),'little')
+                        hdr2 = int.from_bytes(sect.read(4),'little')
+                        hdr3 = int.from_bytes(sect.read(4),'little')
+                        code_size = int.from_bytes(sect.read(4),'little')
+                        hdr4 = int.from_bytes(sect.read(4),'little')
+                        signature_size = int.from_bytes(sect.read(4),'little')
                         # cert_chain_size=unpack("<I", mem_section[memsection.file_start_addr + 0x24:memsection.file_start_addr + 0x24 + 0x4])[0]
-                    except:
+                    except Exception as err:
+                        print(err)
                         continue
                     if signature_size == 0:
                         print("%s has no signature." % filename)
@@ -305,15 +318,18 @@ def main(argv):
                         if signinfo is None:
                             continue
                         filelist.append(signinfo)
+                        break
                     elif version >= 6:  # SDM
-                        signinfo = extract_hdr(memsection, signinfo, mem_section, code_size, signature_size)
+                        signinfo = extract_hdr(memsection, version, signinfo, mem_section, code_size, signature_size, hdr1,
+                                               hdr2, hdr3, hdr4)
                         if signinfo is None:
                             continue
                         filelist.append(signinfo)
+                        break
                     else:
                         print("Unknown version for " + filename)
                         continue
-            elif hdr == 0x844BDCD1:
+            if elfpos == -1 and int.from_bytes(data[:4],'little') == 0x844BDCD1:
                 mbn = MBN(mem_section)
                 if mbn.sigsz == 0:
                     print("%s has no signature." % filename)
@@ -324,7 +340,7 @@ def main(argv):
                 if signinfo is None:
                     continue
                 filelist.append(signinfo)
-            else:
+            elif elfpos == -1:
                 print("Error on " + filename)
                 continue
 
@@ -387,7 +403,7 @@ def main(argv):
                 copyfile(item.filename,
                          os.path.join(outputdir, "Duplicate",
                                       (loader_info.hw_id + "_" + loader_info.pk_hash[0:16] + "_FHPRG.bin").lower()))
-                print(item.filename + " does already exist. Skipping")
+                print(item.filename + f" is duplicate of {hashes[item.hash]}. Skipping")
             try:
                 rt.write(info + "\n")
             except:
