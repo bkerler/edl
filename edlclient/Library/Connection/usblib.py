@@ -9,8 +9,10 @@ import usb.util
 import time
 import inspect
 import array
+from edlclient.Library.utils import is_windows
 import usb.backend.libusb0
-import usb.backend.libusb1
+if not is_windows():
+    import usb.backend.libusb1
 from enum import Enum
 from binascii import hexlify
 from ctypes import c_void_p, c_int
@@ -63,11 +65,8 @@ class usb_class(DeviceClass):
         self.is_serial = False
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
-        elif sys.platform.startswith('win32'):
-            if calcsize("P") * 8 == 64:
-                self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.dll")
-            else:
-                self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb32-1.0.dll")
+        elif is_windows():
+            self.backend = None
         if self.backend is not None:
             try:
                 self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]

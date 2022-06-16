@@ -617,9 +617,9 @@ class firehose_client(metaclass=LogBase):
                     return False
         elif cmd == "reset":
             mode = "reset"
-            if not self.check_param(["<resetmode>"]):
+            if not self.check_param(["--resetmode"]):
                 return False
-            return self.firehose.cmd_reset(options["<resetmode>"])
+            return self.firehose.cmd_reset(options["--resetmode"])
         elif cmd == "nop":
             if not self.check_cmd("nop"):
                 self.error("Nop command isn't supported by edl loader")

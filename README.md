@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2021
+(c) B. Kerler 2018-2022
 
 ## Why
 
@@ -7,9 +7,12 @@
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
 
-### Use Re LiveDVD (everything ready to go, based on Ubuntu):
-[Download Re Live DVD V3](https://androidfilehost.com/?fid=2981970449027578109)
-User: user, Password:user
+### Use LiveDVD (everything ready to go, based on Ubuntu):
+User: user, Password:user (based on Ubuntu 22.04 LTS)
+
+[Live DVD V4](https://androidfilehost.com/?fid=15664248565197177367)
+
+[Live DVD V4 Mirror](https://drive.google.com/file/d/10OEw1d-Ul_96MuT3WxQ3iAHoPC4NhM_X/view?usp=sharing)
 
 ## Installation
 

@@ -299,6 +299,8 @@ class firehose(metaclass=LogBase):
             return response(resp=True,data=rdata)
 
     def cmd_reset(self, mode="reset"):
+        if mode is None:
+            mode = "poweroff"
         data = "<?xml version=\"1.0\" ?><data><power value=\""+mode+"\"/></data>"
         val = self.xmlsend(data)
         try:

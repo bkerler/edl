@@ -25,6 +25,10 @@ try:
 except ImportError:
     print("Keystone library is missing (optional).")
 
+def is_windows():
+    if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
+        return True
+    return False
 
 class structhelper_io:
     pos = 0

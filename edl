@@ -44,7 +44,7 @@ Usage:
     edl send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
     edl xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
     edl rawxml <xmlstring> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
-    edl reset <resetmode> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl reset [--resetmode=mode] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
     edl nop [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
     edl modules <command> <options> [--memory=memtype] [--lun=lun] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--portname=portname] [--serial]
     edl provision <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
@@ -118,6 +118,7 @@ Options:
     --portname=portname                Set serial port name (/dev/ttyUSB0 for Linux/MAC; \\.\COM1 for Windows)
     --serial                           Use serial port (port autodetection)
     --slot                             Set active slot for setactiveslot [a or b]
+    --resetmode=mode                   Resetmode for reset (poweroff, reset, edl, etc.)
 """
 
 import os
@@ -136,6 +137,7 @@ from edlclient.Library.streaming_client import streaming_client
 from edlclient.Library.firehose_client import firehose_client
 from edlclient.Library.streaming import Streaming
 from edlclient.Library.sahara_defs import cmd_t, sahara_mode_t
+from edlclient.Library.utils import is_windows
 from binascii import hexlify
 
 args = docopt(__doc__, version='3')
@@ -152,7 +154,6 @@ def parse_cmd(rargs):
         if rargs[cmd]:
             return cmd
     return ""
-
 
 def console_cmd(cmd):
     read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -174,6 +175,8 @@ def parse_option(rargs):
 
 class main(metaclass=LogBase):
     def __init__(self):
+        self.serial = None
+        self.portname = None
         self.__logger = self.__logger
         self.info = self.__logger.info
         self.debug = self.__logger.debug
@@ -239,12 +242,11 @@ class main(metaclass=LogBase):
         return mode
 
     def run(self):
-        if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
+        if is_windows():
             proper_driver = console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
             if re.findall(r'QCUSB', str(proper_driver)):
                 self.warning(f'Please first install libusb_win32 driver from Zadig')
 
-        mode = ""
         loop = 0
         vid = int(args["--vid"], 16)
         pid = int(args["--pid"], 16)
