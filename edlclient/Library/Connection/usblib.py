@@ -255,6 +255,18 @@ class usb_class(DeviceClass):
 
         if self.EP_OUT is not None and self.EP_IN is not None:
             self.maxsize = self.EP_IN.wMaxPacketSize
+            try:
+                if self.device.is_kernel_driver_active(0):
+                    self.debug("Detaching kernel driver")
+                    self.device.detach_kernel_driver(0)
+            except Exception as err:
+                self.debug("No kernel driver supported: " + str(err))
+
+            try:
+                usb.util.claim_interface(self.device, 0)
+            except:
+                pass
+            """
             self.debug(self.configuration)
             if self.interface != 0:
                 try:
@@ -284,6 +296,7 @@ class usb_class(DeviceClass):
                         usb.util.claim_interface(self.device, self.interface)
                 except:
                     pass
+            """
             self.connected = True
             return True
         print("Couldn't find CDC interface. Aborting.")

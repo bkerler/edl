@@ -310,11 +310,11 @@ class main(metaclass=LogBase):
                         self.cdc.timeout = None
                         sahara_info = self.sahara.streaminginfo()
                         if sahara_info:
-                            sahara_connnect = self.sahara.connect()
-                                if len(sahara_connnect) == 3:
-                                    mode, cmd, resp = sahara_connnect
-                                else:
-                                    mode, resp = sahara_connnect
+                            sahara_connect = self.sahara.connect()
+                            if len(sahara_connect) == 3:
+                                mode, cmd, resp = sahara_connect
+                            else:
+                                mode, resp = sahara_connect
                             if mode == "sahara":
                                 mode = self.sahara.upload_loader()
                                 if "enprg" in self.sahara.programmer.lower():
