@@ -12,6 +12,7 @@ from enum import Enum
 from struct import unpack, pack
 from binascii import hexlify, unhexlify
 import os, sys
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, parent_dir)
@@ -342,7 +343,7 @@ class qcdiag(metaclass=LogBase):
     def prettyprint(self, data):
         recv = ""
         plain = ""
-        if len(data)==0:
+        if len(data) == 0:
             return ""
         for i in range(len(data)):
             inf = "%02X " % data[i]
@@ -378,9 +379,9 @@ class qcdiag(metaclass=LogBase):
         else:
             return "Command accepted"
 
-    def connect(self, serial:bool = False):
+    def connect(self, serial: bool = False):
         if serial:
-            self.cdc = serial_class(loglevel=self.__logger.level,portconfig=self.portconfig)
+            self.cdc = serial_class(loglevel=self.__logger.level, portconfig=self.portconfig)
         else:
             self.cdc = usb_class(portconfig=self.portconfig, loglevel=self.__logger.level)
         self.hdlc = None
@@ -414,12 +415,11 @@ class qcdiag(metaclass=LogBase):
     def enter_saharamode(self):
         self.hdlc.receive_reply(timeout=0)
         res = self.send(b"\x4b\x65\x01\x00")
-        if res[0]==0x4b:
+        if res[0] == 0x4b:
             print("Done, switched to edl")
         else:
             print("Error switching to edl. Try again.")
         self.disconnect()
-
 
     def send_sp(self, sp="FFFFFFFFFFFFFFFFFFFE"):
         if type(sp) == str:
@@ -504,13 +504,13 @@ class qcdiag(metaclass=LogBase):
             print(nvitem)
 
     def print_nvitemsub(self, item, index):
-        res, nvitem = self.read_nvitemsub(item,index)
+        res, nvitem = self.read_nvitemsub(item, index)
         info = self.DecodeNVItems(nvitem)
         if res != False:
             if nvitem.name != "":
-                ItemNumber = f"{hex(item),hex(index)} ({nvitem.name}): "
+                ItemNumber = f"{hex(item), hex(index)} ({nvitem.name}): "
             else:
-                ItemNumber = hex(item)+","+hex(index) + ": "
+                ItemNumber = hex(item) + "," + hex(index) + ": "
             returnanswer = "NVItem " + ItemNumber + info
             print(returnanswer)
             if nvitem.status == 0:
@@ -549,7 +549,7 @@ class qcdiag(metaclass=LogBase):
                 write_handle.write(errors)
         print("Done.")
 
-    def unpackdata(self,data):
+    def unpackdata(self, data):
         rlen = len(data)
         idx = rlen - 1
         for i in range(0, rlen):
@@ -572,8 +572,8 @@ class qcdiag(metaclass=LogBase):
                 name = ""
                 if item in self.nvlist:
                     name = self.nvlist[item]
-                data=self.unpackdata(res["rawdata"])
-                res = nvitem(res["item"],0, data, res["status"], name)
+                data = self.unpackdata(res["rawdata"])
+                res = nvitem(res["item"], 0, data, res["status"], name)
                 return [True, res]
             elif data[0] == 0x14:
                 return [False, f"Error 0x14 trying to read nvitem {hex(item)}."]
@@ -594,7 +594,7 @@ class qcdiag(metaclass=LogBase):
                 name = ""
                 if item in self.nvlist:
                     name = self.nvlist[item]
-                data=self.unpackdata(res["rawdata"])
+                data = self.unpackdata(res["rawdata"])
                 res = nvitem(res["item"], index, data, res["status"], name)
                 return [True, res]
             elif data[0] == 0x14:
@@ -603,27 +603,27 @@ class qcdiag(metaclass=LogBase):
                 return [False, f"Error {hex(data[0])} trying to read nvitem {hex(item)}."]
         return [False, f"Empty request for nvitem {hex(item)}"]
 
-    def convertimei(self,imei):
-        data=imei[0]+"A"
-        for i in range(1,len(imei),2):
-            data+=imei[i+1]
-            data+=imei[i]
-        return unhexlify("08"+data)
+    def convertimei(self, imei):
+        data = imei[0] + "A"
+        for i in range(1, len(imei), 2):
+            data += imei[i + 1]
+            data += imei[i]
+        return unhexlify("08" + data)
 
-    def write_imei(self,imeis):
+    def write_imei(self, imeis):
         if "," in imeis:
-            imeis=imeis.split(",")
+            imeis = imeis.split(",")
         else:
-            imeis=[imeis]
-        index=0
+            imeis = [imeis]
+        index = 0
         for imei in imeis:
-            data=self.convertimei(imei)
-            if index==0:
-                if not self.write_nvitem(550,data):
-                    self.write_nvitemsub(550,index,data)
+            data = self.convertimei(imei)
+            if index == 0:
+                if not self.write_nvitem(550, data):
+                    self.write_nvitemsub(550, index, data)
             else:
-                self.write_nvitemsub(550,index,data)
-            index+=1
+                self.write_nvitemsub(550, index, data)
+            index += 1
 
     def write_nvitem(self, item, data):
         rawdata = bytes(data)
@@ -656,12 +656,13 @@ class qcdiag(metaclass=LogBase):
         res = self.send(nvrequest)
         if len(res) > 0:
             if res[0] == 0x4B:
-                res, nvitem = self.read_nvitemsub(item,index)
+                res, nvitem = self.read_nvitemsub(item, index)
                 if res == False:
                     print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, %s" % data)
                 else:
                     if nvitem.data != data:
-                        print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, verified data doesn't match")
+                        print(
+                            f"Error while writing nvitem {hex(item)} index {hex(index)} data, verified data doesn't match")
                     else:
                         print(f"Successfully wrote nvitem {hex(item)} index {hex(index)}.")
                         return True
@@ -882,12 +883,12 @@ class qcdiag(metaclass=LogBase):
             if len(resp) > 0:
                 [dirp, seqno, diag_errno, entry_type, mode, size, atime, mtime, ctime] = unpack("<Iiiiiiiii",
                                                                                                 resp[4:4 + (9 * 4)])
-                if entry_type==1:
+                if entry_type == 1:
                     entry_name = resp[4 + (9 * 4):-1]
-                    if len(entry_name)<50:
-                        entry_name+=(50-len(entry_name))*b" "
+                    if len(entry_name) < 50:
+                        entry_name += (50 - len(entry_name)) * b" "
                     info += f"{path}{entry_name.decode('utf-8')} mode:{hex(mode)}, size:{hex(size)}, atime:{hex(atime)}, mtime:{hex(mtime)}, ctime:{hex(ctime)}\n"
-                elif entry_type==0:
+                elif entry_type == 0:
                     break
         if self.efs_closedir(efsmethod, dirp) != 0:
             print("Error on listing directory")
@@ -1179,37 +1180,37 @@ class DiagTools(metaclass=LogBase):
 
         if connected:
             cmd = args.cmd
-            if cmd=="sp":
+            if cmd == "sp":
                 diag.send_sp(args.spval)
-            elif cmd=="spc":
+            elif cmd == "spc":
                 diag.send_spc(args.spcval)
-            elif cmd=="cmd":
-                if args.cmdval=="":
+            elif cmd == "cmd":
+                if args.cmdval == "":
                     print("cmd needed as hex string, example: 00")
                 else:
                     print(diag.send_cmd(args.cmdval))
-            elif cmd=="info":
+            elif cmd == "info":
                 print(diag.cmd_info())
-            elif cmd=="download":
+            elif cmd == "download":
                 diag.enter_downloadmode()
-            elif cmd=="sahara":
+            elif cmd == "sahara":
                 diag.enter_saharamode()
-            elif cmd=="crash":
+            elif cmd == "crash":
                 diag.enforce_crash()
-            elif cmd=="efslistdir":
+            elif cmd == "efslistdir":
                 print(diag.efslistdir(args.path))
-            elif cmd=="efsreadfile":
-                if args.src=="" or args.dst=="":
+            elif cmd == "efsreadfile":
+                if args.src == "" or args.dst == "":
                     print("Usage: -efsreadfile -src srcfile -dst dstfile")
                     sys.exit()
-                print(diag.efsreadfile(args.src,args.dst))
-            elif cmd=="nvread":
+                print(diag.efsreadfile(args.src, args.dst))
+            elif cmd == "nvread":
                 if "0x" in args.nvitem:
                     nvitem = int(args.nvitem, 16)
                 else:
                     nvitem = int(args.nvitem)
                 diag.print_nvitem(nvitem)
-            elif cmd=="nvreadsub":
+            elif cmd == "nvreadsub":
                 if args.nvitem is None or args.nvindex is None:
                     print("Usage: nvreadsub [nvitem] [nvindex]")
                     exit(1)
@@ -1222,8 +1223,8 @@ class DiagTools(metaclass=LogBase):
                     nvindex = int(args.nvindex, 16)
                 else:
                     nvindex = int(args.nvindex)
-                diag.print_nvitemsub(nvitem,nvindex)
-            elif cmd=="nvwrite":
+                diag.print_nvitemsub(nvitem, nvindex)
+            elif cmd == "nvwrite":
                 if args.data is None:
                     print("NvWrite requires data to write")
                     sys.exit()
@@ -1233,7 +1234,7 @@ class DiagTools(metaclass=LogBase):
                     nvitem = int(args.nvitem)
                 data = unhexlify(args.data)
                 diag.write_nvitem(nvitem, data)
-            elif cmd=="nvwritesub":
+            elif cmd == "nvwritesub":
                 if args.nvitem is None or args.nvindex is None or args.data is None:
                     print("NvWriteSub requires item, index and data to write")
                     sys.exit()
@@ -1247,11 +1248,11 @@ class DiagTools(metaclass=LogBase):
                     nvindex = int(args.nvindex)
                 data = unhexlify(args.data)
                 diag.write_nvitemsub(nvitem, nvindex, data)
-            elif cmd=="nvbackup":
+            elif cmd == "nvbackup":
                 diag.backup_nvitems(args.filename, "error.log")
-            elif cmd=="writeimei":
+            elif cmd == "writeimei":
                 diag.write_imei(args.imei)
-            elif cmd=="efsread":
+            elif cmd == "efsread":
                 diag.efsread(args.filename)
             else:
                 print("A command is required. Use -cmd \"data\" for sending requests.")
@@ -1259,8 +1260,8 @@ class DiagTools(metaclass=LogBase):
                 print("Valid commands are:")
                 print("-------------------")
                 print("info cmd sp spc nvread nvreadsub" +
-                " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile" +
-                " efslistdir download sahara crash")
+                      " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile" +
+                      " efslistdir download sahara crash")
                 print()
             diag.disconnect()
             sys.exit()
@@ -1275,54 +1276,53 @@ def main():
     parser = argparse.ArgumentParser(description=info)
     print("\n" + info + "\n---------------------------------------\n")
     subparser = parser.add_subparsers(dest="cmd", help="Valid commands are:\ninfo cmd sp spc nvread nvreadsub" +
-                                                        " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile\n" +
-                                                        " efslistdir download sahara crash")
-
+                                                       " nvwrite writeimei nvwritesub nvbackup efsread efsreadfile\n" +
+                                                       " efslistdir download sahara crash")
 
     parser_info = subparser.add_parser("info", help="[Option] Get diag info")
     parser_info.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_info.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_info.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                             default="0")
     parser_info.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_info.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                             help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_info.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_info.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_cmd = subparser.add_parser("cmd", help="Send command")
     parser_cmd.add_argument("cmdval", help="cmd to send (hexstring), default: 00",
-                           default="", const="00", nargs="?")
+                            default="", const="00", nargs="?")
     parser_cmd.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_cmd.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_cmd.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                            default="0")
     parser_cmd.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_cmd.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                            help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_cmd.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_cmd.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_sp = subparser.add_parser("sp", help="Send Security password")
     parser_sp.add_argument("spval", help="Security password to send, default: FFFFFFFFFFFFFFFE",
-                        default="FFFFFFFFFFFFFFFE", nargs="?")
+                           default="FFFFFFFFFFFFFFFE", nargs="?")
     parser_sp.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_sp.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_sp.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                           default="0")
     parser_sp.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_sp.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                           help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_sp.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_sp.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_spc = subparser.add_parser("spc", help="Send Security Code")
     parser_spc.add_argument("spcval", help="Security code to send, default: 303030303030",
-                        default="303030303030", nargs="?")
+                            default="303030303030", nargs="?")
     parser_spc.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_spc.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_spc.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                            default="0")
     parser_spc.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_spc.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                            help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_spc.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_spc.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_nvread = subparser.add_parser("nvread", help="Read nvitem")
@@ -1330,10 +1330,10 @@ def main():
     parser_nvread.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_nvread.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_nvread.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                               default="0")
     parser_nvread.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_nvread.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                               help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_nvread.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_nvread.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_nvreadsub = subparser.add_parser("nvreadsub", help="Read nvitem using subsystem")
@@ -1342,10 +1342,10 @@ def main():
     parser_nvreadsub.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_nvreadsub.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_nvreadsub.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                  default="0")
     parser_nvreadsub.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_nvreadsub.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                  help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_nvreadsub.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_nvreadsub.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_nvwrite = subparser.add_parser("nvwrite", help="Write nvitem")
@@ -1354,10 +1354,10 @@ def main():
     parser_nvwrite.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_nvwrite.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_nvwrite.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                default="0")
     parser_nvwrite.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_nvwrite.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_nvwrite.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_nvwrite.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_nvwritesub = subparser.add_parser("nvwritesub", help="Write nvitem using subsystem")
@@ -1367,10 +1367,10 @@ def main():
     parser_nvwritesub.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_nvwritesub.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_nvwritesub.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                   default="0")
     parser_nvwritesub.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_nvwritesub.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                   help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_nvwritesub.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_nvwritesub.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_writeimei = subparser.add_parser("writeimei", help="Write imei")
@@ -1378,22 +1378,21 @@ def main():
     parser_writeimei.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_writeimei.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_writeimei.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                  default="0")
     parser_writeimei.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_writeimei.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                  help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_writeimei.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_writeimei.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
-
 
     parser_nvbackup = subparser.add_parser("nvbackup", help="Make nvitem backup as json")
     parser_nvbackup.add_argument("filename", help="[Option] Filename to write to", default="")
     parser_nvbackup.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_nvbackup.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_nvbackup.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                 default="0")
     parser_nvbackup.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_nvbackup.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                 help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_nvbackup.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_nvbackup.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_efsread = subparser.add_parser("efsread", help="Read efs")
@@ -1401,10 +1400,10 @@ def main():
     parser_efsread.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_efsread.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_efsread.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                default="0")
     parser_efsread.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_efsread.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_efsread.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_efsread.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_efsreadfile = subparser.add_parser("efsreadfile", help="Read efs file")
@@ -1413,10 +1412,10 @@ def main():
     parser_efsreadfile.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_efsreadfile.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_efsreadfile.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                    default="0")
     parser_efsreadfile.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_efsreadfile.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                    help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_efsreadfile.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_efsreadfile.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_efslistdir = subparser.add_parser("efslistdir", help="List efs directory")
@@ -1424,42 +1423,41 @@ def main():
     parser_efslistdir.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_efslistdir.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_efslistdir.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                   default="0")
     parser_efslistdir.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_efslistdir.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                   help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_efslistdir.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_efslistdir.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_download = subparser.add_parser("download", help="[Option] Switch to sahara mode")
     parser_download.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_download.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_download.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                                 default="0")
     parser_download.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_download.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                                 help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_download.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_download.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_sahara = subparser.add_parser("sahara", help="[Option] Switch to sahara mode")
     parser_sahara.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_sahara.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_sahara.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                               default="0")
     parser_sahara.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_sahara.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                               help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_sahara.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_sahara.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_crash = subparser.add_parser("crash", help="[Option] Enforce crash")
     parser_crash.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_crash.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_crash.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",
-                        default="0")
+                              default="0")
     parser_crash.add_argument("-portname", metavar="<portname>",
-                        help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
-    parser_crash.add_argument("-serial",help="[Option] Use serial port (autodetect)", action="store_true")
+                              help="[Option] Specify serial port (\"/dev/ttyUSB0\",\"COM1\")")
+    parser_crash.add_argument("-serial", help="[Option] Use serial port (autodetect)", action="store_true")
     parser_crash.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
-
 
     args = parser.parse_args()
     dg = DiagTools()
@@ -1468,4 +1466,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

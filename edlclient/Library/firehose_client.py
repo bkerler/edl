@@ -785,6 +785,8 @@ class firehose_client(metaclass=LogBase):
                 return False
             luns = self.getluns(options)
             partitionname = options["<partitionname>"]
+            partitions = partitionname.split(",")
+            error = False
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
                                                        int(options["--gpt-part-entry-size"]),
@@ -793,20 +795,21 @@ class firehose_client(metaclass=LogBase):
                     break
                 if self.firehose.modules is not None:
                     self.firehose.modules.writeprepare()
-
-                if partitionname in guid_gpt.partentries:
-                    partition = guid_gpt.partentries[partitionname]
-                    self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
-                    self.printer(
-                        f"Erased {partitionname} starting at sector {str(partition.sector)} " +
-                        f"with sector count {str(partition.sectors)}.")
-                    return True
-                else:
-                    self.printer(
-                        f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
-                    return False
-            self.error(f"Error: Couldn't detect partition: {partitionname}")
-            return False
+                for partitionname in partitions:
+                    if partitionname in guid_gpt.partentries:
+                        partition = guid_gpt.partentries[partitionname]
+                        self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
+                        self.printer(
+                            f"Erased {partitionname} starting at sector {str(partition.sector)} " +
+                            f"with sector count {str(partition.sectors)}.")
+                    else:
+                        self.printer(
+                            f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
+                        error = True
+                        continue
+            if error:
+                return False
+            return True
         elif cmd == "ep":
             if not self.check_param(["<partitionname>", "<sectors>"]):
                 return False

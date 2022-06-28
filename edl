@@ -115,7 +115,7 @@ Options:
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
     --devicemodel=value                Set device model
-    --portname=portname                Set serial port name (/dev/ttyUSB0 for Linux/MAC; \\.\COM1 for Windows)
+    --portname=portname                Set serial port name (/dev/ttyUSB0 for Linux/MAC; \\\\.\\COM1 for Windows)
     --serial                           Use serial port (port autodetection)
     --slot                             Set active slot for setactiveslot [a or b]
     --resetmode=mode                   Resetmode for reset (poweroff, reset, edl, etc.)
@@ -154,6 +154,7 @@ def parse_cmd(rargs):
         if rargs[cmd]:
             return cmd
     return ""
+
 
 def console_cmd(cmd):
     read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -215,7 +216,7 @@ class main(metaclass=LogBase):
                     mode = resp["mode"]
                     self.info(f"Mode detected: {mode}")
                     return resp
-        return {"mode":"error"}
+        return {"mode": "error"}
 
     def exit(self):
         self.cdc.close()
@@ -275,7 +276,7 @@ class main(metaclass=LogBase):
         else:
             self.portname = ""
         if self.serial:
-            self.cdc = serial_class(loglevel=self.__logger.level,portconfig=portconfig)
+            self.cdc = serial_class(loglevel=self.__logger.level, portconfig=portconfig)
         else:
             self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level)
 
@@ -290,7 +291,6 @@ class main(metaclass=LogBase):
             self.sahara.programmer = loader
 
         self.info("Waiting for the device")
-        resp = None
         self.cdc.timeout = 1500
         conninfo = self.doconnect(loop)
         mode = conninfo["mode"]
@@ -380,6 +380,7 @@ class main(metaclass=LogBase):
                 self.info("Trying to connect to firehose loader ...")
                 if fh.connect(sahara):
                     fh.handle_firehose(cmd, options)
+
 
 if __name__ == '__main__':
     base = main()

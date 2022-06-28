@@ -16,16 +16,18 @@ from edlclient.Library.gpt import gpt
 from edlclient.Library.sparse import QCSparse
 from edlclient.Library.utils import progress
 
+
 class response:
-    resp=False
-    data=b""
-    error=""
-    log=None
-    def __init__(self, resp=False, data=b"", error:str="", log:dict=""):
-        self.resp=resp
-        self.data=data
-        self.error=error
-        self.log=log
+    resp = False
+    data = b""
+    error = ""
+    log = None
+
+    def __init__(self, resp=False, data=b"", error: str = "", log: dict = ""):
+        self.resp = resp
+        self.data = data
+        self.error = error
+        self.log = log
 
 
 try:
@@ -66,8 +68,8 @@ class nand_partition:
                 name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
                                                                                 data[i * 0x1C:(i * 0x1C) + 0x1C])
                 np = partf()
-                if name[:2]==b"0:":
-                    name=name[2:]
+                if name[:2] == b"0:":
+                    name = name[2:]
                 np.name = name.rstrip(b"\x00").decode('utf-8').lower()
                 if self.parent.cfg.block_size == 0:
                     np.sector = offset
@@ -80,7 +82,7 @@ class nand_partition:
                 np.attr3 = attr3
                 np.which_flash = which_flash
                 self.partentries[np.name] = np
-            if self.parent.cfg.block_size != 0 and self.parent.cfg.total_blocks!=0:
+            if self.parent.cfg.block_size != 0 and self.parent.cfg.total_blocks != 0:
                 self.totalsectors = (self.parent.cfg.block_size // self.parent.cfg.SECTOR_SIZE_IN_BYTES) * \
                                     self.parent.cfg.total_blocks
             else:
@@ -252,7 +254,7 @@ class firehose(metaclass=LogBase):
                     rdata += tmp
                 except Exception as err:
                     self.error(err)
-                    return response(resp=False,error=str(err))
+                    return response(resp=False, error=str(err))
             try:
                 if b"raw hex token" in rdata:
                     rdata = rdata
@@ -260,7 +262,7 @@ class firehose(metaclass=LogBase):
                     resp = self.xml.getresponse(rdata)
                     status = self.getstatus(resp)
                     if "rawmode" in resp:
-                        if resp["rawmode"]=="false":
+                        if resp["rawmode"] == "false":
                             if status:
                                 log = self.xml.getlog(rdata)
                                 return response(resp=status, data=resp, log=log)
@@ -280,9 +282,9 @@ class firehose(metaclass=LogBase):
                 if status:
                     return response(resp=True, data=resp)
                 else:
-                    error=""
+                    error = ""
                     if b"<log value" in rdata:
-                        error=self.xml.getlog(rdata)
+                        error = self.xml.getlog(rdata)
                     return response(resp=False, error=error, data=resp)
             except Exception as err:
                 self.debug(str(err))
@@ -294,14 +296,14 @@ class firehose(metaclass=LogBase):
                                    ", Error: " + str(err))
                 elif isinstance(rdata, str):
                     self.debug("Error on getting xml response:" + rdata)
-                return response(resp=False,error=rdata)
+                return response(resp=False, error=rdata)
         else:
-            return response(resp=True,data=rdata)
+            return response(resp=True, data=rdata)
 
     def cmd_reset(self, mode="reset"):
         if mode is None:
             mode = "poweroff"
-        data = "<?xml version=\"1.0\" ?><data><power value=\""+mode+"\"/></data>"
+        data = "<?xml version=\"1.0\" ?><data><power value=\"" + mode + "\"/></data>"
         val = self.xmlsend(data)
         try:
             v = None
@@ -319,7 +321,7 @@ class firehose(metaclass=LogBase):
             self.info("Reset succeeded.")
             return True
         else:
-            self.error("Reset failed: "+val.error)
+            self.error("Reset failed: " + val.error)
             return False
 
     def cmd_xml(self, filename):
@@ -335,7 +337,8 @@ class firehose(metaclass=LogBase):
 
     def cmd_nop(self):
         data = "<?xml version=\"1.0\" ?><data><nop /></data>"
-        resp=self.xmlsend(data, True)
+        resp = self.xmlsend(data, True)
+        self.debug(resp.hex())
         info = b""
         tmp = None
         while tmp != b"":
@@ -366,7 +369,7 @@ class firehose(metaclass=LogBase):
             else:
                 return res
         else:
-            self.error("GetSha256Digest failed: "+val.error)
+            self.error("GetSha256Digest failed: " + val.error)
             return False
 
     def cmd_setbootablestoragedrive(self, partition_number):
@@ -379,9 +382,9 @@ class firehose(metaclass=LogBase):
             self.error("Setbootablestoragedrive failed: " + val.error)
             return False
 
-    def cmd_send(self, content, response=True):
+    def cmd_send(self, content, responsexml=True):
         data = f"<?xml version=\"1.0\" ?><data>\n<{content} /></data>"
-        if response:
+        if responsexml:
             val = self.xmlsend(data)
             if val.resp:
                 return val.data
@@ -630,12 +633,12 @@ class firehose(metaclass=LogBase):
                 progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
                 while bytestoread > 0:
                     if self.cdc.is_serial:
-                        maxsize=self.cfg.MaxPayloadSizeFromTargetInBytes
+                        maxsize = self.cfg.MaxPayloadSizeFromTargetInBytes
                     else:
-                        maxsize=5*1024*1024
-                    size=min(maxsize, bytestoread)
+                        maxsize = 5 * 1024 * 1024
+                    size = min(maxsize, bytestoread)
                     data = usb_read(size)
-                    if len(data)>0:
+                    if len(data) > 0:
                         wr.write(data)
                         bytestoread -= len(data)
                         show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
@@ -698,22 +701,22 @@ class firehose(metaclass=LogBase):
                     self.error(f"Error:")
                     for line in info:
                         self.error(line)
-                    return response(resp=False,data=resData, error=info)
+                    return response(resp=False, data=resData, error=info)
                 elif "rawmode" in rsp:
                     if rsp["rawmode"] == "false":
-                        return response(resp=True,data=resData)
+                        return response(resp=True, data=resData)
             else:
                 if len(rsp) > 1:
                     if b"Failed to open the UFS Device" in rsp[2]:
                         self.error(f"Error:{rsp[2]}")
                     self.lasterror = rsp[2]
-                return response(resp=False,data=resData,error=rsp[2])
-        if rsp["value"]!="ACK":
+                return response(resp=False, data=resData, error=rsp[2])
+        if rsp["value"] != "ACK":
             self.lasterror = rsp[2]
         if display and prog != 100:
             progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
-        resp=rsp["value"]=="ACK"
-        return response(resp=resp,data=resData,error=rsp[2])  # Do not remove, needed for oneplus
+        resp = rsp["value"] == "ACK"
+        return response(resp=resp, data=resData, error=rsp[2])  # Do not remove, needed for oneplus
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba):
         try:
@@ -723,7 +726,7 @@ class firehose(metaclass=LogBase):
             self.skipresponse = True
             resp = self.cmd_read_buffer(lun, 0, 2, False)
 
-        if not resp.resp :
+        if not resp.resp:
             for line in resp.error:
                 self.error(line)
             return None, None
@@ -734,11 +737,11 @@ class firehose(metaclass=LogBase):
             self.info("Scanning for partition table ...")
             progbar = progress(1)
             if self.nandpart.partitiontblsector is None:
-                sector=0x280
+                sector = 0x280
                 progbar.show_progress(prefix="Scanning", pos=sector, total=1024, display=True)
                 resp = self.cmd_read_buffer(0, sector, 1, False)
                 if resp.resp:
-                    if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd",b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
+                    if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
                         progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
                         self.nandpart.partitiontblsector = sector
                         self.info(f"Found partition table at sector {sector} :)")
@@ -849,10 +852,10 @@ class firehose(metaclass=LogBase):
         '''
         rsp = self.xmlsend(connectcmd)
         if not rsp.resp:
-            if rsp.error=="":
+            if rsp.error == "":
                 try:
                     if "MemoryName" in rsp.data:
-                       self.cfg.MemoryName = rsp.data["MemoryName"]
+                        self.cfg.MemoryName = rsp.data["MemoryName"]
                 except TypeError:
                     self.warning("!DEBUG! rsp.data: '%s'" % (rsp.data,))
                     return self.configure(lvl + 1)
@@ -861,7 +864,8 @@ class firehose(metaclass=LogBase):
                 if "MaxPayloadSizeToTargetInBytes" in rsp.data:
                     self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp.data["MaxPayloadSizeToTargetInBytes"])
                 if "MaxPayloadSizeToTargetInBytesSupported" in rsp.data:
-                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(rsp.data["MaxPayloadSizeToTargetInBytesSupported"])
+                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(
+                        rsp.data["MaxPayloadSizeToTargetInBytesSupported"])
                 if "TargetName" in rsp.data:
                     self.cfg.TargetName = rsp.data["TargetName"]
                 return self.configure(lvl + 1)
@@ -924,7 +928,7 @@ class firehose(metaclass=LogBase):
                         self.warning(line)
         else:
             info = self.cdc.read(timeout=1)
-            if isinstance(rsp.resp,dict):
+            if isinstance(rsp.resp, dict):
                 field = rsp.resp
                 if "MemoryName" not in field:
                     # print(rsp[1])
@@ -945,7 +949,8 @@ class firehose(metaclass=LogBase):
                 else:
                     self.cfg.MaxPayloadSizeToTargetInBytes = 1048576
                 if "MaxPayloadSizeToTargetInBytesSupported" in field:
-                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(field["MaxPayloadSizeToTargetInBytesSupported"])
+                    self.cfg.MaxPayloadSizeToTargetInBytesSupported = int(
+                        field["MaxPayloadSizeToTargetInBytesSupported"])
                 else:
                     self.cfg.MaxPayloadSizeToTargetInBytesSupported = 1048576
                 if "MaxXMLSizeInBytes" in field:
@@ -992,11 +997,11 @@ class firehose(metaclass=LogBase):
                             "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                         self.cfg.MemoryName = "eMMC"
                         return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line\
+                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
                             or "different from device sector size (512)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 512
                         return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line\
+                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
                             or "different from device sector size (4096)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 4096
                         return self.configure(0)
@@ -1011,8 +1016,8 @@ class firehose(metaclass=LogBase):
                                               int(self.args["--gpt-part-entry-size"]),
                                               int(self.args["--gpt-part-entry-start-lba"]))
                 self.lunsizes[lun] = guid_gpt.totalsectors
-            except Exception as e:
-                self.error(e)
+            except Exception as err:
+                self.error(err)
                 return -1
         else:
             return self.lunsizes[lun]
@@ -1090,7 +1095,7 @@ class firehose(metaclass=LogBase):
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):
             if len(info) > 0:
                 self.debug(info[0])
-        if len(info)>0:
+        if len(info) > 0:
             supfunc = False
             for line in info:
                 self.info(line)
@@ -1110,11 +1115,11 @@ class firehose(metaclass=LogBase):
                 if "supported functions" in line.lower():
                     supfunc = True
                     if "program" in line.lower():
-                        idx=line.find("Functions: ")
-                        if idx!=-1:
-                            v=line[idx+11:].split(" ")
+                        idx = line.find("Functions: ")
+                        if idx != -1:
+                            v = line[idx + 11:].split(" ")
                             for val in v:
-                                if val!="":
+                                if val != "":
                                     self.supported_functions.append(val)
                             supfunc = False
             try:
@@ -1154,7 +1159,7 @@ class firehose(metaclass=LogBase):
 
     def parse_storage(self):
         storageinfo = self.cmd_getstorageinfo()
-        if storageinfo is None or storageinfo.resp and len(storageinfo.data)==0:
+        if storageinfo is None or storageinfo.resp and len(storageinfo.data) == 0:
             return False
         info = storageinfo.data
         if "UFS Inquiry Command Output" in info:
@@ -1193,18 +1198,18 @@ class firehose(metaclass=LogBase):
     def cmd_getstorageinfo(self):
         data = "<?xml version=\"1.0\" ?><data><getstorageinfo physical_partition_number=\"0\"/></data>"
         val = self.xmlsend(data)
-        if val.data=='' and val.log=='' and val.resp:
+        if val.data == '' and val.log == '' and val.resp:
             return None
-        if isinstance(val.data,dict):
+        if isinstance(val.data, dict):
             if "bNumberLu" in val.data:
                 self.cfg.maxlun = int(val.data["bNumberLu"])
         if val.resp:
             if val.log is not None:
-                res={}
+                res = {}
                 for value in val.log:
-                    v=value.split("=")
-                    if len(v)>1:
-                        res[v[0]]=v[1]
+                    v = value.split("=")
+                    if len(v) > 1:
+                        res[v[0]] = v[1]
                     else:
                         if "\"storage_info\"" in value:
                             try:
@@ -1229,23 +1234,23 @@ class firehose(metaclass=LogBase):
                             if "prod_name" in si:
                                 self.cfg.prod_name = si["prod_name"]
                         else:
-                            v=value.split(":")
-                            if len(v)>1:
-                                res[v[0]]=v[1].lstrip(" ")
+                            v = value.split(":")
+                            if len(v) > 1:
+                                res[v[0]] = v[1].lstrip(" ")
                 return response(resp=val.resp, data=res)
             return response(resp=val.resp, data=val.data)
         else:
             if val.error:
                 for v in val.error:
                     if "Failed to open the SDCC Device" in v:
-                        self.cfg.MemoryName="ufs"
+                        self.cfg.MemoryName = "ufs"
                         self.configure(0)
                         return self.cmd_getstorageinfo()
             self.warning("GetStorageInfo command isn't supported.")
             return None
 
-    def cmd_setactiveslot(self, slot:str):
-        if slot.lower() not in ["a","b"]:
+    def cmd_setactiveslot(self, slot: str):
+        if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
             return False
         partslots = {}
@@ -1275,8 +1280,8 @@ class firehose(metaclass=LogBase):
                             byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
                             headeroffset = gp.header.current_lba * gp.sectorsize
                             start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                            header = wdata[start_sector_hdr:start_sector_hdr+gp.header.header_size]
-                            self.cmd_patch(lun,start_sector_patch,byte_offset_patch,pdata,len(pdata),True)
+                            header = wdata[start_sector_hdr:start_sector_hdr + gp.header.header_size]
+                            self.cmd_patch(lun, start_sector_patch, byte_offset_patch, pdata, len(pdata), True)
                             self.cmd_patch(lun, headeroffset, 0, header, len(pdata), True)
                 return True
         return False
@@ -1348,8 +1353,8 @@ class firehose(metaclass=LogBase):
                         f"SizeInBytes=\"{str(maxsize)}\" value64=\"{content}\" /></data>\n"
             try:
                 self.cdc.write(xdata[:self.cfg.MaxXMLSizeInBytes])
-            except Exception as e:  # pylint: disable=broad-except
-                self.debug(str(e))
+            except Exception as err:  # pylint: disable=broad-except
+                self.debug(str(err))
                 pass
             addrinfo = self.cdc.read(timeout=None)
             if b"SizeInBytes" in addrinfo or b"Invalid parameters" in addrinfo:
