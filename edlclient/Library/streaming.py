@@ -820,7 +820,7 @@ class Streaming(metaclass=LogBase):
                 self.settings = SettingsOpt(self, chipset)
                 if self.settings.bad_loader:
                     self.error(
-                        "Loader id doesn't match device, please fix config and patch loader. Rebooting.")
+                        "Loader image_id doesn't match device, please fix config and patch loader. Rebooting.")
                     self.reset()
                     return False
                 self.nanddevice = NandDevice(self.settings)
@@ -856,7 +856,7 @@ class Streaming(metaclass=LogBase):
                            self.settings.num_pages_per_blk / 1024 * self.settings.PAGESIZE / 1024))
 
             val = resp[1].flashId.decode('utf-8') if resp[1].flashId[0] != 0x65 else ""
-            self.info("Flash memory: %s %s, %s (vendor: 0x%02X id: 0x%02X)" % (self.settings.flash_mfr, val,
+            self.info("Flash memory: %s %s, %s (vendor: 0x%02X image_id: 0x%02X)" % (self.settings.flash_mfr, val,
                                                                                self.settings.flash_descr,
                                                                                self.settings.flash_pid,
                                                                                self.settings.flash_fid))

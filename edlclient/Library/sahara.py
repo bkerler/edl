@@ -114,9 +114,9 @@ class sahara(metaclass=LogBase):
                     pkt = self.ch.pkt_cmd_hdr(v)
                     if pkt.cmd == cmd_t.SAHARA_HELLO_REQ:
                         rsp = self.ch.pkt_hello_req(v)
-                        self.pktsize = rsp.max_cmd_len
-                        self.version = float(str(rsp.version) + "." + str(rsp.version_min))
-                        self.info(f"Protocol version: {self.version}")
+                        self.pktsize = rsp.cmd_packet_length
+                        self.version = rsp.version
+                        self.info(f"Protocol version: {rsp.version}, Version supported: {rsp.version_supported}")
                         return {"mode":"sahara", "cmd":cmd_t.SAHARA_HELLO_REQ, "data":rsp}
                     elif pkt.cmd == cmd_t.SAHARA_END_TRANSFER:
                         rsp = self.ch.pkt_image_end(v)
@@ -159,7 +159,7 @@ class sahara(metaclass=LogBase):
             if res["cmd"] == cmd_t.SAHARA_END_TRANSFER:
                 if "data" in res:
                     pkt = res["data"]
-                    self.error(self.get_error_desc(pkt.status))
+                    self.error(self.get_error_desc(pkt.image_tx_status))
                     return False
             elif res["cmd"] == cmd_t.SAHARA_CMD_READY:
                 return True
@@ -327,7 +327,7 @@ class sahara(metaclass=LogBase):
                 elif cmd == cmd_t.SAHARA_END_TRANSFER:
                     if "data" in res:
                         pkt = res["data"]
-                        if pkt.status == status_t.SAHARA_NAK_INVALID_CMD:
+                        if pkt.image_tx_status == status_t.SAHARA_NAK_INVALID_CMD:
                             self.error("Invalid Transfer command received.")
                             return False
                 else:
@@ -352,7 +352,7 @@ class sahara(metaclass=LogBase):
             elif res["cmd"] == cmd_t.SAHARA_END_TRANSFER:
                 if "data" in res:
                     pkt=res["data"]
-                    self.error(self.get_error_desc(pkt.status))
+                    self.error(self.get_error_desc(pkt.image_tx_status))
         return False
 
     def read_memory(self, addr, bytestoread, display=False, wf=None):
@@ -492,8 +492,8 @@ class sahara(metaclass=LogBase):
 
                         self.dump_partitions(partitions)
                     return True
-        elif res["data"].status:
-            self.error(self.get_error_desc(res["data"].status))
+        elif res["data"].image_tx_status:
+            self.error(self.get_error_desc(res["data"].image_tx_status))
             return False
         return False
 
@@ -537,7 +537,7 @@ class sahara(metaclass=LogBase):
                         if loop == 0:
                             self.info("32-Bit mode detected.")
                     pkt = resp["data"]
-                    self.id = pkt.id
+                    self.id = pkt.image_id
                     if self.id == 0x7:
                         self.mode = "nandprg"
                         if loop == 0:
@@ -564,7 +564,7 @@ class sahara(metaclass=LogBase):
                     datalen -= data_len
                 elif cmd == cmd_t.SAHARA_END_TRANSFER:
                     pkt = resp["data"]
-                    if pkt.status == status_t.SAHARA_STATUS_SUCCESS:
+                    if pkt.image_tx_status == status_t.SAHARA_STATUS_SUCCESS:
                         if self.cmd_done():
                             self.info("Loader successfully uploaded.")
                         else:
@@ -572,7 +572,7 @@ class sahara(metaclass=LogBase):
                             sys.exit(1)
                         return self.mode
                     else:
-                        self.error(self.get_error_desc(pkt.status))
+                        self.error(self.get_error_desc(pkt.image_tx_status))
                         return "error"
                 else:
                     self.error("Unknown response received on uploading loader.")
@@ -601,6 +601,6 @@ class sahara(metaclass=LogBase):
                 return payload
             elif cmd == cmd_t.SAHARA_END_TRANSFER:
                 pkt = res["data"]
-                self.error(self.get_error_desc(pkt.status))
+                self.error(self.get_error_desc(pkt.image_tx_status))
             return None
         return res

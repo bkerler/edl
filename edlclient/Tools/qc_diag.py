@@ -70,14 +70,14 @@ diagerror = {
 nvitem_type = [
     ("item", "H"),
     ("rawdata", "128s"),
-    ("status", "H")
+    ("image_tx_status", "H")
 ]
 
 subnvitem_type = [
     ("item", "H"),
     ("index", "H"),
     ("rawdata", "128s"),
-    ("status", "H")
+    ("image_tx_status", "H")
 ]
 
 
@@ -337,7 +337,7 @@ class qcdiag(metaclass=LogBase):
         e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
-            identifier = int(atype.get("id"))
+            identifier = int(atype.get("image_id"))
             self.nvlist[identifier] = name
 
     def prettyprint(self, data):
@@ -460,27 +460,27 @@ class qcdiag(metaclass=LogBase):
         return res
 
     def DecodeNVItems(self, nvitem):
-        if nvitem.status == 0x1:
+        if nvitem.image_tx_status == 0x1:
             return "Internal DMSS use"
-        elif nvitem.status == 0x2:
+        elif nvitem.image_tx_status == 0x2:
             return "Unrecognized command"
-        elif nvitem.status == 0x3:
+        elif nvitem.image_tx_status == 0x3:
             return "NV memory full"
-        elif nvitem.status == 0x4:
+        elif nvitem.image_tx_status == 0x4:
             return "Command failed"
-        elif nvitem.status == 0x5:
+        elif nvitem.image_tx_status == 0x5:
             return "Inactive Item"
-        elif nvitem.status == 0x6:
+        elif nvitem.image_tx_status == 0x6:
             return "Bad Parameter"
-        elif nvitem.status == 0x7:
+        elif nvitem.image_tx_status == 0x7:
             return "Item was read-only"
-        elif nvitem.status == 0x8:
+        elif nvitem.image_tx_status == 0x8:
             return "Item not defined for this target"
-        elif nvitem.status == 0x9:
+        elif nvitem.image_tx_status == 0x9:
             return "No more free memory"
-        elif nvitem.status == 0xA:
+        elif nvitem.image_tx_status == 0xA:
             return "Internal use"
-        elif nvitem.status == 0x0:
+        elif nvitem.image_tx_status == 0x0:
             return "OK"
         return ""
 
@@ -495,7 +495,7 @@ class qcdiag(metaclass=LogBase):
                     ItemNumber = hex(item) + ": "
                 returnanswer = "NVItem " + ItemNumber + info
                 print(returnanswer)
-                if nvitem.status == 0:
+                if nvitem.image_tx_status == 0:
                     print("-----------------------------------------")
                     print(self.prettyprint(nvitem.data))
             else:
@@ -513,7 +513,7 @@ class qcdiag(metaclass=LogBase):
                 ItemNumber = hex(item) + "," + hex(index) + ": "
             returnanswer = "NVItem " + ItemNumber + info
             print(returnanswer)
-            if nvitem.status == 0:
+            if nvitem.image_tx_status == 0:
                 print("-----------------------------------------")
                 print(self.prettyprint(nvitem.data))
         else:
@@ -532,10 +532,10 @@ class qcdiag(metaclass=LogBase):
                 old = prog
             res, nvitem = self.read_nvitem(item)
             if res != False:
-                if nvitem.status != 0x5:
-                    nvitem.status = self.DecodeNVItems(nvitem)
+                if nvitem.image_tx_status != 0x5:
+                    nvitem.image_tx_status = self.DecodeNVItems(nvitem)
                     nvitems.append(dict(id=nvitem.item, name=nvitem.name, data=hexlify(nvitem.data).decode("utf-8"),
-                                        status=nvitem.status))
+                                        status=nvitem.image_tx_status))
             else:
                 errors += nvitem + "\n"
             pos += 1
@@ -573,7 +573,7 @@ class qcdiag(metaclass=LogBase):
                 if item in self.nvlist:
                     name = self.nvlist[item]
                 data = self.unpackdata(res["rawdata"])
-                res = nvitem(res["item"], 0, data, res["status"], name)
+                res = nvitem(res["item"], 0, data, res["image_tx_status"], name)
                 return [True, res]
             elif data[0] == 0x14:
                 return [False, f"Error 0x14 trying to read nvitem {hex(item)}."]
@@ -595,7 +595,7 @@ class qcdiag(metaclass=LogBase):
                 if item in self.nvlist:
                     name = self.nvlist[item]
                 data = self.unpackdata(res["rawdata"])
-                res = nvitem(res["item"], index, data, res["status"], name)
+                res = nvitem(res["item"], index, data, res["image_tx_status"], name)
                 return [True, res]
             elif data[0] == 0x14:
                 return [False, f"Error 0x14 trying to read nvitem {hex(item)}."]

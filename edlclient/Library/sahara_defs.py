@@ -30,24 +30,24 @@ class cmd_t:
 
 class cmd_t_version:
     SAHARA_HELLO_REQ = 0x1
-    SAHARA_HELLO_RSP = 1.0
-    SAHARA_READ_DATA = 1.0
-    SAHARA_END_TRANSFER = 1.0
-    SAHARA_DONE_REQ = 1.0
-    SAHARA_DONE_RSP = 1.0
-    SAHARA_RESET_REQ = 1.0
-    SAHARA_RESET_RSP = 1.0
-    SAHARA_MEMORY_DEBUG = 2.0
-    SAHARA_MEMORY_READ = 2.0
-    SAHARA_CMD_READY = 2.1
-    SAHARA_SWITCH_MODE = 2.1
-    SAHARA_EXECUTE_REQ = 2.1
-    SAHARA_EXECUTE_RSP = 2.1
-    SAHARA_EXECUTE_DATA = 2.1
-    SAHARA_64BIT_MEMORY_DEBUG = 2.5
-    SAHARA_64BIT_MEMORY_READ = 2.5
-    SAHARA_64BIT_MEMORY_READ_DATA = 2.8
-    SAHARA_RESET_STATE_MACHINE_ID = 2.9
+    SAHARA_HELLO_RSP = 1
+    SAHARA_READ_DATA = 1
+    SAHARA_END_TRANSFER = 1
+    SAHARA_DONE_REQ = 1
+    SAHARA_DONE_RSP = 1
+    SAHARA_RESET_REQ = 1
+    SAHARA_RESET_RSP = 1
+    SAHARA_MEMORY_DEBUG = 2
+    SAHARA_MEMORY_READ = 2
+    SAHARA_CMD_READY = 2
+    SAHARA_SWITCH_MODE = 2
+    SAHARA_EXECUTE_REQ = 2
+    SAHARA_EXECUTE_RSP = 2
+    SAHARA_EXECUTE_DATA = 2
+    SAHARA_64BIT_MEMORY_DEBUG = 2
+    SAHARA_64BIT_MEMORY_READ = 2
+    SAHARA_64BIT_MEMORY_READ_DATA = 2
+    SAHARA_RESET_STATE_MACHINE_ID = 2
 
 class exec_cmd_t:
     SAHARA_EXEC_CMD_NOP = 0x00
@@ -58,7 +58,8 @@ class exec_cmd_t:
     SAHARA_EXEC_CMD_SWITCH_TO_STREAM_DLOAD = 0x05
     SAHARA_EXEC_CMD_READ_DEBUG_DATA = 0x06
     SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL = 0x07
-
+    SAHARA_EXEC_CMD_GET_COMMAND_ID_LIST = 0x08
+    SAHARA_EXEC_CMD_GET_TRAINING_DATA = 0x09
 
 class sahara_mode_t:
     SAHARA_MODE_IMAGE_TX_PENDING = 0x0
@@ -168,8 +169,8 @@ class CommandHandler:
             cmd = st.dword()
             len = st.dword()
             version = st.dword()
-            version_min = st.dword()
-            max_cmd_len = st.dword()
+            version_supported = st.dword()
+            cmd_packet_length = st.dword()
             mode = st.dword()
             reserved1 = st.dword()
             reserved2 = st.dword()
@@ -199,7 +200,7 @@ class CommandHandler:
         class req:
             cmd = st.dword()
             len = st.dword()
-            id = st.dword()
+            image_id = st.dword()
             data_offset = st.dword()
             data_len = st.dword()
 
@@ -266,7 +267,7 @@ class CommandHandler:
         class req:
             cmd = st.dword()
             len = st.dword()
-            id = st.dword()
+            image_id = st.dword()
             status = st.dword()
 
         return req
@@ -279,7 +280,7 @@ class CommandHandler:
         class req:
             cmd = st.dword()
             len = st.dword()
-            status = st.dword()
+            image_tx_status = st.dword()
 
         return req
 
