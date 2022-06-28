@@ -239,6 +239,7 @@ msmids = {
     0x08B0E1: "SDM845",  # Napali 0x60000100 => HW_ID1 6000000000010000
     #SDM840 NapaliQ ?
     #SDM640 Talos ?
+    0x0520e1: "Wear3100"
 }
 
 sochw = {
