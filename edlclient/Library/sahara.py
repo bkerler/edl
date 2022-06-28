@@ -7,7 +7,7 @@ import os
 import sys
 import logging
 import inspect
-from struct import unpack, pack
+from struct import pack
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -171,27 +171,30 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_serial_num(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SERIAL_NUM_READ)
-        return unpack("<I", res)[0]
+        return int.from_bytes(res,'little')
 
     def cmdexec_get_msm_hwid(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
         try:
-            return unpack("<Q", res[0:0x8])[0]
+            return int.from_bytes(res[:8],'little')
         except Exception as e:  # pylint: disable=broad-except
             self.debug(str(e))
             return None
 
     def cmdexec_get_pkhash(self):
         try:
-            res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)[0:0x20]
-            return binascii.hexlify(res).decode('utf-8')
+            res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)
+            idx=res[4:].find(res[:4])
+            if idx!=-1:
+                res=res[:4+idx]
+            return res.hex()
         except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
             return None
 
     def cmdexec_get_sbl_version(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
-        return unpack("<I", res)[0]
+        return int.from_bytes(res,'little')
 
     def cmdexec_switch_to_dmss_dload(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SWITCH_TO_DMSS_DLOAD)
