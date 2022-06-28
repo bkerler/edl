@@ -648,52 +648,66 @@ class firehose_client(metaclass=LogBase):
         elif cmd == "w":
             if not self.check_param(["<partitionname>", "<filename>"]):
                 return False
-            partitionname = options["<partitionname>"]
-            filename = options["<filename>"]
+            pname = options["<partitionname>"]
+            fname = options["<filename>"]
+            filenames = fname.split(",")
+            partitions = pname.split(",")
+            if len(partitions) != len(filenames):
+                self.error("You need to gives as many filenames as given partitions.")
+                return False
+            i = 0
             if options["--lun"] is not None:
                 lun = int(options["--lun"])
             else:
                 lun = 0
-            startsector = 0
-            if not os.path.exists(filename):
-                self.error(f"Error: Couldn't find file: {filename}")
-                return False
-            if partitionname.lower() == "gpt":
-                sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                res = [True, lun, sectors]
-            else:
-                res = self.firehose.detect_partition(options, partitionname)
-            if res[0]:
-                lun = res[1]
-                sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
-                    sectors += 1
-                if partitionname.lower() != "gpt":
-                    partition = res[2]
-                    if sectors > partition.sectors:
-                        self.error(
-                            f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
-                        return False
-                    startsector = partition.sector
-                if self.firehose.modules is not None:
-                    self.firehose.modules.writeprepare()
-                if self.firehose.cmd_program(lun, startsector, filename):
-                    self.printer(f"Wrote {filename} to sector {str(startsector)}.")
-                    return True
+            bad = False
+            for partitionname in partitions:
+                startsector = 0
+                filename = filenames[i]
+                i += 1
+                if not os.path.exists(filename):
+                    self.error(f"Error: Couldn't find file: {filename}")
+                    bad = True
+                    continue
+                if partitionname.lower() == "gpt":
+                    sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                    res = [True, lun, sectors]
                 else:
-                    self.printer(f"Error writing {filename} to sector {str(startsector)}.")
-                    return False
+                    res = self.firehose.detect_partition(options, partitionname)
+                if res[0]:
+                    lun = res[1]
+                    sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                    if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                        sectors += 1
+                    if partitionname.lower() != "gpt":
+                        partition = res[2]
+                        if sectors > partition.sectors:
+                            self.error(
+                                f"Error: {filename} has {sectors} sectors but partition only has {partition.sectors}.")
+                            bad = True
+                            continue
+                        startsector = partition.sector
+                    if self.firehose.modules is not None:
+                        self.firehose.modules.writeprepare()
+                    if self.firehose.cmd_program(lun, startsector, filename):
+                        self.printer(f"Wrote {filename} to sector {str(startsector)}.")
+                    else:
+                        self.printer(f"Error writing {filename} to sector {str(startsector)}.")
+                        bad = True
+                else:
+                    if len(res) > 0:
+                        fpartitions = res[1]
+                        self.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
+                        for lun in fpartitions:
+                            for partition in fpartitions[lun]:
+                                if self.cfg.MemoryName == "emmc":
+                                    self.error("\t" + partition.name)
+                                else:
+                                    self.error(lun + ":\t" + partition.name)
+            if bad:
+                return False
             else:
-                if len(res) > 0:
-                    fpartitions = res[1]
-                    self.error(f"Error: Couldn't detect partition: {partitionname}\nAvailable partitions:")
-                    for lun in fpartitions:
-                        for partition in fpartitions[lun]:
-                            if self.cfg.MemoryName == "emmc":
-                                self.error("\t" + partition.name)
-                            else:
-                                self.error(lun + ":\t" + partition.name)
-            return False
+                return True
         elif cmd == "wl":
             if not self.check_param(["<directory>"]):
                 return False
