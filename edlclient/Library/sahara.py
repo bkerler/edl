@@ -572,7 +572,7 @@ class sahara(metaclass=LogBase):
                             sys.exit(1)
                         return self.mode
                     else:
-                        self.error(self.get_error_desc(pkt.image_tx_status))
+                        self.error(self.get_error_desc(pkt.image_id))
                         return "error"
                 else:
                     self.error("Unknown response received on uploading loader.")

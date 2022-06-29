@@ -268,7 +268,7 @@ class CommandHandler:
             cmd = st.dword()
             len = st.dword()
             image_id = st.dword()
-            status = st.dword()
+            image_tx_status = st.dword()
 
         return req
 
