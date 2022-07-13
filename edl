@@ -185,6 +185,8 @@ class main(metaclass=LogBase):
         self.warning = self.__logger.warning
         self.cdc = None
         self.sahara = None
+        self.vid = None
+        self.pid = None
 
     def doconnect(self, loop):
         while not self.cdc.connected:
@@ -209,6 +211,8 @@ class main(metaclass=LogBase):
                 self.info("Device detected :)")
                 try:
                     resp = self.sahara.connect()
+                    self.vid = self.cdc.vid
+                    self.pid = self.cdc.pid
                 except Exception as err:  # pylint: disable=broad-except
                     self.debug(str(err))
                     continue
@@ -299,7 +303,7 @@ class main(metaclass=LogBase):
             data = conninfo["data"]
             if cmd == cmd_t.SAHARA_HELLO_REQ:
                 if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
-                    if args["memorydump"]:
+                    if args["memorydump"] or self.cdc.pid==0x900E:
                         time.sleep(0.5)
                         print("Device is in memory dump mode, dumping memory")
                         if args["--partitions"]:

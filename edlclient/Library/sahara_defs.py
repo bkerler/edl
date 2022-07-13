@@ -214,7 +214,7 @@ class CommandHandler:
         class req:
             cmd = st.dword()
             len = st.dword()
-            id = st.qword()
+            image_id = st.qword()
             data_offset = st.qword()
             data_len = st.qword()
 
