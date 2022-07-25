@@ -83,7 +83,7 @@ infotable = {
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
     "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"],
-    "SDX55" : ["MR5100","ac797-100eus"]
+    "SDX55" : ["MR5100","ac797-100eus","MR6400"]
 }
 
 keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
@@ -318,14 +318,14 @@ class SierraGenerator():
 
 
 class connection:
-    def __init__(self, port=""):
+    def __init__(self, port="", ip="192.168.1.1"):
         self.serial = None
         self.tn = None
         self.connected = False
         if port == "":
             port = self.detect(port)
             if port == "":
-                self.tn = Telnet("192.168.1.1", 5510)
+                self.tn = Telnet(ip, 5510)
                 self.connected = True
         if port != "":
             self.serial = serial.Serial(port=port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1)
@@ -442,6 +442,8 @@ class SierraKeygen(metaclass=LogBase):
                     elif "X55" in revision or "9X40C" in revision:
                         if "NTGX55" in revision: #MR5100 NTGX55_10.25.15.02
                             devicegeneration = "SDX55"
+                        elif "NTGX65" in revision: #MR6400 NTGX65_10.01.41.02
+                            devicegeneration = "SDX55"
                         devicegeneration = "SDX55"
                     else:
                         devicegeneration = ""
@@ -488,7 +490,7 @@ class SierraKeygen(metaclass=LogBase):
         return False
 
 def main(args):
-    version = "1.4"
+    version = "1.5"
     info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2021'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,description=info)
 
@@ -516,6 +518,11 @@ def main(args):
         '-port', '-p',
         help='use com port for auto unlock',
         default="")
+
+    parser.add_argument(
+        '-ip',
+        help='ip port for unlock, usually 192.168.1.1 or 192.168.2.1',
+        default="192.168.1.1")
 
     parser.add_argument(
         '-unlock', '-u',
@@ -567,7 +574,7 @@ def main(args):
         kg=SierraKeygen(None,"selftest")
         kg.run_selftest()
     elif args.unlock:
-        cn = connection(args.port)
+        cn = connection(args.port, args.ip)
         if cn.connected:
             kg=SierraKeygen(cn,devicegeneration)
             if kg.devicegeneration == "":
