@@ -83,7 +83,7 @@ infotable = {
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
     "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"],
-    "SDX55" : ["MR5100","ac797-100eus","MR6400"]
+    "SDX55" : ["MR5100","MR5200","ac797-100eus","MR6400"]
 }
 
 keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
@@ -440,7 +440,7 @@ class SierraKeygen(metaclass=LogBase):
                     elif "9X06" in revision:
                         devicegeneration = "MDM9x06"
                     elif "X55" in revision or "9X40C" in revision:
-                        if "NTGX55" in revision: #MR5100 NTGX55_10.25.15.02
+                        if "NTGX55" in revision: #MR5100 NTGX55_10.25.15.02, MR5200 NTGX55_12.04.12.00
                             devicegeneration = "SDX55"
                         elif "NTGX65" in revision: #MR6400 NTGX65_10.01.41.02
                             devicegeneration = "SDX55"
