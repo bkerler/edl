@@ -1225,6 +1225,7 @@ class firehose(metaclass=LogBase):
                                 self.cfg.total_blocks = si["total_blocks"]
                             if "num_physical" in si:
                                 self.cfg.num_physical = si["num_physical"]
+                                self.cfg.maxlun = self.cfg.num_physical
                             if "block_size" in si:
                                 self.cfg.block_size = si["block_size"]
                             if "page_size" in si:
