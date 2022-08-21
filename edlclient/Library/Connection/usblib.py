@@ -63,6 +63,7 @@ class usb_class(DeviceClass):
         self.EP_IN = None
         self.EP_OUT = None
         self.is_serial = False
+        self.buffer = array.array('B', [0]) * 1048576
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif is_windows():
@@ -366,11 +367,13 @@ class usb_class(DeviceClass):
             self.info("Warning !")
         res = bytearray()
         loglevel = self.loglevel
+        buffer = self.buffer[:resplen]
         epr = self.EP_IN.read
         extend = res.extend
         while len(res) < resplen:
             try:
-                extend(epr(resplen, timeout))
+                resplen=epr(buffer,timeout)
+                extend(buffer[:resplen])
                 if resplen == self.EP_IN.wMaxPacketSize:
                     break
             except usb.core.USBError as e:
