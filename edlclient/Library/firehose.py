@@ -889,7 +889,7 @@ class firehose(metaclass=LogBase):
                     else:
                         self.error("Error on EDL Authentification")
                         return False
-                elif "MaxPayloadSizeToTargetInBytes" in line:
+                elif "MaxPayloadSizeToTargetInBytes" in rsp.data:
                     try:
                         self.cfg.MemoryName = rsp.data["MemoryName"]
                         self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp.data["MaxPayloadSizeToTargetInBytes"])
