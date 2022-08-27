@@ -48,6 +48,7 @@ class nand_partition:
         self.partitiontblsector = None
         self.parent = parent
         self.storage_info = {}
+        self.totalsectors = None
 
     def parse(self, partdata):
         self.partentries = {}
@@ -889,7 +890,7 @@ class firehose(metaclass=LogBase):
                     else:
                         self.error("Error on EDL Authentification")
                         return False
-                elif "MaxPayloadSizeToTargetInBytes" in line:
+                elif "MaxPayloadSizeToTargetInBytes" in rsp.data:
                     try:
                         self.cfg.MemoryName = rsp.data["MemoryName"]
                         self.cfg.MaxPayloadSizeToTargetInBytes = int(rsp.data["MaxPayloadSizeToTargetInBytes"])
