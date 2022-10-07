@@ -145,7 +145,7 @@ to get back the 0x9008 mode :
 - ```edl wl dumps``` -> to write all files from "dumps" folder to according partitions to flash
 - ```edl wf dump.bin``` -> to write the rawimage dump.bin to flash
 - ```edl e misc``` -> to erase the partition misc on emmc flash
-- ```edl gpt . --genxml``` -> dump gpt_main0.bin/gpt_backup0.bin and write rawpartition0.xml to current directory (".")
+- ```edl gpt . --genxml``` -> dump gpt_main0.bin/gpt_backup0.bin and write rawprogram0.xml to current directory (".")
 
 
 ### For UFS Flash
@@ -167,7 +167,7 @@ to get back the 0x9008 mode :
 - ```edl wl dumps --memory=ufs``` -> to write all files from "dumps" folder to according partitions to flash and try to autodetect lun
 - ```edl wf dump.bin --memory=ufs --lun=0``` -> to write the rawimage dump.bin to flash lun 0
 - ```edl e misc --memory=ufs --lun=0``` -> to erase the partition misc on lun 0
-- ```edl gpt . --genxml --memory=ufs``` -> dump gpt_main[lun].bin/gpt_backup[lun].bin and write rawpartition[lun].xml to current directory (".")
+- ```edl gpt . --genxml --memory=ufs``` -> dump gpt_main[lun].bin/gpt_backup[lun].bin and write rawprogram[lun].xml to current directory (".")
 
 ### QFIL emulation (credits to LyuOnLine):
 
