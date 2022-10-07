@@ -239,6 +239,7 @@ msmids = {
     0x08B0E1: "SDM845",  # Napali 0x60000100 => HW_ID1 6000000000010000
     #SDM840 NapaliQ ?
     #SDM640 Talos ?
+    0x19E0E1: "lahaina",
     0x0520e1: "Wear3100"
 }
 
@@ -450,7 +451,8 @@ infotbl = {
     "SA8295P": secgen[8],
     "SA8540P": secgen[8],
     "olympic": secgen[8],
-    "olympic_hybrid": secgen[8]
+    "olympic_hybrid": secgen[8],
+    "lahaina": secgen[8]
 
 
     # "MSM7227A": [[], [], []],
