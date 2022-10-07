@@ -52,8 +52,6 @@ class loader_utils(metaclass=LogBase):
                             self.loaderdb[mhwid] = {}
                         if pkhash not in self.loaderdb[mhwid]:
                             self.loaderdb[mhwid][pkhash] = fn
-                        else:
-                            self.loaderdb[mhwid][pkhash].append(fn)
                 except Exception as e:  # pylint: disable=broad-except
                     self.debug(str(e))
                     continue
