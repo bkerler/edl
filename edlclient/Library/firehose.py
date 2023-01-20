@@ -339,7 +339,7 @@ class firehose(metaclass=LogBase):
     def cmd_nop(self):
         data = "<?xml version=\"1.0\" ?><data><nop /></data>"
         resp = self.xmlsend(data, True)
-        self.debug(resp.hex())
+        self.debug(resp.data.hex())
         info = b""
         tmp = None
         while tmp != b"":
