@@ -212,10 +212,12 @@ class sahara(metaclass=LogBase):
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
             self.serials = "{:08x}".format(self.serial)
-            self.hwid = self.cmdexec_get_msm_hwid()
-            self.pkhash = self.cmdexec_get_pkhash()
             # if self.version>=2.4:
             #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
+            if self.programmer == "":
+                self.hwid = self.cmdexec_get_msm_hwid()
+                self.pkhash = self.cmdexec_get_pkhash()
+
             if self.hwid is not None:
                 self.hwidstr = "{:016x}".format(self.hwid)
                 self.msm_id = int(self.hwidstr[2:8], 16)
