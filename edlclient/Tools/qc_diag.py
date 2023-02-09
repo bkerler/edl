@@ -337,7 +337,7 @@ class qcdiag(metaclass=LogBase):
         e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
-            identifier = int(atype.get("image_id"))
+            identifier = int(atype.get("id"))
             self.nvlist[identifier] = name
 
     def prettyprint(self, data):
