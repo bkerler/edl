@@ -731,6 +731,7 @@ class firehose_client(metaclass=LogBase):
                                                        int(options["--gpt-part-entry-size"]),
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
+                    self.error("Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
                     break
                 for filename in filenames:
                     partname = filename[filename.rfind("/") + 1:]
