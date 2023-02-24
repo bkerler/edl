@@ -734,7 +734,7 @@ class firehose_client(metaclass=LogBase):
                     self.error("Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
                     break
                 for filename in filenames:
-                    partname = filename[filename.rfind("/") + 1:]
+                    partname = os.path.basename(filename)
                     if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
                         partname = partname[:-4]
                     if partname in skip:
