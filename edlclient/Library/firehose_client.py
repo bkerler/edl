@@ -724,17 +724,17 @@ class firehose_client(metaclass=LogBase):
             filenames = []
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
-            for dirName, subdirList, fileList in os.walk(directory):
-                for fname in fileList:
-                    filenames.append(os.path.join(dirName, fname))
+            for fname in filter(os.path.isfile, [ os.path.join(directory, i) for i in os.listdir(directory) ]):
+                filenames.append(fname)
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
                                                        int(options["--gpt-part-entry-size"]),
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
+                    self.error("Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
                     break
                 for filename in filenames:
-                    partname = filename[filename.rfind("/") + 1:]
+                    partname = os.path.basename(filename)
                     if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
                         partname = partname[:-4]
                     if partname in skip:
