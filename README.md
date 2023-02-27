@@ -16,6 +16,14 @@ User: user, Password:user (based on Ubuntu 22.04 LTS)
 
 ## Installation
 
+#### Grab files and install
+```
+git clone https://github.com/bkerler/edl
+cd edl
+git submodule update --init --recursive
+pip3 install -r requirements.txt
+```
+
 ### Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
 # Debian/Ubuntu/Mint/etc
@@ -37,8 +45,8 @@ cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-python setup.py build
-sudo python setup.py install
+python3 setup.py build
+sudo python3 setup.py install
 ```
 
 ### macOS:
@@ -48,8 +56,8 @@ brew install libusb git
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
-python setup.py build
-sudo python setup.py install
+python3 setup.py build
+sudo python3 setup.py install
 ```
 
 ### Windows:
@@ -58,13 +66,6 @@ sudo python setup.py install
 - If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
 - WIN+R ```cmd```
 
-#### Grab files and install
-```
-git clone https://github.com/bkerler/edl
-cd edl
-git submodule update --init --recursive
-pip3 install -r requirements.txt
-```
 
 #### Get latest UsbDk 64-Bit
 - Install normal QC 9008 Serial Port driver (or use default Windows COM Port one, make sure no exclamation is seen)

@@ -2,6 +2,9 @@
 # Qualcomm EDL
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9008", MODE="0666", GROUP="plugdev"
 
+# Sony EDL
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="9dde", MODE="0666", GROUP="plugdev"
+
 # Qualcomm Memory Debug
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9006", MODE="0666", GROUP="plugdev"
 
