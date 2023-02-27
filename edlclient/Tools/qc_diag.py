@@ -337,7 +337,7 @@ class qcdiag(metaclass=LogBase):
         e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
-            identifier = int(atype.get("image_id"))
+            identifier = int(atype.get("id"))
             self.nvlist[identifier] = name
 
     def prettyprint(self, data):
@@ -1141,22 +1141,42 @@ class DiagTools(metaclass=LogBase):
         self.interface = -1
         self.vid = None
         self.pid = None
-        self.serial = args.serial
-        if args.portname is not None:
+        try:
+            self.serial = args.serial
+        except:
+            self.serial = False
+        try:
             self.portname = args.portname
-            self.serial = True
-        else:
+        except:
             self.portname = ""
 
-        if args.vid != "":
+        if self.portname is not None and self.portname != "":
+            self.serial = True
+        try:
             self.vid = int(args.vid, 16)
-        if args.pid != "":
+        except:
+            pass
+        try:
             self.pid = int(args.pid, 16)
-        if args.interface != "":
+        except:
+            pass
+        try:
             self.interface = int(args.interface, 16)
+        except:
+            pass
+
+        try:
+            self.debugmode = args.debugmode
+        except:
+            self.debugmode = False
+
+        if self.vid is not None:
+            self.vid = int(args.vid, 16)
+        if self.pid is not None:
+            self.pid = int(args.pid, 16)
 
         logfilename = "diag.txt"
-        if args.debugmode:
+        if self.debugmode:
             if os.path.exists(logfilename):
                 os.remove(logfilename)
             fh = logging.FileHandler(logfilename)
