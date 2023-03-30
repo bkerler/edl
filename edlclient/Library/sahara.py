@@ -477,7 +477,7 @@ class sahara(metaclass=LogBase):
                         num_entries = len(ptbldata) // pktsize
                         partitions = []
                         for id_entry in range(0, num_entries):
-                            pd = self.parttbl(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
+                            pd = self.ch.parttbl(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
                             desc = pd.desc.replace(b"\x00", b"").decode('utf-8')
                             filename = pd.filename.replace(b"\x00", b"").decode('utf-8')
                             if dump_partitions and filename not in dump_partitions:
