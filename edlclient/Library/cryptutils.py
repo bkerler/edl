@@ -3,10 +3,10 @@
 # (c) B.Kerler 2018-2019
 
 import hashlib
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
-from Crypto.Hash import CMAC
-from Crypto.Util.number import long_to_bytes, bytes_to_long
+from Cryptodome.Cipher import AES
+from Cryptodome.Util import Counter
+from Cryptodome.Hash import CMAC
+from Cryptodome.Util.number import long_to_bytes, bytes_to_long
 from binascii import hexlify, unhexlify
 
 

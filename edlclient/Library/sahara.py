@@ -515,7 +515,7 @@ class sahara(metaclass=LogBase):
             datalen = len(programmer)
             done = False
             loop = 0
-            while datalen > 0 or done:
+            while datalen >= 0 or done:
                 resp = self.get_rsp()
                 if "cmd" in resp:
                     cmd = resp["cmd"]
@@ -580,6 +580,7 @@ class sahara(metaclass=LogBase):
         except Exception as e:  # pylint: disable=broad-except
             self.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
+        return self.mode
 
     def cmd_modeswitch(self, mode):
         data = pack("<III", cmd_t.SAHARA_SWITCH_MODE, 0xC, mode)
