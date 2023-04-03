@@ -145,7 +145,7 @@ class progress:
                                suffix=prefix + ' (Sector 0x%X of 0x%X) %0.2f MB/s' %
                                       (pos // self.pagesize,
                                        total // self.pagesize,
-                                       0), bar_length=50)
+                                       0), bar_length=10)
 
         if prog > self.prog or prog==100.0:
             if display:
@@ -179,7 +179,7 @@ class progress:
                                    suffix=prefix + f' (Sector 0x%X of 0x%X, {hinfo}) %0.2f MB/s' %
                                           (pos // self.pagesize,
                                            total // self.pagesize,
-                                           throughput), bar_length=50)
+                                           throughput), bar_length=10)
                 self.prog = prog
                 self.progpos = pos
                 self.progtime = t0
