@@ -98,3 +98,5 @@ class modules(metaclass=LogBase):
                 self.error("Unknown mode given. Available are: enable, disable.")
                 return False
             return self.generic.oem_unlock(enable)
+        else:
+            print("Valid options are: oemunlock [enable,disable]")

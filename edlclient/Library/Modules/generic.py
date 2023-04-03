@@ -23,9 +23,12 @@ class generic(metaclass=LogBase):
         if res[0]:
             lun = res[1]
             rpartition = res[2]
-            offsettopatch = 0x7FFFF
-            sector = rpartition.sector + (offsettopatch // self.fh.cfg.SECTOR_SIZE_IN_BYTES)
-            offset = offsettopatch % self.fh.cfg.SECTOR_SIZE_IN_BYTES
+            if rpartition.sectors <= (0x8000//self.cfg.SECTOR_SIZE_IN_BYTES):
+                offsettopatch = 0x7FFF
+                sector, offset = self.fh.calc_offset(rpartition.sector, offsettopatch)
+            else:
+                offsettopatch = 0x7FFFF
+                sector, offset = self.fh.calc_offset(rpartition.sector, offsettopatch)
             if enable:
                 value = 0x1
             else:
