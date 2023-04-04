@@ -151,7 +151,7 @@ msmids = {
     0x14A0E1: "SC8280X", # soc_vers 0x6014, makena
     0x14B0E1: "SA8295P",
     0x14C0E1: "SA8540P",
-    0x16F0E1: "mannar", # soc_vers 0x9004
+    0x16F0E1: "mannar", # soc_vers 0x9004, SnapDragon 460 SM4350
     0x16E0E1: "mannar_P", # soc_vers 0x9004
     0x1470E1: "moselle", # soc_vers 0x4014
     0x10A0E1: "nicobar",  # 0x90010100 soc_hw_version, 0x45FFF000 sec.elf 64Bit, 0x101FF000 dbgpolicy, 64Bit
