@@ -139,6 +139,7 @@ msmids = {
     0x1260E1: "IPQ6018",
     0x1070E1: "MDM9205", # 0x20130100
     0x1450E1: "agatti", # soc_vers 0x9003
+    0x1860E1: "qcs2290", # qcs_agatti
     0x13F0E1: "bitra_SDM", # soc_vers 0x6012 SDM690
     0x1410E1: "bitra_SDA",
     0x1590E1: "cedros", # soc_vers 0x6017
@@ -288,7 +289,7 @@ sochw = {
     0x7200: "SDM662",
     0x9001: "nicobar,nicobar_IoT_APQ,nicobar_IoT_modem",
     0x9002: "kamorta,kamorta_P,kamorta_IoT_APQ,kamorta_IoT_modem,sm6225",
-    0x9003: "agatti",
+    0x9003: "agatti,qcs2290",
     0x9004: "mannar,mannar_P"
 }
 
@@ -441,6 +442,7 @@ infotbl = {
     "nicobar_IoT_APQ": secgen[8],
     "nicobar_IoT_modem": secgen[8],
     "agatti": secgen[8],
+    "qcs2290": secgen[8],
     "kamorta": secgen[8],
     "kamorta_P": secgen[8],
     "kamorta_IoT_modem": secgen[8],
@@ -606,6 +608,7 @@ class memory_type:
 
         "nicobar": ufs,
         "agatti": ufs,
+        "qcs2290": emmc
         "kamorta": ufs,
         "kamorta_P": ufs,
         "kamorta_IoT_APQ": emmc,
@@ -722,6 +725,7 @@ secureboottbl = {
     "SM8250:CD90-PH805-1A": 0x007805E8,
     "SM8250:CD90-PH806-1A": 0x007805E8,
     "agatti": 0x01B40458,
+    "qcs2290": 0x01B40458,
     "bitra": 0x007804D8,
     "bitra_SDM": 0x007804D8,
     "bitra_SDA": 0x007804D8,
