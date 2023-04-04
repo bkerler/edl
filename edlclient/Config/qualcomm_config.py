@@ -146,6 +146,7 @@ msmids = {
     0x1370E1: "kamorta_P", # soc_vers 0x9002 SnapDragon 460 SM4350
     0x1730E1: "kamorta_IoT_modem", # soc_vers 0x9002 SnapDragon 460 SM4350
     0x1740E1: "kamorta_IoT_APQ", # soc_vers 0x9002 SnapDragon 460 SM4350
+    0x1B80E1: "sm6225", # Snapdragon 680 4G SM6225
     0x1350E1: "lahaina", # soc_vers 0x600F sm8350, SDM875
     0x1420E1: "lahaina_premier",
     0x14A0E1: "SC8280X", # soc_vers 0x6014, makena
@@ -286,7 +287,7 @@ sochw = {
     0x7001: "qtang2",
     0x7200: "SDM662",
     0x9001: "nicobar,nicobar_IoT_APQ,nicobar_IoT_modem",
-    0x9002: "kamorta,kamorta_P,kamorta_IoT_APQ,kamorta_IoT_modem",
+    0x9002: "kamorta,kamorta_P,kamorta_IoT_APQ,kamorta_IoT_modem,sm6225",
     0x9003: "agatti",
     0x9004: "mannar,mannar_P"
 }
@@ -444,6 +445,7 @@ infotbl = {
     "kamorta_P": secgen[8],
     "kamorta_IoT_modem": secgen[8],
     "kamorta_IoT_APQ": secgen[8],
+    "sm6225": secgen[8],
     "SDM662": secgen[8],
     "sm7235": secgen[8],
     "sc7280": secgen[8],
@@ -452,9 +454,7 @@ infotbl = {
     "SA8295P": secgen[8],
     "SA8540P": secgen[8],
     "olympic": secgen[8],
-    "olympic_hybrid": secgen[8],
-    "lahaina": secgen[8]
-
+    "olympic_hybrid": secgen[8]
 
     # "MSM7227A": [[], [], []],
     # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
@@ -610,6 +610,7 @@ class memory_type:
         "kamorta_P": ufs,
         "kamorta_IoT_APQ": emmc,
         "kamorta_IoT_modem": emmc,
+        "sm6225": emmc,
         "SDM662": emmc,
 
         # "MSM7227A": [[], [], []],
@@ -741,6 +742,7 @@ secureboottbl = {
     "kamorta_P": 0x01B40458,
     "kamorta_IoT_APQ": 0x01B40458,
     "kamorta_IoT_modem": 0x01B40458,
+    "sm6225": 0x01B40458,
     "SDM662": 0x01B40458,
     "lahaina": 0x780668,
     "lahaina_premier": 0x780668,
