@@ -57,6 +57,7 @@ msmids = {
     0x9D00E1: "APQ8076",
     0x08A0E1: "APQ807x",
     0x9000E1: "APQ8084",
+    0x9010E1: "APQ8084", # SnapDragon 805
     0x9630E1: "APQ8092",
     0x0940E1: "MSM8905",
     0x9600E1: "MSM8909", # SnapDragon 210
