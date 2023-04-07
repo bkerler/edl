@@ -15,6 +15,21 @@ from edlclient.Library.utils import *
 from edlclient.Library.gpt import gpt
 from edlclient.Library.sparse import QCSparse
 from edlclient.Library.utils import progress
+from queue import Queue
+from threading import Thread
+
+rq = Queue()
+
+def writedata(filename, rq):
+    pos = 0
+    with open(filename, "wb") as wf:
+        while True:
+            data = rq.get()
+            if data is None:
+                break
+            pos += len(data)
+            wf.write(data)
+            rq.task_done()
 
 
 class response:
@@ -606,6 +621,7 @@ class firehose(metaclass=LogBase):
         return True
 
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
+        global rq
         self.lasterror = b""
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         if display:
@@ -613,52 +629,56 @@ class firehose(metaclass=LogBase):
                 f"\nReading from physical partition {str(physical_partition_number)}, " +
                 f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
-        with open(file=filename, mode="wb", buffering=self.cfg.MaxPayloadSizeFromTargetInBytes) as wr:
-            data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
-                   f" num_partition_sectors=\"{num_partition_sectors}\"" + \
-                   f" physical_partition_number=\"{physical_partition_number}\"" + \
-                   f" start_sector=\"{start_sector}\"/>\n</data>"
+        data = f"<?xml version=\"1.0\" ?><data><read SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
+               f" num_partition_sectors=\"{num_partition_sectors}\"" + \
+               f" physical_partition_number=\"{physical_partition_number}\"" + \
+               f" start_sector=\"{start_sector}\"/>\n</data>"
 
-            rsp = self.xmlsend(data, self.skipresponse)
-            self.cdc.xmlread = False
-            time.sleep(0.01)
-            if not rsp.resp:
-                if display:
-                    self.error(rsp.error)
-                return b""
-            else:
-                bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
-                total = bytestoread
-                show_progress = progbar.show_progress
-                usb_read = self.cdc.read
-                progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
-                while bytestoread > 0:
-                    if self.cdc.is_serial:
-                        maxsize = self.cfg.MaxPayloadSizeFromTargetInBytes
-                    else:
-                        maxsize = 5 * 1024 * 1024
-                    size = min(maxsize, bytestoread)
-                    data = usb_read(size)
-                    if len(data) > 0:
-                        wr.write(data)
-                        bytestoread -= len(data)
-                        show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
-                self.cdc.xmlread = True
-                wd = self.wait_for_data()
-                info = self.xml.getlog(wd)
-                rsp = self.xml.getresponse(wd)
-                if "value" in rsp:
-                    if rsp["value"] != "ACK":
+        rsp = self.xmlsend(data, self.skipresponse)
+        self.cdc.xmlread = False
+        time.sleep(0.01)
+        if not rsp.resp:
+            if display:
+                self.error(rsp.error)
+            return b""
+        else:
+            bytestoread = self.cfg.SECTOR_SIZE_IN_BYTES * num_partition_sectors
+            total = bytestoread
+            show_progress = progbar.show_progress
+            usb_read = self.cdc.read
+            progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
+            worker = Thread(target=writedata, args=(filename, rq), daemon=True)
+            worker.start()
+            while bytestoread > 0:
+                if self.cdc.is_serial:
+                    maxsize = self.cfg.MaxPayloadSizeFromTargetInBytes
+                else:
+                    maxsize = 5 * 1024 * 1024
+                size = min(maxsize, bytestoread)
+                data = usb_read(size)
+                if len(data) > 0:
+                    rq.put(data)
+                    bytestoread -= len(data)
+                    show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
+            rq.put(None)
+            worker.join(60)
+            self.cdc.xmlread = True
+            wd = self.wait_for_data()
+            info = self.xml.getlog(wd)
+            rsp = self.xml.getresponse(wd)
+            if "value" in rsp:
+                if rsp["value"] != "ACK":
+                    if bytestoread!=0:
                         self.error(f"Error:")
                         for line in info:
                             self.error(line)
                             self.lasterror += bytes(line + "\n", "utf-8")
-                        return False
-                else:
-                    if display:
-                        self.error(f"Error:{rsp[2]}")
-                        return False
-            return True
+                    return False
+            else:
+                if display:
+                    self.error(f"Error:{rsp[2]}")
+                    return False
+        return True
 
     def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
         self.lasterror = b""
