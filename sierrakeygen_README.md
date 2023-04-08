@@ -1,5 +1,5 @@
 # Challenge/Response Generator for Sierra Wireless Cards V1.2
-(c) B. Kerler 2019-2020
+(c) B. Kerler 2019-2023
 MIT License
 
 ## Why
@@ -24,7 +24,11 @@ MIT License
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511"],
     "MDM9x06": ["WP77xx"],
     "MDM9x07": ["SWI9X07Y", "WP76xx"]
-    
+
+## Note for MR6xxx/MR6400 owners:
+
+I do have a working solution for NTGX65_10.04.13.03 and upper. However due to various reasons I won't publish the solution. If you need a code to be generated, just contact me. If you're from a unlocker crew making money of my source code: Don't even dare to ask, you are killing open source contributions and make our lives a lot harder.
+
 ## Installation
 
 - Get python >=3.6 64-Bit
