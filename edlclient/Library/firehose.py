@@ -1102,7 +1102,7 @@ class firehose(metaclass=LogBase):
         info = []
         while v != b'':
             try:
-                v = self.cdc.read(timeout=None,length=0x80)
+                v = self.cdc.read(timeout=None)
                 if (b"response" in v and b"</data>" in v) or v == b'':
                     break
                 data = self.xml.getlog(v)
