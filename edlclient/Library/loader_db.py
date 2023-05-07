@@ -43,7 +43,15 @@ class loader_utils(metaclass=LogBase):
                 try:
                     hwid = filename.split("_")[0].lower()
                     msmid = hwid[:8]
+                    try:
+                        int(msmid,16)
+                    except:
+                        continue
                     devid = hwid[8:]
+                    if devid == '':
+                        continue
+                    if len(filename.split("_"))<2:
+                        continue
                     pkhash = filename.split("_")[1].lower()
                     for msmid in self.convertmsmid(msmid):
                         mhwid = msmid + devid
@@ -53,7 +61,7 @@ class loader_utils(metaclass=LogBase):
                         if pkhash not in self.loaderdb[mhwid]:
                             self.loaderdb[mhwid][pkhash] = fn
                 except Exception as e:  # pylint: disable=broad-except
-                    self.debug(str(e))
+                    self.debug(f"Filename:{filename} => {str(e)}")
                     continue
         return self.loaderdb
 
