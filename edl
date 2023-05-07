@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2021
+# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2023
 # Licensed under MIT License
 """
 Usage:
@@ -142,7 +142,7 @@ from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.60 (c) B.Kerler 2018-2022.")
+print("Qualcomm Sahara / Firehose Client V3.61 (c) B.Kerler 2018-2023.")
 
 
 def parse_cmd(rargs):
