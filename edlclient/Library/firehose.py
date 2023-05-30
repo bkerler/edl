@@ -281,7 +281,7 @@ class firehose(metaclass=LogBase):
                         if resp["rawmode"] == "false":
                             if status:
                                 log = self.xml.getlog(rdata)
-                                return response(resp=status, data=resp, log=log)
+                                return response(resp=status, data=rdata, log=log)
                             else:
                                 error = self.xml.getlog(rdata)
                                 return response(resp=status, error=error, data=resp, log=error)
