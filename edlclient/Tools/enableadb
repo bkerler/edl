@@ -4,7 +4,7 @@
 # If you use my code, make sure you refer to my name
 # If you want to use in a commercial product, ask me before integrating it
 import time
-from telnetlib import Telnet
+from Exscript.protocols import Telnet
 import serial
 import serial.tools.list_ports
 import argparse
