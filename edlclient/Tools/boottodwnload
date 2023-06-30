@@ -8,7 +8,7 @@ import serial
 import serial.tools.list_ports
 import argparse
 import requests
-from telnetlib import Telnet
+from Exscript.protocols import Telnet
 import usb.core
 from enum import Enum
 
