@@ -8,7 +8,7 @@ import sys
 import argparse
 import time
 import serial.tools.list_ports
-from telnetlib import Telnet
+from Exscript.protocols import Telnet
 from binascii import hexlify, unhexlify
 
 try:
