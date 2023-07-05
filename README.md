@@ -49,6 +49,8 @@ python3 setup.py build
 sudo python3 setup.py install
 ```
 
+If you have SELinux enabled, you may need to set it to permissive mode temporarily to prevent permission issues. SELinux is commonly used by RedHat-like distros (for example, RHEL, Fedora, and CentOS). You can set it to permissive run-time until next boot with `sudo setenforce 0`.
+
 ### macOS:
 ```bash
 brew install libusb git
