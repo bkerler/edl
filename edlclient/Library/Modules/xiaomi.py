@@ -35,11 +35,11 @@ class xiaomi(metaclass=LogBase):
         """
         authcmd = b"<?xml version=\"1.0\" ?><data> <sig TargetName=\"sig\" size_in_bytes=\"256\" verbose=\"1\"/></data>"
         rsp = self.fh.xmlsend(authcmd)
-        if rsp[0]:
+        if rsp.resp:
             rsp = self.fh.xmlsend(self.xiaomi_authdata)
-            if len(rsp) > 1:
-                if rsp[0]:
-                    if b"EDL Authenticated" in rsp[2] or b"ACK" in rsp[2]:
-                        return True
-            return True
+            if rsp.resp:
+                if "value" in rsp.resp:
+                    if rsp.resp["value"]=="ACK":
+                        if 'authenticated' in rsp.log[0].lower() and 'true' in rsp.log[0].lower():
+                            return True
         return False
