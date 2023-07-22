@@ -16,6 +16,7 @@ from io import BytesIO
 from Library.utils import elf
 from Library.loader_db import loader_utils
 from Config.qualcomm_config import vendor
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 lu=loader_utils()
 
