@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import io
 import logging
 
@@ -9,17 +13,22 @@ import usb.util
 import time
 import inspect
 import array
-from edlclient.Library.utils import is_windows
 import usb.backend.libusb0
-if not is_windows():
-    import usb.backend.libusb1
 from enum import Enum
 from binascii import hexlify
 from ctypes import c_void_p, c_int
-from edlclient.Library.utils import *
+try:
+    from edlclient.Library.utils import *
+except:
+    from Library.utils import *
+if not is_windows():
+    import usb.backend.libusb1
 from struct import pack, calcsize
 import traceback
-from edlclient.Library.Connection.devicehandler import DeviceClass
+try:
+    from edlclient.Library.Connection.devicehandler import DeviceClass
+except:
+    from Library.Connection.devicehandler import DeviceClass
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
 

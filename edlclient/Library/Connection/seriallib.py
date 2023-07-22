@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2022
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import os.path
 import time
 import sys
@@ -20,8 +24,13 @@ import serial.tools.list_ports
 import inspect
 import traceback
 from binascii import hexlify
-from edlclient.Library.utils import *
-from edlclient.Library.Connection.devicehandler import DeviceClass
+try:
+    from edlclient.Library.utils import *
+    from edlclient.Library.Connection.devicehandler import DeviceClass
+except:
+    from Library.utils import *
+    from Library.Connection.devicehandler import DeviceClass
+
 
 class serial_class(DeviceClass):
 

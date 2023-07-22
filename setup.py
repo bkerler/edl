@@ -16,10 +16,10 @@ setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GPlv3 License",
         "Operating System :: OS Independent",
     ],
-    license='MIT License',
+    license='GPLv3 License',
     install_requires=[
     'colorama',
     'docopt',
@@ -29,7 +29,8 @@ setup(
     'lxml',
     'pylzma',
     'pycryptodome',
-    'wheel'
+    'wheel',
+    "Exscript"
     ],
     author='B. Kerler',
     author_email='info@revskills.de',

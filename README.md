@@ -1,5 +1,6 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
 (c) B. Kerler 2018-2023
+Licensed under GPLv3 license.
 
 ## Why
 
@@ -249,7 +250,7 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 - Oneplus 3T/5/6T/7T/8/8t/9/Nord CE/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Netgear MR1100-10EUS, Netgear MR5100
 - SIMCOM SIM8905E
 
-Published under MIT license
+Published under GPLv3 license
 Additional license limitations: No use in commercial products without prior permit.
 
 Enjoy !

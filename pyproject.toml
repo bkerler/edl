@@ -8,6 +8,7 @@ requires = [
     "docopt",
     "pycryptodome",
     "colorama",
+    "Exscript",
     "usb"
 ]
 build-backend = "setuptools.build_meta"

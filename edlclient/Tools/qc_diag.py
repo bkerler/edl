@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""
-Licensed under MIT License, (c) B. Kerler 2018-2021
-"""
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import inspect
 import argparse
 import json
@@ -17,11 +20,11 @@ current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfra
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, parent_dir)
 
-from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
-from edlclient.Library.Connection.usblib import usb_class
-from edlclient.Library.Connection.seriallib import serial_class
-from edlclient.Library.hdlc import hdlc
-from edlclient.Config.usb_ids import default_diag_vid_pid
+from Library.utils import print_progress, read_object, write_object, LogBase
+from Library.Connection.usblib import usb_class
+from Library.Connection.seriallib import serial_class
+from Library.hdlc import hdlc
+from Config.usb_ids import default_diag_vid_pid
 
 qcerror = {
     1: "None",
@@ -332,9 +335,14 @@ class qcdiag(metaclass=LogBase):
             self.__logger.addHandler(fh)
         import os, inspect
         current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        parent_dir = os.path.dirname(os.path.dirname(current_dir))
-        nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
-        e = ElementTree.parse(nvxml).getroot()
+        try:
+            parent_dir = os.path.dirname(os.path.dirname(current_dir))
+            nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
+            e = ElementTree.parse(nvxml).getroot()
+        except:
+            current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+            nvxml = os.path.join(current_dir, "edlclient", "Config", "nvitems.xml")
+            e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
             identifier = int(atype.get("id"))

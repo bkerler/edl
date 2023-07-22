@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2022
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import binascii
 import time
 import os
@@ -11,8 +15,12 @@ from struct import unpack, pack
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-from edlclient.Library.utils import read_object, print_progress, rmrf, LogBase
-from edlclient.Config.qualcomm_config import sochw, msmids, root_cert_hash
+try:
+    from edlclient.Library.utils import read_object, print_progress, rmrf, LogBase
+    from edlclient.Config.qualcomm_config import sochw, msmids, root_cert_hash
+except:
+    from Library.utils import read_object, print_progress, rmrf, LogBase
+    from Config.qualcomm_config import sochw, msmids, root_cert_hash
 
 class loader_utils(metaclass=LogBase):
     def __init__(self, loglevel=logging.INFO):

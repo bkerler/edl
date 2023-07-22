@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import os
 import sys
 from os import walk
@@ -7,12 +13,9 @@ from struct import unpack, pack
 from shutil import copyfile
 import os, sys, inspect
 from io import BytesIO
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(os.path.dirname(current_dir))
-sys.path.insert(0, parent_dir)
-from edlclient.Library.utils import elf
-from edlclient.Library.loader_db import loader_utils
-from edlclient.Config.qualcomm_config import vendor
+from Library.utils import elf
+from Library.loader_db import loader_utils
+from Config.qualcomm_config import vendor
 
 lu=loader_utils()
 

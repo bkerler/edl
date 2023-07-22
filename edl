@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-# Qualcomm Sahara / Firehose Client (c) B.Kerler 2018-2023
-# Licensed under MIT License
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
+
 """
 Usage:
     edl -h | --help
@@ -96,8 +101,8 @@ Description:
 
 Options:
     --loader=filename                  Use specific EDL loader, disable autodetection [default: None]
-    --vid=vid                          Set usb vendor image_id used for EDL [default: -1]
-    --pid=pid                          Set usb product image_id used for EDL [default: -1]
+    --vid=vid                          Set usb vendor id used for EDL [default: -1]
+    --pid=pid                          Set usb product id used for EDL [default: -1]
     --lun=lun                          Set lun to read/write from (UFS memory only)
     --maxpayload=bytes                 Set the maximum payload for EDL [default: 0x100000]
     --sectorsize=bytes                 Set default sector size
@@ -188,7 +193,7 @@ class main(metaclass=LogBase):
         self.vid = None
         self.pid = None
 
-    def doconnect(self, loop):
+    def doconnect(self, loop) -> dict:
         while not self.cdc.connected:
             self.cdc.connected = self.cdc.connect(portname=self.portname)
             if not self.cdc.connected:
@@ -302,53 +307,54 @@ class main(metaclass=LogBase):
         mode = conninfo["mode"]
         if mode == "sahara":
             cmd = conninfo["cmd"]
-            data = conninfo["data"]
             if cmd == cmd_t.SAHARA_HELLO_REQ:
-                if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
-                    if args["memorydump"] or self.cdc.pid==0x900E:
-                        time.sleep(0.5)
-                        print("Device is in memory dump mode, dumping memory")
-                        if args["--partitions"]:
-                            self.sahara.debug_mode(args["--partitions"].split(","))
-                        else:
-                            self.sahara.debug_mode()
-                        self.exit()
-                    else:
-                        print("Device is in streaming mode, uploading loader")
-                        self.cdc.timeout = None
-                        sahara_info = self.sahara.streaminginfo()
-                        if sahara_info:
-                            sahara_connect = self.sahara.connect()
-                            if len(sahara_connect) == 3:
-                                mode, cmd, resp = sahara_connect
+                if "data" in conninfo:
+                    data = conninfo["data"]
+                    if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
+                        if args["memorydump"] or self.cdc.pid == 0x900E:
+                            time.sleep(0.5)
+                            print("Device is in memory dump mode, dumping memory")
+                            if args["--partitions"]:
+                                self.sahara.debug_mode(args["--partitions"].split(","))
                             else:
-                                mode, resp = sahara_connect
+                                self.sahara.debug_mode()
+                            self.exit()
+                        else:
+                            print("Device is in streaming mode, uploading loader")
+                            self.cdc.timeout = None
+                            sahara_info = self.sahara.streaminginfo()
+                            if sahara_info:
+                                sahara_connect = self.sahara.connect()
+                                if len(sahara_connect) == 3:
+                                    mode, cmd, resp = sahara_connect
+                                else:
+                                    mode, resp = sahara_connect
+                                if mode == "sahara":
+                                    mode = self.sahara.upload_loader()
+                                    if "enprg" in self.sahara.programmer.lower():
+                                        mode = "load_enandprg"
+                                    elif "nprg" in self.sahara.programmer.lower():
+                                        mode = "load_nandprg"
+                                    elif mode != "":
+                                        mode = "load_" + mode
+                                    if "load_" in mode:
+                                        time.sleep(0.3)
+                                    else:
+                                        print("Error, couldn't find suitable enprg/nprg loader :(")
+                                        self.exit()
+                    else:
+                        sahara_info = self.sahara.cmd_info()
+                        if sahara_info is not None:
+                            resp = self.sahara.connect()
+                            mode = resp["mode"]
+                            if "data" in resp:
+                                data = resp["data"]
                             if mode == "sahara":
                                 mode = self.sahara.upload_loader()
-                                if "enprg" in self.sahara.programmer.lower():
-                                    mode = "load_enandprg"
-                                elif "nprg" in self.sahara.programmer.lower():
-                                    mode = "load_nandprg"
-                                elif mode != "":
-                                    mode = "load_" + mode
-                                if "load_" in mode:
-                                    time.sleep(0.3)
-                                else:
-                                    print("Error, couldn't find suitable enprg/nprg loader :(")
-                                    self.exit()
-                else:
-                    sahara_info = self.sahara.cmd_info()
-                    if sahara_info is not None:
-                        resp = self.sahara.connect()
-                        mode = resp["mode"]
-                        if "data" in resp:
-                            data = resp["data"]
-                        if mode == "sahara":
-                            mode = self.sahara.upload_loader()
-                    else:
-                        print("Error on sahara handshake, resetting.")
-                        self.sahara.cmd_reset()
-                        sys.exit(1)
+                        else:
+                            print("Error on sahara handshake, resetting.")
+                            self.sahara.cmd_reset()
+                            sys.exit(1)
         if mode == "error":
             print("Connection detected, quiting.")
             sys.exit(1)

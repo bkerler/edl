@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 """
 Usage:
@@ -75,7 +79,7 @@ deviceconfig = {
 
     # OP Nord, avicii
     "20801": dict(version=2, cm="eacf50e7", param_mode=0),
-    
+
     # OP N10 5G Metro, billie8t
     "20885": dict(version=3, cm="3a403a71", param_mode=1),
     # OP N10 5G Global, billie8
@@ -87,7 +91,7 @@ deviceconfig = {
 
     # OP N100 Metro, billie2t
     "20880": dict(version=3, cm="6ccf5913", param_mode=1),
-    # OP N100 Global, billie2 
+    # OP N100 Global, billie2
     "20881": dict(version=3, cm="fa9ff378", param_mode=1),
     # OP N100 TMO, billie2t
     "20882": dict(version=3, cm="4ca1e84e", param_mode=1),
@@ -127,7 +131,7 @@ class oneplus(metaclass=LogBase):
     def __init__(self, fh, projid="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
                  args=None, loglevel=logging.INFO):
         self.fh = fh
-        self.__logger=self.__logger
+        self.__logger = self.__logger
         self.args = args
         self.ATOBuild = ATOBuild
         self.Flash_Mode = Flash_Mode
@@ -155,7 +159,16 @@ class oneplus(metaclass=LogBase):
             logfilename = "log.txt"
             filehandler = logging.FileHandler(logfilename)
             self.__logger.addHandler(filehandler)
-        self.ops_parm = None
+        try:
+            from edlclient.Library.Modules.oneplus_param import paramtools
+            if projid in deviceconfig:
+                mode = deviceconfig[projid]["param_mode"]
+                self.ops_parm = paramtools(mode=mode, serial=serial)
+            else:
+                self.ops_parm = paramtools(mode=0, serial=serial)
+        except ImportError as e:
+            self.__logger.error(str(e))
+            self.ops_parm = None
         self.ops = self.convert_projid(fh, projid, serial)
 
     def getprodkey(self, projid):
@@ -226,6 +239,11 @@ class oneplus(metaclass=LogBase):
     def demacia(self):
         if self.ops.demacia():
             return self.ops.demacia()
+
+    def enable_ops(self, data, enable, projid, serial):
+        if self.ops_parm is not None:
+            return self.ops_parm.enable_ops(data, enable)
+        return None
 
     def addpatch(self):
         if "setprojmodel" in self.supported_functions or "setswprojmodel" in self.supported_functions:
