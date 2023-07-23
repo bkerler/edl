@@ -6,7 +6,7 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import time
-from Exscript.protocols import Telnet
+from Exscript.protocols.telnetlib import Telnet
 import serial
 import serial.tools.list_ports
 import argparse
