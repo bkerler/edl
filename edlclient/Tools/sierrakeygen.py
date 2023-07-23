@@ -10,7 +10,7 @@ import sys
 import argparse
 import time
 import serial.tools.list_ports
-from Exscript.protocols import Telnet
+from Exscript.protocols.telnetlib import Telnet
 from binascii import hexlify, unhexlify
 import logging
 import logging.config
@@ -147,7 +147,7 @@ infotable = {
     "MDM9x15A": ["AC779S"],
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790/MDM9230"],
-    "MDM9x40": ["AC815s", "AC785s", "AC797S", "MR1100"],
+    "MDM9x40": ["MR1100", "AC815s", "AC785s", "AC797S", "MR1100"],
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511", "EM7411"],
     "SDX55": ["MR5100", "MR5200", "ac797-100eus", "MR6400"],
     "SDX65": ["MR6400", "MR6500", "MR6110", "MR6150", "MR6450", "MR6550"]
@@ -397,7 +397,10 @@ class connection:
             port = self.detect(port)
             if port == "":
                 self.tn = Telnet(ip, 5510)
-                self.connected = True
+                if self.tn:
+                    self.connected = True
+                else:
+                    self.connected = False
         if port != "":
             self.serial = serial.Serial(port=port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1)
             self.connected = self.serial.is_open
@@ -437,8 +440,8 @@ class connection:
             data = ""
             while True:
                 tmp = self.tn.read_eager()
-                if tmp != b"":
-                    data += tmp.strip().decode('utf-8')
+                if tmp != "":
+                    data += tmp.strip()
                 else:
                     break
             return data.split("\r\n")

@@ -20,7 +20,7 @@ GPLv3 License
                 "WP75xx", "WP85xx", "WP8548", "WP8548G", "AC340U"],
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790S/AC791L"],
-    "MDM9x40": ["AC815s", "AC785s","Netgear MR1100"],
+    "MDM9x40": ["MR1100", "AC815s", "AC785s"],
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511"],
     "MDM9x06": ["WP77xx"],
     "MDM9x07": ["SWI9X07Y", "WP76xx"],
