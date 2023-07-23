@@ -416,7 +416,7 @@ class adbtools(metaclass=LogBase):
                 kg.openlock()
                 if cn.send('AT!CUSTOM="TELNETENABLE",1\r') != -1:
                     time.sleep(5)
-                    tn = Telnet("192.168.1.1", 23, 15)
+                    tn = Telnet("192.168.1.1", 23)
                     tn.write(b"adbd &\r\n")
                     info = tn.read_eager()
                     print(info)
