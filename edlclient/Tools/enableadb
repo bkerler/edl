@@ -20,7 +20,8 @@ except ImportError as e:
 
 import usb.core
 from enum import Enum
-import crypt
+
+from passlib.hash import md5_crypt
 
 try:
     from edlclient.Tools.sierrakeygen import SierraKeygen
@@ -36,6 +37,15 @@ import logging
 import logging.config
 import logging.handlers
 import colorama
+
+
+itoa64 = bytearray(b"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+def _crypt_to64(s, v, n):
+    out=bytearray()
+    while --n >= 0:
+        out.append(itoa64[v&0x3f])
+        v >>= 6
+
 
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
@@ -187,7 +197,7 @@ class connection:
             elif device.vid == vendor.netgear.value:
                 try:
                     # vid 0846, netgear mr1100, mr5100
-                    self.tn = Telnet("192.168.1.1", 5510, 5)
+                    self.tn = Telnet("192.168.1.1", 5510)
                     self.connected = True
                 except:
                     self.connected = False
@@ -231,8 +241,8 @@ class connection:
             data = ""
             while True:
                 tmp = self.tn.read_eager()
-                if tmp != b"":
-                    data += tmp.strip().decode('utf-8')
+                if tmp != "":
+                    data += tmp.strip()
                 else:
                     break
             if "ERROR" in data:
@@ -533,12 +543,13 @@ class adbtools(metaclass=LogBase):
         return False
 
     def Quectel(self, cn, enable: bool = True):
-        salt = cn.send("AT+QADBKEY?\r")
-        if salt != -1:
-            if len(salt) > 1:
-                salt = salt[1]
-            code = crypt.crypt("SH_adb_quectel", "$1$" + salt)
-            code = code[12:]
+        sn = cn.send("AT+QADBKEY?\r")
+        if sn != -1:
+            if len(sn) > 1:
+                sn = sn[1]
+            cc = md5_crypt(salt="")
+            code = cc.encrypt("SH_adb_quectel", salt=str(sn))
+            code = code[12:28]
             cn.send("AT+QADBKEY=\"%s\"\r" % code)
         if enable:
             if cn.send("AT+QCFG=\"usbcfg\",0x2C7C,0x125,1,1,1,1,1,1,0\r") == -1:
