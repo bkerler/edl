@@ -183,24 +183,36 @@ class connection:
             0x04E8: ["Samsung", -1]
         }
         mode = "Unknown"
-        for device in self.detectusbdevices():
-            if device.vid == vendor.zte.value:
-                if device.pid == 0x0016:
-                    print(f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in AT mode")
-                    mode = "AT"
-                    break
-                elif device.pid == 0x1403:
-                    print(f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in Web mode")
-                    mode = "Web"
-                    self.ZTE_Web()
-                    break
-            elif device.vid == vendor.netgear.value:
-                try:
-                    # vid 0846, netgear mr1100, mr5100
-                    self.tn = Telnet("192.168.1.1", 5510)
-                    self.connected = True
-                except:
-                    self.connected = False
+        try:
+            for device in self.detectusbdevices():
+                if device.vid == vendor.zte.value:
+                    if device.pid == 0x0016:
+                        print(f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in AT mode")
+                        mode = "AT"
+                        break
+                    elif device.pid == 0x1403:
+                        print(f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in Web mode")
+                        mode = "Web"
+                        self.ZTE_Web()
+                        break
+                elif device.vid == vendor.netgear.value:
+                    try:
+                        # vid 0846, netgear mr1100, mr5100
+                        self.tn = Telnet("192.168.1.1", 5510)
+                        self.connected = True
+                    except:
+                        self.connected = False
+        except:
+            print("No libusb driver found. Trying Telnet instead.")
+            try:
+                # vid 0846, netgear mr1100, mr5100
+                self.tn = Telnet("192.168.1.1", 5510)
+                self.connected = True
+            except:
+                self.connected = False
+                print("Failed to connect to Telnet.")
+                return
+            pass
         if mode in ["AT", "Unknown"]:
             for port in self.getserialports():
                 if port.vid in atvendortable:
