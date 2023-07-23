@@ -213,6 +213,7 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
 class SierraGenerator():
     tbl = bytearray()
     rtbl = bytearray()
+    devicegeneration = None
 
     def __init__(self):
         for _ in range(0, 0x14):
