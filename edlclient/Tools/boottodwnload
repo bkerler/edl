@@ -10,7 +10,7 @@ import serial
 import serial.tools.list_ports
 import argparse
 import requests
-from Exscript.protocols import Telnet
+from Exscript.protocols.telnetlib import Telnet
 import usb.core
 from enum import Enum
 
@@ -55,7 +55,7 @@ class connection(metaclass=LogBase):
             port = self.detect(port)
             if port == "":
                 try:
-                    self.tn = Telnet("192.168.1.1", 5510, 5)
+                    self.tn = Telnet("192.168.1.1", 5510)
                     self.connected = True
                 except:
                     self.connected = False
