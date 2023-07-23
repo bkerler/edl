@@ -407,7 +407,8 @@ class adbtools(metaclass=LogBase):
 
     def SierraWireless(self, cn, info, enable):
         print("Sending at switch command")
-        kg = SierraKeygen(cn)
+        kg = SierraKeygen(cn=cn,devicegeneration=None)
+        kg.detectdevicegeneration()
         if kg.openlock():
             if enable:
                 if cn.send('AT!CUSTOM="ADBENABLE",1\r') != -1:
