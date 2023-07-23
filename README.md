@@ -2,6 +2,9 @@
 (c) B. Kerler 2018-2023
 Licensed under GPLv3 license.
 
+# Be aware that if you use anything from this repository in any (including) compiled form, you need to opensource your code as well !
+# Violating against the GPLv3 license will enforce me to stop developing these opensource tools.
+
 ## Why
 
 - Because we'd like to flexible dump smartphones
