@@ -10,4 +10,6 @@ usb
 capstone
 keystone-engine
 qrcode
+requests
+passlib
 Exscript

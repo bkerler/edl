@@ -30,7 +30,9 @@ setup(
     'pylzma',
     'pycryptodome',
     'wheel',
-    "Exscript"
+    'Exscript',
+    'requests',
+    'passlib'
     ],
     author='B. Kerler',
     author_email='info@revskills.de',

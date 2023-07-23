@@ -9,6 +9,8 @@ requires = [
     "pycryptodome",
     "colorama",
     "Exscript",
+    "requests",
+    "passlib",
     "usb"
 ]
 build-backend = "setuptools.build_meta"
