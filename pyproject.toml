@@ -10,7 +10,6 @@ requires = [
     "colorama",
     "Exscript",
     "requests",
-    "passlib",
-    "usb"
+    "passlib"
 ]
 build-backend = "setuptools.build_meta"

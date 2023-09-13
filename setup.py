@@ -23,7 +23,6 @@ setup(
     install_requires=[
     'colorama',
     'docopt',
-    'usb',
     'pyusb',
     'pyserial',
     'lxml',
