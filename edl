@@ -15,7 +15,7 @@ Usage:
     edl [--gpt-num-part-entries=number] [--gpt-part-entry-size=number] [--gpt-part-entry-start-lba=number] [--portname=portname] [--serial]
     edl [--memory=memtype] [--skipstorageinit] [--maxpayload=bytes] [--sectorsize==bytes] [--portname=portname] [--serial]
     edl server [--tcpport=portnumber] [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--devicemodel=value] [--skipstorageinit] [--portname=portname] [--serial]
-    edl memorydump [--partitions=partnames] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]
+    edl memorydump [--partitions=partnames] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial] [--serial_number=serial_number]
     edl printgpt [--memory=memtype] [--lun=lun] [--sectorsize==bytes] [--loader=filename] [--debugmode]  [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
     edl gpt <directory> [--memory=memtype] [--lun=lun] [--genxml] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
     edl r <partitionname> <filename> [--memory=memtype] [--sectorsize==bytes] [--lun=lun] [--loader=filename]  [--skipresponse] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
@@ -192,6 +192,7 @@ class main(metaclass=LogBase):
         self.sahara = None
         self.vid = None
         self.pid = None
+        self.serial_number = None
 
     def doconnect(self, loop) -> dict:
         while not self.cdc.connected:
@@ -288,7 +289,9 @@ class main(metaclass=LogBase):
         if self.serial:
             self.cdc = serial_class(loglevel=self.__logger.level, portconfig=portconfig)
         else:
-            self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level)
+            if args["--serial_number"]:
+                self.serial_number = args["--serial_number"]
+            self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level, serial_number=self.serial_number)
 
         self.sahara = sahara(self.cdc, loglevel=self.__logger.level)
 

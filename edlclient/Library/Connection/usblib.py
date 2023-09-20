@@ -66,8 +66,9 @@ CDC_CMDS = {
 
 class usb_class(DeviceClass):
 
-    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
+    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1, serial_number=None):
         super().__init__(loglevel, portconfig, devclass)
+        self.serial_number = serial_number
         self.load_windows_dll()
         self.EP_IN = None
         self.EP_OUT = None
@@ -219,9 +220,13 @@ class usb_class(DeviceClass):
         for dev in devices:
             for usbid in self.portconfig:
                 if dev.idProduct == usbid[1] and dev.idVendor == usbid[0]:
+                    if self.serial_number is not None:
+                        if dev.serial_number != self.serial_number:
+                            continue
                     self.device = dev
                     self.vid = dev.idVendor
                     self.pid = dev.idProduct
+                    self.serial_number = dev.serial_number
                     self.interface = usbid[2]
                     break
             if self.device is not None:
