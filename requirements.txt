@@ -6,7 +6,6 @@ pycryptodome
 pycryptodomex
 lxml>=4.6.1
 colorama
-usb
 capstone
 keystone-engine
 qrcode
