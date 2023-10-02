@@ -12,18 +12,21 @@ from edlclient.Library.utils import LogBase
 try:
     from edlclient.Library.Modules.generic import generic
 except ImportError as e:
+    self.error(e)
     generic = None
     pass
 
 try:
     from edlclient.Library.Modules.oneplus import oneplus
 except ImportError as e:
+    self.error(e)
     oneplus = None
     pass
 
 try:
     from edlclient.Library.Modules.xiaomi import xiaomi
 except ImportError as e:
+    self.error(e)
     xiaomi = None
     pass
 
@@ -47,17 +50,20 @@ class modules(metaclass=LogBase):
         try:
             self.generic = generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=loglevel)
         except Exception as e:
+            self.error(e)
             pass
         self.ops = None
         try:
             self.ops = oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial,
                                supported_functions=self.supported_functions, args=self.args, loglevel=loglevel)
         except Exception as e:
+            self.error(e)
             pass
         self.xiaomi = None
         try:
             self.xiaomi = xiaomi(fh=self.fh)
         except Exception as e:
+            self.error(e)
             pass
 
     def addpatch(self):
