@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+v#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2023 under GPLv3 license
 # If you use my code, make sure you refer to my name
@@ -447,11 +447,10 @@ class oneplus2(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def crypt_token(self, data, pk, device_timestamp, decrypt=False):
-        print(device_timestamp)
-        print(type(device_timestamp))
+        timestamp = str(int(time.time()))
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
-                 pack("<Q", int(device_timestamp))  # we get this using setprocstart
+                 pack("<Q", int(timestamp))  # we get this using setprocstart
         aesiv = b"\xDC\x91\x0D\x88\xE3\xC6\xEE\x65\xF0\xC7\x44\xB4\x02\x30\xCE\x40"
         if decrypt:
             cdata = unhexlify(data)
