@@ -493,7 +493,7 @@ class oneplus2(metaclass=LogBase):
             print(res.decode('utf-8'))
             return False
         data = res.decode('utf-8')
-        device_timestamp = data[ridx:].split("\"")[1]
+        device_timestamp = data[data.find("device_timestamp"):].split("\"")[1]
         print(data)
         print(device_timestamp)
         pk, token = self.generatetoken(False, device_timestamp)
