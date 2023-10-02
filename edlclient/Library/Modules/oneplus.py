@@ -200,7 +200,7 @@ class oneplus(metaclass=LogBase):
                     exit(0)
             elif version == 3:
                 if cm is not None:
-                    oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
+                    return oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
                 else:
                     assert "Device is not supported"
                     exit(0)
