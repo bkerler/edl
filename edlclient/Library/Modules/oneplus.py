@@ -447,9 +447,11 @@ class oneplus2(metaclass=LogBase):
             self.__logger.addHandler(fh)
 
     def crypt_token(self, data, pk, device_timestamp, decrypt=False):
+        print(device_timestamp)
+        print(type(device_timestamp))
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
-                 pack("<Q", int(device_timestamp, 10))  # we get this using setprocstart
+                 pack("<Q", int(device_timestamp))  # we get this using setprocstart
         aesiv = b"\xDC\x91\x0D\x88\xE3\xC6\xEE\x65\xF0\xC7\x44\xB4\x02\x30\xCE\x40"
         if decrypt:
             cdata = unhexlify(data)
@@ -494,8 +496,6 @@ class oneplus2(metaclass=LogBase):
             return False
         data = res.decode('utf-8')
         device_timestamp = data[data.find("device_timestamp"):].split("\"")[1]
-        print(data)
-        print(device_timestamp)
         pk, token = self.generatetoken(False, device_timestamp)
         res = self.fh.cmd_send(f"setswprojmodel token=\"{token}\" pk=\"{pk}\"")
         if not b"model_check=\"0\"" in res or not b"auth_token_verify=\"0\"" in res:
