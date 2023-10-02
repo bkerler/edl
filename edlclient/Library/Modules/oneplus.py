@@ -204,6 +204,7 @@ class oneplus(metaclass=LogBase):
                 else:
                     assert "Device is not supported"
                     exit(0)
+        assert "Unknown projid:"+str(projid)
         return None
 
     def run(self):
