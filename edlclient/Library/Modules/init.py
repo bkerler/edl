@@ -12,21 +12,21 @@ from edlclient.Library.utils import LogBase
 try:
     from edlclient.Library.Modules.generic import generic
 except ImportError as e:
-    self.error(e)
+    print(e)
     generic = None
     pass
 
 try:
     from edlclient.Library.Modules.oneplus import oneplus
 except ImportError as e:
-    self.error(e)
+    print(e)
     oneplus = None
     pass
 
 try:
     from edlclient.Library.Modules.xiaomi import xiaomi
 except ImportError as e:
-    self.error(e)
+    print(e)
     xiaomi = None
     pass
 
