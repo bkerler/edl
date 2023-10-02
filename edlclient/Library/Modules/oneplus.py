@@ -493,7 +493,9 @@ class oneplus2(metaclass=LogBase):
             print(res.decode('utf-8'))
             return False
         data = res.decode('utf-8')
-        device_timestamp = data[data.rfind("device_timestamp"):].split("\"")[1]
+        device_timestamp = data[ridx:].split("\"")[1]
+        print(data)
+        print(device_timestamp)
         pk, token = self.generatetoken(False, device_timestamp)
         res = self.fh.cmd_send(f"setswprojmodel token=\"{token}\" pk=\"{pk}\"")
         if not b"model_check=\"0\"" in res or not b"auth_token_verify=\"0\"" in res:
