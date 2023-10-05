@@ -108,7 +108,53 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
         len2 = unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
         rootsignature3offset = casignature2offset + len2
         len3 = unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
-        sign_info.pk_hash = hashlib.sha384(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+
+        idx = signatureoffset
+        signature = {}
+        while idx != -1:
+            if idx >= len(mem_section):
+                break
+            idx = mem_section.find('\x04\x0B'.encode(), idx)
+            if idx == -1:
+                break
+            length = mem_section[idx + 3]
+            if length > 60:
+                idx += 1
+                continue
+            try:
+                text = mem_section[idx + 4:idx + 4 + length].decode().split(' ')
+                signature[text[2]] = text[1]
+            except:
+                text = ""
+            idx += 1
+        idx = mem_section.find('QC_IMAGE_VERSION_STRING='.encode(), 0)
+        if idx != -1:
+            sign_info.qc_version = grabtext(mem_section[idx + len("QC_IMAGE_VERSION_STRING="):])
+        idx = mem_section.find('OEM_IMAGE_VERSION_STRING='.encode(), 0)
+        if idx != -1:
+            sign_info.oem_version = grabtext(mem_section[idx + len("OEM_IMAGE_VERSION_STRING="):])
+        idx = mem_section.find('IMAGE_VARIANT_STRING='.encode(), 0)
+        if idx != -1:
+            sign_info.image_variant = grabtext(mem_section[idx + len("IMAGE_VARIANT_STRING="):])
+        if "MODEL_ID" in signature:
+            sign_info.model_id = signature["MODEL_ID"]
+        if "OEM_ID" in signature:
+            sign_info.oem_id = signature["OEM_ID"]
+        if "HW_ID" in signature:
+            sign_info.hw_id = signature["HW_ID"]
+        if "SW_ID" in signature:
+            sign_info.sw_id = signature["SW_ID"]
+        if "SW_SIZE" in signature:
+            sign_info.sw_size = signature["SW_SIZE"]
+        if "SHA256" in signature:
+            sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+        elif "SHA384" in signature:
+            sign_info.pk_hash = hashlib.sha384(
+                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+        else:
+            sign_info.pk_hash = hashlib.sha384(
+                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+
     except:
         return None
     return sign_info
@@ -166,12 +212,24 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
             sign_info.sw_id = signature["SW_ID"]
         if "SW_SIZE" in signature:
             sign_info.sw_size = signature["SW_SIZE"]
+        if "SHA256" in signature:
+            sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+        elif "SHA384" in signature:
+            sign_info.pk_hash = hashlib.sha384(
+                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
     return sign_info
 
 
 def init_loader_db():
     loaderdb = {}
-    for (dirpath, dirnames, filenames) in os.walk(os.path.join(current_dir,"..","..","Loaders")):
+    loaders=os.path.join(current_dir,"..","..","Loaders")
+    if not os.path.exists(loaders):
+        loaders = os.path.join(current_dir, "Loaders")
+        if not os.path.exists(loaders):
+            print("Couldn't find Loaders directory")
+            return loaderdb
+
+    for (dirpath, dirnames, filenames) in os.walk(loaders):
         for filename in filenames:
             file_name = os.path.join(dirpath, filename)
             found = False
@@ -315,6 +373,7 @@ def main(argv):
                         print("%s has no signature." % filename)
                         copyfile(filename,
                                  os.path.join(outputdir, "Unknown", filename[filename.rfind("/") + 1:].lower()))
+                        elfpos += 0x30
                         continue
                     if version < 6:  # MSM,MDM
                         signatureoffset = memsection.file_start_addr + 0x28 + code_size + signature_size

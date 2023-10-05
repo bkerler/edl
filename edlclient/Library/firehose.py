@@ -8,6 +8,7 @@
 
 import binascii
 import io
+import os.path
 import platform
 import time
 import json
@@ -15,6 +16,8 @@ from struct import unpack
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
+
+from edlclient.Library.Modules.nothing import nothing
 from edlclient.Library.utils import *
 from edlclient.Library.gpt import gpt
 from edlclient.Library.sparse import QCSparse
@@ -1031,6 +1034,15 @@ class firehose(metaclass=LogBase):
                         self.cfg.SECTOR_SIZE_IN_BYTES = 4096
                         return self.configure(0)
             self.parse_storage()
+            for function in self.supported_functions:
+                if function == "checkntfeature":
+                    if type(self.devicemodel)==list:
+                        self.devicemodel=self.devicemodel[0]
+                    self.nothing = nothing(fh=self, projid=self.devicemodel, serial=self.serial,
+                                           supported_functions=self.supported_functions,
+                                           loglevel=self.loglevel)
+                    if self.nothing is not None:
+                        self.nothing.ntprojectverify()
             self.luns = self.getluns(self.args)
             return True
 
@@ -1127,6 +1139,8 @@ class firehose(metaclass=LogBase):
                 if "chip serial num" in line.lower():
                     try:
                         serial = line.split("0x")[1][:-1]
+                        if ")" in serial:
+                            serial=serial[:serial.rfind(")")]
                         self.serial = int(serial, 16)
                     except Exception as err:  # pylint: disable=broad-except
                         self.debug(str(err))
@@ -1150,7 +1164,8 @@ class firehose(metaclass=LogBase):
             try:
                 if os.path.exists(self.cfg.programmer):
                     data = open(self.cfg.programmer, "rb").read()
-                    for cmd in [b"demacia", b"setprojmodel", b"setswprojmodel", b"setprocstart", b"SetNetType"]:
+                    for cmd in [b"demacia", b"setprojmodel", b"setswprojmodel", b"setprocstart", b"SetNetType",
+                                b"checkntfeature"]:
                         if cmd in data:
                             self.supported_functions.append(cmd.decode('utf-8'))
                 state = {
@@ -1158,7 +1173,19 @@ class firehose(metaclass=LogBase):
                     "programmer": self.cfg.programmer,
                     "serial": self.serial
                 }
-                open("edl_config.json", "w").write(json.dumps(state))
+                if os.path.exists("edl_config.json"):
+                    data = json.loads(open("edl_config.json","rb").read().decode('utf-8'))
+                    if "serial" in data and data["serial"]!=state["serial"]:
+                        open("edl_config.json", "w").write(json.dumps(state))
+                    else:
+                        self.supported_functions = data["supported_functions"]
+                        self.cfg.programmer = data["programmer"]
+                else:
+                    open("edl_config.json", "w").write(json.dumps(state))
+                if "001920e101cf0000_fa2836525c2aad8a_fhprg.bin" in self.cfg.programmer:
+                    self.devicemodel = '20111'
+                elif "000b80e100020000_467f3020c4cc788d_fhprg.bin" in self.cfg.programmer:
+                    self.devicemodel = '22111'
             except:
                 pass
 

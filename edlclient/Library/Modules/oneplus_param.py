@@ -12,12 +12,10 @@ Usage:
     oneplus_param.py gencode <imei>
     oneplus_param.py setparam <filename> <sid> <offset> <value> [--mode=mode] [--serial=serial]
 """
-
-from enum import Enum
-from struct import calcsize, pack, unpack
 import hashlib
 import zlib
-import qrcode
+from enum import Enum
+from struct import calcsize, pack, unpack
 
 try:
     from edlclient.Library.cryptutils import cryptutils
@@ -31,10 +29,6 @@ except ImportError as e:
         from cryptutils import cryptutils
     except ImportError as e:
         print(str(e))
-try:
-    from edlclient.Library.Modules.oneplus_param import *
-except ImportError:
-    pass
 from binascii import unhexlify, hexlify
 
 
@@ -984,6 +978,7 @@ def main():
         print("oneplus Factory qr code generator (c) B. Kerler 2019\nGPLv3 License\n----------------------")
         print("Code : *#*#5646#*#* , *#808#, *#36446337# = com.android.engineeringmode.manualtest.DecryptActivity")
         results = param.gencode([imei, "YOU_CAN_PASS_NOW"])
+        import qrcode
         img = qrcode.make("op_eng://" + results[0])
         print("Code : " + results[0])
         img.save(imei + ".png")

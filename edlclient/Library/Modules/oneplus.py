@@ -24,7 +24,7 @@ import random
 from struct import pack
 import logging
 from edlclient.Library.utils import LogBase
-
+from edlclient.Library.Modules.oneplus_param import paramtools
 try:
     from edlclient.Library.cryptutils import cryptutils
 except Exception as e:
@@ -128,7 +128,7 @@ deviceconfig = {
 
 
 class oneplus(metaclass=LogBase):
-    def __init__(self, fh, projid="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
+    def __init__(self, fh, projid:str="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
                  args=None, loglevel=logging.INFO):
         self.fh = fh
         self.__logger = self.__logger
@@ -160,7 +160,6 @@ class oneplus(metaclass=LogBase):
             filehandler = logging.FileHandler(logfilename)
             self.__logger.addHandler(filehandler)
         try:
-            from edlclient.Library.Modules.oneplus_param import paramtools
             if projid in deviceconfig:
                 mode = deviceconfig[projid]["param_mode"]
                 self.ops_parm = paramtools(mode=mode, serial=serial)
@@ -200,10 +199,11 @@ class oneplus(metaclass=LogBase):
                     exit(0)
             elif version == 3:
                 if cm is not None:
-                    oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
+                    return oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
                 else:
                     assert "Device is not supported"
                     exit(0)
+        assert "Unknown projid:"+str(projid)
         return None
 
     def run(self):
@@ -225,16 +225,16 @@ class oneplus(metaclass=LogBase):
         if self.ops.setprojmodel_verify:
             return self.ops.setprojmodel_verify(pk, token)
 
-    def setswprojmodel_verify(self, pk, token, device_timestamp):
+    def setswprojmodel_verify(self, pk, token):
         if self.ops.setswprojmodel_verify:
-            return self.ops.setswprojmodel_verify(pk, token, device_timestamp)
+            return self.ops.setswprojmodel_verify(pk, token)
 
     def program_verify(self, pk, token, tokendata):
         if self.ops.program_verify:
             return self.ops.program_verify(pk, token, tokendata)
 
-    def generatetoken(self, program=False, device_timestamp="123456789"):
-        return self.ops.generatetoken(program=program, device_timestamp=device_timestamp)
+    def generatetoken(self, program=False):
+        return self.ops.generatetoken(program=program)
 
     def demacia(self):
         if self.ops.demacia():
@@ -310,7 +310,7 @@ class oneplus1:
         data = "<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
         return data
 
-    def generatetoken(self, program=False, device_timestamp=None):
+    def generatetoken(self, program=False):
         timestamp = str(int(time.time()))
         ha = cryptutils().hash()
         h1 = self.prodkey + self.ModelVerifyPrjName + self.random_postfix
@@ -429,6 +429,7 @@ class oneplus1:
 class oneplus2(metaclass=LogBase):
     def __init__(self, fh, ModelVerifyPrjName="20889", serial=123456, pk="", prodkey="", ATOBuild=0, Flash_Mode=0,
                  cf=0, loglevel=logging.INFO):
+        self.device_timestamp = None
         self.ModelVerifyPrjName = ModelVerifyPrjName
         self.pk = pk
         self.fh = fh
@@ -445,10 +446,10 @@ class oneplus2(metaclass=LogBase):
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-    def crypt_token(self, data, pk, device_timestamp, decrypt=False):
+    def crypt_token(self, data, pk, device_timestamp:int, decrypt=False):
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
-                 pack("<Q", int(device_timestamp, 10))  # we get this using setprocstart
+                 pack("<Q", device_timestamp)  # we get this using setprocstart
         aesiv = b"\xDC\x91\x0D\x88\xE3\xC6\xEE\x65\xF0\xC7\x44\xB4\x02\x30\xCE\x40"
         if decrypt:
             cdata = unhexlify(data)
@@ -463,7 +464,7 @@ class oneplus2(metaclass=LogBase):
             rdata = hexlify(result)
             return rdata.upper().decode('utf-8')
 
-    def generatetoken(self, program=False, device_timestamp=None):  # setswprojmodel
+    def generatetoken(self, program=False):  # setswprojmodel
         timestamp = str(int(time.time()))
         ha = cryptutils().hash()
         h1 = self.prodkey + self.ModelVerifyPrjName + self.random_postfix
@@ -482,7 +483,7 @@ class oneplus2(metaclass=LogBase):
         for item in items:
             data += item + ","
         data = data[:-1]
-        token = self.crypt_token(data, self.pk, device_timestamp)
+        token = self.crypt_token(data, self.pk, self.device_timestamp)
         return self.pk, token
 
     def run(self, flag):
@@ -493,7 +494,9 @@ class oneplus2(metaclass=LogBase):
             return False
         data = res.decode('utf-8')
         device_timestamp = data[data.rfind("device_timestamp"):].split("\"")[1]
-        pk, token = self.generatetoken(False, device_timestamp)
+        self.device_timestamp = int(device_timestamp)
+        print(self.device_timestamp)
+        pk, token = self.generatetoken(False)
         res = self.fh.cmd_send(f"setswprojmodel token=\"{token}\" pk=\"{pk}\"")
         if not b"model_check=\"0\"" in res or not b"auth_token_verify=\"0\"" in res:
             print("Setswprojmodel failed.")
@@ -501,10 +504,10 @@ class oneplus2(metaclass=LogBase):
             return False
         return True
 
-    def setswprojmodel_verify(self, pk, token, device_timestamp):
+    def setswprojmodel_verify(self, pk, token):
         self.pk = pk
         ha = cryptutils().hash()
-        items = self.crypt_token(token, pk, device_timestamp, True)
+        items = self.crypt_token(token, pk, self.device_timestamp, True)
         info = ["ModelVerifyPrjName", "random_postfix", "ModelVerifyHashToken", "ato_build_state", "flash_mode",
                 "Version", "soc_sn", "cf", "timestamp", "secret"]
         i = 0
@@ -568,10 +571,11 @@ def main():
         serial = args["--serial"]
         device_timestamp = args["--ts"]
         op2 = oneplus(None, projid="20889", serial=serial, ATOBuild=0, Flash_Mode=0, cf=0)
+        op2.ops.device_timestamp = int(device_timestamp)
         # 20889 OP N10 5G Europe
         print(f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><setprocstart /></data>\"")
         # Response should be : <?xml version="1.0" ?><data><response value=1 device_timestamp="%llu" /></data>
-        pk, token = op2.generatetoken(False, device_timestamp)
+        pk, token = op2.generatetoken(False)
         print(
             f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><setswprojmodel " +
             f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\" --debugmode")
@@ -605,9 +609,10 @@ def main():
         projid = args["--projid"][0]
         device_timestamp = args["--ts"]
         op = oneplus(None, projid=projid, serial=123456)
+        op.ops.device_timestamp = int(device_timestamp)
         token = args["<token>"]
         pk = args["<pk>"]
-        op.setswprojmodel_verify(pk, token, device_timestamp)
+        op.setswprojmodel_verify(pk, token)
 
 
 def test_setswprojmodel_verify():
@@ -617,8 +622,9 @@ def test_setswprojmodel_verify():
     op = oneplus(None, projid=projid, serial=123456)
     data = deviceresp.decode('utf-8')
     device_timestamp = data[data.rfind("device_timestamp"):].split("\"")[1]
-    pk, token = op.generatetoken(False, device_timestamp)
-    if not op.setswprojmodel_verify(pk, token, device_timestamp):
+    op.ops.device_timestamp = int(device_timestamp)
+    pk, token = op.generatetoken(False)
+    if not op.setswprojmodel_verify(pk, token):
         assert "Setswprojmodel error"
 
 

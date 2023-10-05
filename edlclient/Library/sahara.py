@@ -98,11 +98,11 @@ class sahara(metaclass=LogBase):
             self.error(str(e))
             return {}
 
-    def cmd_hello(self, mode, version_min=1, max_cmd_len=0):  # CMD 0x1, RSP 0x2
+    def cmd_hello(self, mode, version_min=1, max_cmd_len=0, version=2):  # CMD 0x1, RSP 0x2
         cmd = cmd_t.SAHARA_HELLO_RSP
         length = 0x30
-        version = SAHARA_VERSION
-        responsedata = pack("<IIIIIIIIIIII", cmd, length, version, version_min, max_cmd_len, mode, 0, 0, 0, 0, 0, 0)
+        #version = SAHARA_VERSION
+        responsedata = pack("<IIIIIIIIIIII", cmd, length, version, version_min, max_cmd_len, mode, 1, 2, 3, 4, 5, 6)
         try:
             self.cdc.write(responsedata)
             return True
@@ -155,8 +155,8 @@ class sahara(metaclass=LogBase):
             self.error(str(e))
         return {"mode": "error"}
 
-    def enter_command_mode(self):
-        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_COMMAND):
+    def enter_command_mode(self, version=2):
+        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_COMMAND, version=version):
             return False
         res = self.get_rsp()
         if "cmd" in res:
@@ -179,11 +179,9 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_msm_hwid(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
-        try:
+        if res is not None:
             return int.from_bytes(res[:8],'little')
-        except Exception as e:  # pylint: disable=broad-except
-            self.debug(str(e))
-            return None
+        return None
 
     def cmdexec_get_pkhash(self):
         try:
@@ -212,104 +210,111 @@ class sahara(metaclass=LogBase):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_READ_DEBUG_DATA)
         return res
 
-    def cmd_info(self):
-        if self.enter_command_mode():
+    def cmd_info(self, version):
+        if self.enter_command_mode(version=version):
             self.serial = self.cmdexec_get_serial_num()
             self.serials = "{:08x}".format(self.serial)
-            self.hwid = self.cmdexec_get_msm_hwid()
-            self.pkhash = self.cmdexec_get_pkhash()
-            # if self.version>=2.4:
-            #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
-            if self.hwid is not None:
-                self.hwidstr = "{:016x}".format(self.hwid)
-                self.msm_id = int(self.hwidstr[2:8], 16)
-                self.oem_id = int(self.hwidstr[-8:-4], 16)
-                self.model_id = int(self.hwidstr[-4:], 16)
-                self.oem_str = "{:04x}".format(self.oem_id)
-                self.model_id = "{:04x}".format(self.model_id)
-                self.msm_str = "{:08x}".format(self.msm_id)
-                if self.msm_id in msmids:
-                    cpustr = f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
-                else:
-                    cpustr = "Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
-                """
-                if self.version >= 2.4:
-                    self.info(f"\n------------------------\n" +
-                                f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
-                                f"OEM_ID:0x{self.oem_str}," +
-                                f"MODEL_ID:0x{self.model_id})\n" +
-                                f"PK_HASH:           0x{self.pkhash}\n" +
-                                f"Serial:            0x{self.serials}\n" +
-                                f"SBL Version:       0x{self.sblversion}\n")
-                else:
-                """
-                self.info(f"\n------------------------\n" +
-                          f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
-                          f"OEM_ID:0x{self.oem_str}," +
-                          f"MODEL_ID:0x{self.model_id})\n" +
-                          cpustr +
-                          f"PK_HASH:           0x{self.pkhash}\n" +
-                          f"Serial:            0x{self.serials}\n")
-            if self.programmer == "":
-                if self.hwidstr in self.loaderdb:
-                    mt = self.loaderdb[self.hwidstr]
-                    unfused = False
-                    for rootcert in root_cert_hash:
-                        if self.pkhash[0:16] in root_cert_hash[rootcert]:
-                            unfused = True
-                            break
-                    if unfused:
-                        self.info("Possibly unfused device detected, so any loader should be fine...")
-                        if self.pkhash[0:16] in mt:
-                            self.programmer = mt[self.pkhash[0:16]]
-                            self.info(f"Trying loader: {self.programmer}")
+            if version < 3:
+                self.hwid = self.cmdexec_get_msm_hwid()
+                self.pkhash = self.cmdexec_get_pkhash()
+                # if self.version>=2.4:
+                #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
+                if self.hwid is not None:
+                    self.hwidstr = "{:016x}".format(self.hwid)
+                    self.msm_id = int(self.hwidstr[2:8], 16)
+                    self.oem_id = int(self.hwidstr[-8:-4], 16)
+                    self.model_id = int(self.hwidstr[-4:], 16)
+                    self.oem_str = "{:04x}".format(self.oem_id)
+                    self.model_id = "{:04x}".format(self.model_id)
+                    self.msm_str = "{:08x}".format(self.msm_id)
+                    if self.msm_id in msmids:
+                        cpustr = f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
+                    else:
+                        cpustr = "Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
+                    """
+                    if self.version >= 2.4:
+                        self.info(f"\nVersion {hex(version)}\n------------------------\n" +
+                                    f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                                    f"OEM_ID:0x{self.oem_str}," +
+                                    f"MODEL_ID:0x{self.model_id})\n" +
+                                    f"PK_HASH:           0x{self.pkhash}\n" +
+                                    f"Serial:            0x{self.serials}\n" +
+                                    f"SBL Version:       0x{self.sblversion}\n")
+                    else:
+                    """
+                    self.info(f"\nVersion {hex(version)}\n------------------------\n" +
+                              f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                              f"OEM_ID:0x{self.oem_str}," +
+                              f"MODEL_ID:0x{self.model_id})\n" +
+                              cpustr +
+                              f"PK_HASH:           0x{self.pkhash}\n" +
+                              f"Serial:            0x{self.serials}\n")
+                if self.programmer == "":
+                    if self.hwidstr in self.loaderdb:
+                        mt = self.loaderdb[self.hwidstr]
+                        unfused = False
+                        for rootcert in root_cert_hash:
+                            if self.pkhash[0:16] in root_cert_hash[rootcert]:
+                                unfused = True
+                                break
+                        if unfused:
+                            self.info("Possibly unfused device detected, so any loader should be fine...")
+                            if self.pkhash[0:16] in mt:
+                                self.programmer = mt[self.pkhash[0:16]]
+                                self.info(f"Trying loader: {self.programmer}")
+                            else:
+                                for loader in mt:
+                                    self.programmer = mt[loader]
+                                    self.info(f"Possible loader available: {self.programmer}")
+                                for loader in mt:
+                                    self.programmer = mt[loader]
+                                    self.info(f"Trying loader: {self.programmer}")
+                                    break
+                        elif self.pkhash[0:16] in mt:
+                            self.programmer = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
+                            self.info(f"Detected loader: {self.programmer}")
                         else:
-                            for loader in mt:
-                                self.programmer = mt[loader]
-                                self.info(f"Possible loader available: {self.programmer}")
-                            for loader in mt:
-                                self.programmer = mt[loader]
+                            for loader in self.loaderdb[self.hwidstr]:
+                                self.programmer = self.loaderdb[self.hwidstr][loader]
                                 self.info(f"Trying loader: {self.programmer}")
                                 break
-                    elif self.pkhash[0:16] in mt:
-                        self.programmer = self.loaderdb[self.hwidstr][self.pkhash[0:16]]
-                        self.info(f"Detected loader: {self.programmer}")
-                    else:
-                        for loader in self.loaderdb[self.hwidstr]:
-                            self.programmer = self.loaderdb[self.hwidstr][loader]
-                            self.info(f"Trying loader: {self.programmer}")
-                            break
-                        # print("Couldn't find a loader for given hwid and pkhash :(")
-                        # exit(0)
-                elif self.hwidstr is not None and self.pkhash is not None:
-                    msmid = self.hwidstr[:8]
-                    found = False
-                    for hwidstr in self.loaderdb:
-                        if msmid == hwidstr[:8]:
-                            if self.pkhash[0:16] in self.loaderdb[hwidstr]:
-                                self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
-                                self.info(f"Found loader: {self.programmer}")
-                                self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
-                                return True
+                            # print("Couldn't find a loader for given hwid and pkhash :(")
+                            # exit(0)
+                    elif self.hwidstr is not None and self.pkhash is not None:
+                        msmid = self.hwidstr[:8]
+                        found = False
+                        for hwidstr in self.loaderdb:
+                            if msmid == hwidstr[:8]:
+                                if self.pkhash[0:16] in self.loaderdb[hwidstr]:
+                                    self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
+                                    self.info(f"Found loader: {self.programmer}")
+                                    self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
+                                    return True
+                            else:
+                                if self.pkhash[0:16] in self.loaderdb[hwidstr]:
+                                    self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
+                                    self.info(f"Found possible loader: {self.programmer}")
+                                    found = True
+                        if found:
+                            self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
+                            return True
                         else:
-                            if self.pkhash[0:16] in self.loaderdb[hwidstr]:
-                                self.programmer = self.loaderdb[hwidstr][self.pkhash[0:16]]
-                                self.info(f"Found possible loader: {self.programmer}")
-                                found = True
-                    if found:
-                        self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
-                        return True
+                            self.error(
+                                f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
+                                "_[FHPRG/ENPRG].bin) :(")
+                        return False
                     else:
-                        self.error(
-                            f"Couldn't find a loader for given hwid and pkhash ({self.hwidstr}_{self.pkhash[0:16]}" +
-                            "_[FHPRG/ENPRG].bin) :(")
+                        self.error(f"Couldn't find a suitable loader :(")
+                        return False
+            else:
+                self.info(f"\nVersion {hex(version)}\n------------------------\n" +
+                          f"Serial:            0x{self.serials}\n")
+                if self.programmer=="":
+                    self.error("No autodetection of loader possible with sahara version 3 and above :( Aborting.")
                     return False
-                else:
-                    self.error(f"Couldn't find a suitable loader :(")
-                    return False
-
             self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
             return True
+
         return False
 
     def streaminginfo(self):
@@ -432,8 +437,8 @@ class sahara(metaclass=LogBase):
         self.cmd_reset()
         return True
 
-    def debug_mode(self, dump_partitions=None):
-        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG):
+    def debug_mode(self, dump_partitions=None, version=2):
+        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG, version=version):
             return False
         if os.path.exists("memory"):
             rmrf("memory")
@@ -501,7 +506,7 @@ class sahara(metaclass=LogBase):
             return False
         return False
 
-    def upload_loader(self):
+    def upload_loader(self, version):
         if self.programmer == "":
             return ""
         try:
@@ -512,7 +517,7 @@ class sahara(metaclass=LogBase):
             self.error(str(e))
             sys.exit()
 
-        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_IMAGE_TX_PENDING):
+        if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_IMAGE_TX_PENDING, version=version):
             return ""
 
         try:

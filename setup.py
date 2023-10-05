@@ -4,7 +4,7 @@ import os
 
 setup(
     name='edlclient',
-    version='3.60',
+    version='3.62',
     packages=find_packages(),
     long_description=open("README.md").read(),
     scripts=['edl','edlclient/Tools/qc_diag.py','edlclient/Tools/sierrakeygen.py','edlclient/Tools/boottodwnload','edlclient/Tools/enableadb','edlclient/Tools/fhloaderparse','edlclient/Tools/beagle_to_loader'],
