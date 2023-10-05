@@ -11,6 +11,10 @@ Licensed under GPLv3 license.
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
 
+## QC Sahara V3 additional information for newer QC devices
+- For newer qc phones, loader autodetection doesn't work anymore as the sahara loader doesn't offer a way to read the pkhash anymore
+- Thus, for Sahara V3, you need to give a valid loader via --loader option !
+  
 ### Use LiveDVD (everything ready to go, based on Ubuntu):
 User: user, Password:user (based on Ubuntu 22.04 LTS)
 
