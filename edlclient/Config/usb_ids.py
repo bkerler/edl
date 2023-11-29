@@ -9,6 +9,7 @@
 default_ids = [
     [0x05c6, 0x9008, -1],
     [0x0fce, 0x9dde, -1],
+    [0x0fce, 0xade5, -1],
     [0x05c6, 0x900e, -1],
     [0x05c6, 0x9025, -1],
     [0x1199, 0x9062, -1],
@@ -25,6 +26,7 @@ default_diag_vid_pid = [
     [0x0846, 0x68e2,  2],  # Netgear
     [0x05C6, 0x9008, -1],  # QC EDL
     [0x0fce, 0x9dde, -1],  # SONY EDL
+    [0x0fce, 0xade5, -1],  # SONY EDL
     [0x05C6, 0x676C, 0],   # QC Handset
     [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
     [0x19d2, 0x0016, -1],  # ZTE Diag
