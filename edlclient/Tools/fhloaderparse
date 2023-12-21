@@ -106,8 +106,7 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
         len1 = unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
         casignature2offset = signatureoffset + len1
         len2 = unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
-        rootsignature3offset = casignature2offset + len2
-        len3 = unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
+        rootsignature3 = mem_section[(casignature2offset + len2):(casignature2offset + len2) + 999999999].split(b'\xff\xff\xff\xff\xff\xff\xff\xff\xff')[0]
 
         idx = signatureoffset
         signature = {}
@@ -147,13 +146,13 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
         if "SW_SIZE" in signature:
             sign_info.sw_size = signature["SW_SIZE"]
         if "SHA256" in signature:
-            sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+            sign_info.pk_hash = hashlib.sha256(rootsignature3).hexdigest()
         elif "SHA384" in signature:
             sign_info.pk_hash = hashlib.sha384(
-                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+                rootsignature3).hexdigest()
         else:
             sign_info.pk_hash = hashlib.sha384(
-                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+                rootsignature3).hexdigest()
 
     except:
         return None
@@ -172,9 +171,8 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
         len1 = unpack(">H", mem_section[signatureoffset + 2:signatureoffset + 4])[0] + 4
         casignature2offset = signatureoffset + len1
         len2 = unpack(">H", mem_section[casignature2offset + 2:casignature2offset + 4])[0] + 4
-        rootsignature3offset = casignature2offset + len2
-        len3 = unpack(">H", mem_section[rootsignature3offset + 2:rootsignature3offset + 4])[0] + 4
-        sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+        rootsignature3 = mem_section[(casignature2offset + len2):(casignature2offset + len2) + 999999999].split(b'\xff\xff\xff\xff\xff\xff\xff\xff\xff')[0]
+        sign_info.pk_hash = hashlib.sha256(rootsignature3).hexdigest()
         idx = signatureoffset
 
         while idx != -1:
@@ -213,10 +211,10 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
         if "SW_SIZE" in signature:
             sign_info.sw_size = signature["SW_SIZE"]
         if "SHA256" in signature:
-            sign_info.pk_hash = hashlib.sha256(mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+            sign_info.pk_hash = hashlib.sha256(rootsignature3).hexdigest()
         elif "SHA384" in signature:
             sign_info.pk_hash = hashlib.sha384(
-                mem_section[rootsignature3offset:rootsignature3offset + len3]).hexdigest()
+                rootsignature3).hexdigest()
     return sign_info
 
 
