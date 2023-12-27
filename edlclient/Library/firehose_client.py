@@ -136,10 +136,11 @@ class firehose_client(metaclass=LogBase):
                 return True
         return False
 
-    def find_bootable_partition(self, rawprogram):
+    def find_bootable_partition(self, imagedir, rawprogram):
         part = -1
         for xml in rawprogram:
-            with open(xml, "r") as fl:
+            filename = os.path.join(imagedir, xml)
+            with open(filename, "r") as fl:
                 for evt, elem in ET.iterparse(fl, events=["end"]):
                     if elem.tag == "program":
                         label = elem.get("label")
@@ -957,7 +958,8 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.warning(f"File : {filename} not found.")
             self.info("[qfil] patching ok")
-            bootable = self.find_bootable_partition(rawprogram)
+
+            bootable = self.find_bootable_partition(imagedir, rawprogram)
             if bootable != -1:
                 if self.firehose.cmd_setbootablestoragedrive(bootable):
                     self.info("[qfil] partition({partition}) is now bootable\n".format(partition=bootable))
