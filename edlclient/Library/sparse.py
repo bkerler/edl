@@ -81,7 +81,7 @@ class QCSparse(metaclass=LogBase):
         chunk_sz = header[2]
         total_sz = header[3]
         data_sz = total_sz - 12
-        self.rf.seek(self.rf.tell + data_sz)
+        self.rf.seek(self.rf.tell() + data_sz)
 
         if chunk_type == 0xCAC1:
             if data_sz != (chunk_sz * self.blk_sz):
