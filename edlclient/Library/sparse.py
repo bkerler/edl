@@ -81,20 +81,22 @@ class QCSparse(metaclass=LogBase):
         chunk_sz = header[2]
         total_sz = header[3]
         data_sz = total_sz - 12
+
         if chunk_type == 0xCAC1:
             if data_sz != (chunk_sz * self.blk_sz):
                 self.error(
                     "Raw chunk input size (%u) does not match output size (%u)" % (data_sz, chunk_sz * self.blk_sz))
                 return -1
             else:
-                self.rf.seek(self.rf.tell() + chunk_sz * self.blk_sz)
+                self.rf.seek(self.rf.tell() + data_sz)
                 return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC2:
             if data_sz != 4:
                 self.error("Fill chunk should have 4 bytes of fill, but this has %u" % data_sz)
                 return -1
             else:
-                return chunk_sz * self.blk_sz // 4
+                self.rf.seek(self.rf.tell() + data_sz)
+                return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC3:
             return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC4:
@@ -102,7 +104,7 @@ class QCSparse(metaclass=LogBase):
                 self.error("CRC32 chunk should have 4 bytes of CRC, but this has %u" % data_sz)
                 return -1
             else:
-                self.rf.seek(self.rf.tell() + 4)
+                self.rf.seek(self.rf.tell() + data_sz)
                 return 0
         else:
             self.debug("Unknown chunk type 0x%04X" % chunk_type)
