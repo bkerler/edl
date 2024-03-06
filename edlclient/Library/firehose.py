@@ -1316,8 +1316,8 @@ class firehose(metaclass=LogBase):
                                 size_each_patch, True)
                 if i < header_size:
                     header_subset = int(unpack("<I", header[offset:offset+size_each_patch])[0])
-                    self.cmd_patch(lun, headeroffset, \
-                                offset, \
+                    self.cmd_patch( lun, headeroffset, \
+                                    offset, \
                                     header_subset, \
                                     size_each_patch, True)
                 offset += size_each_patch
