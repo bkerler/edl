@@ -1303,6 +1303,21 @@ class firehose(metaclass=LogBase):
             return None
 
     def cmd_setactiveslot(self, slot: str):
+        def cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata, header):
+            offset = 0 
+            header_size = len(header)
+            pdata_size = len(pdata)
+            write_size = pdata_size # with assumption pdata_size > header_size
+            patch_subset_size = 4
+            for i in range(0, write_size, patch_subset_size):
+                pdata_subset = int(unpack("<I", pdata[offset:offset+patch_subset_size])[0])
+                self.cmd_patch(lun, start_sector_patch, byte_offset_patch, pdata_subset, patch_subset_size, True)
+                if i < header_size:
+                    header_subset = int(unpack("<I", header[offset:offset+patch_subset_size])[0])
+                    self.cmd_patch(lun, headeroffset, 0, header_subset, patch_subset_size, True)
+                offset += patch_subset_size
+            return True
+
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
             return False
@@ -1334,10 +1349,11 @@ class firehose(metaclass=LogBase):
                             headeroffset = gp.header.current_lba * gp.sectorsize
                             start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
                             header = wdata[start_sector_hdr:start_sector_hdr + gp.header.header_size]
-                            self.cmd_patch(lun, start_sector_patch, byte_offset_patch, pdata, len(pdata), True)
-                            self.cmd_patch(lun, headeroffset, 0, header, len(pdata), True)
+                            cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata, header)
                 return True
         return False
+
+    
 
     def cmd_test(self, cmd):
         token = "1234"
