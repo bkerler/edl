@@ -1303,6 +1303,26 @@ class firehose(metaclass=LogBase):
             return None
 
     def cmd_setactiveslot(self, slot: str):
+        def cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata,  header):
+            offset = 0
+            header_size = len(header)
+            size_each_patch = 4
+            write_size = len(pdata)
+            for i in range(0, write_size, size_each_patch):
+                pdata_subset = int(unpack("<I", pdata[offset:offset+size_each_patch])[0])
+                self.cmd_patch( lun, start_sector_patch, \
+                                byte_offset_patch + offset, \
+                                pdata_subset, \
+                                size_each_patch, True)
+                if i < header_size:
+                    header_subset = int(unpack("<I", header[offset:offset+size_each_patch])[0])
+                    self.cmd_patch( lun, headeroffset, \
+                                    offset, \
+                                    header_subset, \
+                                    size_each_patch, True)
+                offset += size_each_patch
+            return True
+
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
             return False
@@ -1314,30 +1334,34 @@ class firehose(metaclass=LogBase):
             partslots["_a"] = False
             partslots["_b"] = True
         fpartitions = {}
-        for lun in self.luns:
-            lunname = "Lun" + str(lun)
-            fpartitions[lunname] = []
-            data, guid_gpt = self.get_gpt(lun, int(0), int(0), int(0))
-            if guid_gpt is None:
-                break
-            else:
-                for partitionname in guid_gpt.partentries:
-                    gp = gpt()
-                    slot = partitionname.lower()[-2:]
-                    if "_a" in slot or "_b" in slot:
-                        pdata, poffset = gp.patch(data, partitionname, active=partslots[slot])
-                        data[poffset:poffset + len(pdata)] = pdata
-                        wdata = gp.fix_gpt_crc(data)
-                        if wdata is not None:
-                            start_sector_patch = poffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                            byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
-                            headeroffset = gp.header.current_lba * gp.sectorsize
-                            start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                            header = wdata[start_sector_hdr:start_sector_hdr + gp.header.header_size]
-                            self.cmd_patch(lun, start_sector_patch, byte_offset_patch, pdata, len(pdata), True)
-                            self.cmd_patch(lun, headeroffset, 0, header, len(pdata), True)
-                return True
-        return False
+        try: 
+            for lun in self.luns:
+                lunname = "Lun" + str(lun)
+                fpartitions[lunname] = []
+                data, guid_gpt = self.get_gpt(lun, int(0), int(0), int(0))
+                if guid_gpt is None:
+                    break
+                else:
+                    for partitionname in guid_gpt.partentries:
+                        gp = gpt()
+                        slot = partitionname.lower()[-2:]
+                        if "_a" in slot or "_b" in slot:
+                            pdata, poffset = gp.patch(data, partitionname, active=partslots[slot])
+                            data[poffset:poffset + len(pdata)] = pdata
+                            wdata = gp.fix_gpt_crc(data)
+                            if wdata is not None:
+                                start_sector_patch = poffset // self.cfg.SECTOR_SIZE_IN_BYTES
+                                byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
+                                headeroffset = gp.header.current_lba * gp.sectorsize
+                                start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
+                                header = wdata[start_sector_hdr:start_sector_hdr + gp.header.header_size]
+                                cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata, header)
+        except Exception as err:
+            self.error(str(err))
+            return False
+        return True
+
+    
 
     def cmd_test(self, cmd):
         token = "1234"
