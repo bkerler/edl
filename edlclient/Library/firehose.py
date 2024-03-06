@@ -1326,8 +1326,8 @@ class firehose(metaclass=LogBase):
             partslots["_a"] = True
             partslots["_b"] = False
         elif slot == "b":
-            partslots["_a"] = True
-            partslots["_b"] = False
+            partslots["_a"] = False
+            partslots["_b"] = True
         fpartitions = {}
         for lun in self.luns:
             lunname = "Lun" + str(lun)
