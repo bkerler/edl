@@ -498,7 +498,7 @@ class gpt(metaclass=LogBase):
                             if active:
                                 flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
                             else:
-                                flags &= AB_PARTITION_ATTR_UNBOOTABLE << (AB_FLAG_OFFSET*8)
+                                flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
                             partentry.flags = flags
                             pdata = partentry.create()
                             return pdata, partition.entryoffset
