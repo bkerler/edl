@@ -1,0 +1,1 @@
+{"supported_functions": ["program", "read", "nop", "patch", "configure", "setbootablestoragedrive", "erase", "power", "firmwarewrite", "getstorageinfo", "benchmark", "emmc", "ufs", "fixgpt"], "programmer": "/home/bongb/edl/edlclient/../Loaders/qualcomm/factory/sdm845_sdm850_sda845/0008e0e100000000_afca69d4235117e5_fhprg.bin", "serial": 1715676728}

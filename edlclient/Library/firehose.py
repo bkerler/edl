@@ -437,6 +437,7 @@ class firehose(metaclass=LogBase):
             data += self.modules.addpatch()
         data += f"/>\n</data>"
 
+        return True
         rsp = self.xmlsend(data)
         if rsp.resp:
             if display:
@@ -1303,23 +1304,17 @@ class firehose(metaclass=LogBase):
             return None
 
     def cmd_setactiveslot(self, slot: str):
-        def cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata,  header):
+        # TODO: need to switch the type of partitions _a and partitions _b
+        def cmd_patch_multiple(lun, start_sector, byte_offset, patch_data):
             offset = 0
-            header_size = len(header)
             size_each_patch = 4
-            write_size = len(pdata)
+            write_size = len(wdata)
             for i in range(0, write_size, size_each_patch):
-                pdata_subset = int(unpack("<I", pdata[offset:offset+size_each_patch])[0])
-                self.cmd_patch( lun, start_sector_patch, \
-                                byte_offset_patch + offset, \
+                pdata_subset = int(unpack("<I", patch_data[offset:offset+size_each_patch])[0])
+                self.cmd_patch( lun, start_sector, \
+                                byte_offset + offset, \
                                 pdata_subset, \
                                 size_each_patch, True)
-                if i < header_size:
-                    header_subset = int(unpack("<I", header[offset:offset+size_each_patch])[0])
-                    self.cmd_patch( lun, headeroffset, \
-                                    offset, \
-                                    header_subset, \
-                                    size_each_patch, True)
                 offset += size_each_patch
             return True
 
@@ -1354,8 +1349,9 @@ class firehose(metaclass=LogBase):
                                 byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
                                 headeroffset = gp.header.current_lba * gp.sectorsize
                                 start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                                header = wdata[start_sector_hdr:start_sector_hdr + gp.header.header_size]
-                                cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, headeroffset, pdata, header)
+                                header = wdata[headeroffset:headeroffset + gp.header.header_size]
+                                cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, pdata)
+                                cmd_patch_multiple(lun, start_sector_hdr, 0, header)
         except Exception as err:
             self.error(str(err))
             return False
