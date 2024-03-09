@@ -1,2 +1,2 @@
-./edl setactiveslot b
+./edl setactiveslot a
 ./edl reset

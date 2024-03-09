@@ -212,7 +212,7 @@ class firehose(metaclass=LogBase):
         self.nandparttbl = None
         self.nandpart = nand_partition(parent=self, printer=print)
 
-    def detect_partition(self, arguments, partitionname):
+    def detect_partition(self, arguments, partitionname, send_full=False):
         if arguments is None:
             arguments = {
                 "--gpt-num-part-entries"     : 0,
@@ -230,7 +230,10 @@ class firehose(metaclass=LogBase):
                 break
             else:
                 if partitionname in guid_gpt.partentries:
-                    return [True, lun, guid_gpt.partentries[partitionname]]
+                    if send_full:
+                        return [True, lun, data, guid_gpt]
+                    else:
+                        return [True, lun, guid_gpt.partentries[partitionname]]
             for part in guid_gpt.partentries:
                 fpartitions[lunname].append(part)
         return [False, fpartitions]
@@ -1332,26 +1335,19 @@ class firehose(metaclass=LogBase):
                 new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
             return new_flags
         
-        def patch_helper(header_data, guid_gpt, partition_a, partition_b, slot_a_state):
+        def patch_helper(header_data, guid_gpt, partition, slot_status):
             part_entry_size = guid_gpt.header.part_entry_size
 
             rf = BytesIO(header_data)
-            slot_b_state = not slot_a_state
 
-            rf.seek(partition_a.entryoffset)
-            sdata_a = rf.read(part_entry_size)
-            partentry_a = gpt.gpt_partition(sdata_a)
-            partentry_a.flags = set_flags(partentry_a.flags, slot_a_state)
+            rf.seek(partition.entryoffset)
+            sdata = rf.read(part_entry_size)
+            partentry = gpt.gpt_partition(sdata)
+            partentry.flags = set_flags(partentry.flags, slot_status)
 
-            rf.seek(partition_b.entryoffset)
-            sdata_b = rf.read(part_entry_size)
-            partentry_b = gpt.gpt_partition(sdata_b)
-            partentry_b.flags = set_flags(partentry_b.flags, slot_b_state)
+            pdata = partentry.create()
 
-            pdata_a = partentry_a.create()
-            pdata_b = partentry_b.create()
-
-            return pdata_a, pdata_b, partition_a.entryoffset, partition_b.entryoffset
+            return pdata, partition.entryoffset
 
 
         if slot.lower() not in ["a", "b"]:
@@ -1362,59 +1358,81 @@ class firehose(metaclass=LogBase):
             slot_a_status = True
         elif slot == "b":
             slot_a_status = False
+        slot_b_status = not slot_a_status
         fpartitions = {}
         try: 
             for lun in self.luns:
                 lunname = "Lun" + str(lun)
                 fpartitions[lunname] = []
-                header_data_a, guid_gpt = self.get_gpt(lun, int(0), int(0), int(0))
-                if guid_gpt is None:
+                header_data_a, guid_gpt_a = self.get_gpt(lun, int(0), int(0), int(0))
+                if guid_gpt_a is None:
                     break
                 else:
-                    for partitionname_a in guid_gpt.partentries:
-                        #gp = gpt()
+                    for partitionname_a in guid_gpt_a.partentries:
                         slot = partitionname_a.lower()[-2:]
                         if slot == "_a":
-                            #self.warning(partitionname)
                             partitionname_b = partitionname_a[:-1] + "b"
-                            resp = self.detect_partition(arguments=None, partitionname=partitionname_b)
+                            resp = self.detect_partition(arguments=None, partitionname=partitionname_b, send_full=True)
                             if not resp[0]:
                                 self.error(f"Cannot find partition {partitionname_b}")
                                 return False
-                            part_a = guid_gpt.partentries[partitionname_a]
-                            _, lun_part_b, part_b = resp
-                            pdata_a, pdata_b, poffset_a, poffset_b = patch_helper(
-                                                                     header_data, guid_gpt,
-                                                                     part_a, part_b, slot_a_status)
+                            _, lun_b, header_data_b, guid_gpt_b = resp
+
+
+                            part_a = guid_gpt_a.partentries[partitionname_a]
+                            pdata_a, poffset_a = patch_helper(header_data_a, guid_gpt_a, part_a, slot_a_status)
+
+                            part_b = guid_gpt_b.partentries[partitionname_b]
+                            pdata_b, poffset_b = patch_helper(header_data_b, guid_gpt_b, part_b, slot_b_status)
+
                             #TODO: remove assert
                             assert(len(pdata_a) == 128)
                             assert(len(pdata_b) == 128)
-                            header_data_a[poffset_a:poffset_a + len(pdata_a)] = pdata_a
-                            #header_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
-                            new_header_a = guid_gpt.fix_gpt_crc(header_data_a)
+                            header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
+                            new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
+
+                            if lun == lun_b:
+                                assert(poffset_b != poffset_a)
+                                header_data_b = new_header_a
+                            header_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
+                            new_header_b = guid_gpt_b.fix_gpt_crc(header_data_b)
+
+                            assert(guid_gpt_a.sectorsize == self.cfg.SECTOR_SIZE_IN_BYTES)
+                            assert(guid_gpt_a.sectorsize == guid_gpt_b.sectorsize)
+
                             if new_header_a is not None:
                                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
                                 byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
                                 cmd_patch_multiple(lun, start_sector_patch_a, byte_offset_patch_a, pdata_a)
 
-                                headeroffset_a = guid_gpt.header.current_lba * guid_gpt.sectorsize
-                                start_sector_hdr = guid_gpt.header.current_lba
-                                pheader = new_header_a[headeroffset_a : headeroffset_a+guid_gpt.header.header_size]
-                                cmd_patch_multiple(lun, start_sector_hdr, 0, pheader)
+                                # header will be updated in partitionname_b if in same lun
+                                if lun != lun_b:
+                                    headeroffset_a = guid_gpt_a.header.current_lba * guid_gpt_a.sectorsize
+                                    start_sector_hdr_a = guid_gpt_a.header.current_lba
+                                    pheader_a = new_header_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
+                                    cmd_patch_multiple(lun, start_sector_hdr_a, 0, pheader_a)
 
-                                self.warning(f"partition_a:{partitionname_a}, partition_b:{partitionname_b}")
-                                self.warning(f"sector_a: {start_sector_patch_a}, byte_offset_a: {byte_offset_patch_a}")
-                                self.warning(f"pdata_a: {hexlify(pdata_a)}")
-                                self.warning(f"sector_b: {start_sector_patch_b}, byte_offset_b: {byte_offset_patch_b}")
-                                self.warning(f"pdata_b: {hexlify(pdata_b)}")
-                                self.warning(f"header_sector: {start_sector_hdr}")
+                                    self.warning(f"partition_a:{partitionname_a}")
+                                    self.warning(f"sector_a: {start_sector_patch_a}, byte_offset_a: {byte_offset_patch_a}")
+                                    self.warning(f"pdata_a: {hexlify(pdata_a)}")
+                                    self.warning(f"header_sector_a: {start_sector_hdr_a}")
+                                    self.warning(f"header_data_a: {hexlify(pheader_a)}")
                             
-                                self.warning(f"header_data: {hexlify(pheader)}")
                             if new_header_b is not None:
                                 start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
                                 byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
-                                cmd_patch_multiple(lun_part_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
+                                cmd_patch_multiple(lun_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
 
+                                headeroffset_b = guid_gpt_b.header.current_lba * guid_gpt_b.sectorsize
+                                start_sector_hdr_b = guid_gpt_b.header.current_lba
+                                pheader_b = new_header_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+                                cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, pheader_b)
+
+                                self.warning(f"partition_b:{partitionname_b}")
+                                self.warning(f"sector_b: {start_sector_patch_b}, byte_offset_b: {byte_offset_patch_b}")
+                                self.warning(f"pdata_b: {hexlify(pdata_b)}")
+                                self.warning(f"header_sector_b: {start_sector_hdr_b}")
+                                self.warning(f"header_data_b: {hexlify(pheader_b)}")
         except Exception as err:
             self.error(str(err))
             return False
