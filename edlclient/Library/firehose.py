@@ -1378,16 +1378,11 @@ class firehose(metaclass=LogBase):
                                 return False
                             _, lun_b, header_data_b, guid_gpt_b = resp
 
-
                             part_a = guid_gpt_a.partentries[partitionname_a]
                             pdata_a, poffset_a = patch_helper(header_data_a, guid_gpt_a, part_a, slot_a_status)
-
                             part_b = guid_gpt_b.partentries[partitionname_b]
                             pdata_b, poffset_b = patch_helper(header_data_b, guid_gpt_b, part_b, slot_b_status)
 
-                            #TODO: remove assert
-                            assert(len(pdata_a) == 128)
-                            assert(len(pdata_b) == 128)
                             header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
                             new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
 
@@ -1396,9 +1391,6 @@ class firehose(metaclass=LogBase):
                                 header_data_b = new_header_a
                             header_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
                             new_header_b = guid_gpt_b.fix_gpt_crc(header_data_b)
-
-                            assert(guid_gpt_a.sectorsize == self.cfg.SECTOR_SIZE_IN_BYTES)
-                            assert(guid_gpt_a.sectorsize == guid_gpt_b.sectorsize)
 
                             if new_header_a is not None:
                                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
