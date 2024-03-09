@@ -483,30 +483,56 @@ class gpt(metaclass=LogBase):
         assert res, "GPT Partition wasn't decoded properly"
 
     def patch(self, data:bytes, partitionname="boot", active: bool = True):
+        def set_flags(flags, active):
+            new_flags = flags
+            if active:
+                new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
+            else:
+                new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
+            return new_flags
         try:
             rf = BytesIO(data)
             for sectorsize in [512, 4096]:
                 result = self.parse(data, sectorsize)
                 if result:
-                    for rname in self.partentries:
-                        if partitionname.lower() == rname.lower():
-                            partition = self.partentries[rname]
-                            rf.seek(partition.entryoffset)
-                            sdata = rf.read(self.header.part_entry_size)
-                            partentry = self.gpt_partition(sdata)
-                            flags = partentry.flags
-                            if active:
-                                flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
-                            else:
-                                flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
-                            partentry.flags = flags
-                            pdata = partentry.create()
-                            return pdata, partition.entryoffset
+                    for rname_a in self.partentries:
+                        if partitionname.lower() == rname_a.lower():
+                            rname_b = rname_a[:-1] + "b"
+                            if rname_b not in self.partentries:
+                                return None, None, None, None
+
+                            slot_a_state = active
+                            slot_b_state = not active
+
+                            partition_a = self.partentries[rname_a]
+                            partition_b = self.partentries[rname_b]
+
+                            rf.seek(partition_a.entryoffset)
+                            sdata_a = rf.read(self.header.part_entry_size)
+                            partentry_a = self.gpt_partition(sdata_a)
+                            partentry_a.flags = set_flags(partentry_a.flags, slot_a_state)
+
+                            rf.seek(partition_b.entryoffset)
+                            sdata_b = rf.read(self.header.part_entry_size)
+                            partentry_b = self.gpt_partition(sdata_b)
+                            partentry_b.flags = set_flags(partentry_b.flags, slot_b_state)
+
+                            print(f"[Before] pa: {partentry_a.type}, pb: {partentry_b.type}")
+                            old_a = partentry_a.type
+                            old_b = partentry_b.type
+                            partentry_a.type, partentry_b.type = partentry_b.type, partentry_a.type
+                            assert(partentry_a.type == old_b)
+                            assert(partentry_b.type == old_a)
+                            print(f"[After] pa: {partentry_a.type}, pb: {partentry_b.type}")
+
+                            pdata_a = partentry_a.create()
+                            pdata_b = partentry_b.create()
+                            return pdata_a, pdata_b, partition_a.entryoffset, partition_b.entryoffset
                     break
-            return None, None
+            return None, None, None, None
         except Exception as e:
             self.error(str(e))
-        return None, None
+        return None, None, None, None
 
     def fix_gpt_crc(self, data):
         partentry_size = self.header.num_part_entries * self.header.part_entry_size

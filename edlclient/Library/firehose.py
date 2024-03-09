@@ -19,7 +19,7 @@ from threading import Thread
 
 from edlclient.Library.Modules.nothing import nothing
 from edlclient.Library.utils import *
-from edlclient.Library.gpt import gpt
+from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Library.sparse import QCSparse
 from edlclient.Library.utils import progress
 from queue import Queue
@@ -213,6 +213,12 @@ class firehose(metaclass=LogBase):
         self.nandpart = nand_partition(parent=self, printer=print)
 
     def detect_partition(self, arguments, partitionname):
+        if arguments is None:
+            arguments = {
+                "--gpt-num-part-entries"     : 0,
+                "--gpt-part-entry-size"      : 0,
+                "--gpt-part-entry-start-lba" : 0
+            }
         fpartitions = {}
         for lun in self.luns:
             lunname = "Lun" + str(lun)
@@ -1308,7 +1314,7 @@ class firehose(metaclass=LogBase):
         def cmd_patch_multiple(lun, start_sector, byte_offset, patch_data):
             offset = 0
             size_each_patch = 4
-            write_size = len(wdata)
+            write_size = len(patch_data)
             for i in range(0, write_size, size_each_patch):
                 pdata_subset = int(unpack("<I", patch_data[offset:offset+size_each_patch])[0])
                 self.cmd_patch( lun, start_sector, \
@@ -1318,40 +1324,97 @@ class firehose(metaclass=LogBase):
                 offset += size_each_patch
             return True
 
+        def set_flags(flags, active):
+            new_flags = flags
+            if active:
+                new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
+            else:
+                new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
+            return new_flags
+        
+        def patch_helper(header_data, guid_gpt, partition_a, partition_b, slot_a_state):
+            part_entry_size = guid_gpt.header.part_entry_size
+
+            rf = BytesIO(header_data)
+            slot_b_state = not slot_a_state
+
+            rf.seek(partition_a.entryoffset)
+            sdata_a = rf.read(part_entry_size)
+            partentry_a = gpt.gpt_partition(sdata_a)
+            partentry_a.flags = set_flags(partentry_a.flags, slot_a_state)
+
+            rf.seek(partition_b.entryoffset)
+            sdata_b = rf.read(part_entry_size)
+            partentry_b = gpt.gpt_partition(sdata_b)
+            partentry_b.flags = set_flags(partentry_b.flags, slot_b_state)
+
+            pdata_a = partentry_a.create()
+            pdata_b = partentry_b.create()
+
+            return pdata_a, pdata_b, partition_a.entryoffset, partition_b.entryoffset
+
+
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
             return False
-        partslots = {}
+        slot_a_status = None
         if slot == "a":
-            partslots["_a"] = True
-            partslots["_b"] = False
+            slot_a_status = True
         elif slot == "b":
-            partslots["_a"] = False
-            partslots["_b"] = True
+            slot_a_status = False
         fpartitions = {}
         try: 
             for lun in self.luns:
                 lunname = "Lun" + str(lun)
                 fpartitions[lunname] = []
-                data, guid_gpt = self.get_gpt(lun, int(0), int(0), int(0))
+                header_data_a, guid_gpt = self.get_gpt(lun, int(0), int(0), int(0))
                 if guid_gpt is None:
                     break
                 else:
-                    for partitionname in guid_gpt.partentries:
-                        gp = gpt()
-                        slot = partitionname.lower()[-2:]
-                        if "_a" in slot or "_b" in slot:
-                            pdata, poffset = gp.patch(data, partitionname, active=partslots[slot])
-                            data[poffset:poffset + len(pdata)] = pdata
-                            wdata = gp.fix_gpt_crc(data)
-                            if wdata is not None:
-                                start_sector_patch = poffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                                byte_offset_patch = poffset % self.cfg.SECTOR_SIZE_IN_BYTES
-                                headeroffset = gp.header.current_lba * gp.sectorsize
-                                start_sector_hdr = headeroffset // self.cfg.SECTOR_SIZE_IN_BYTES
-                                header = wdata[headeroffset:headeroffset + gp.header.header_size]
-                                cmd_patch_multiple(lun, start_sector_patch, byte_offset_patch, pdata)
-                                cmd_patch_multiple(lun, start_sector_hdr, 0, header)
+                    for partitionname_a in guid_gpt.partentries:
+                        #gp = gpt()
+                        slot = partitionname_a.lower()[-2:]
+                        if slot == "_a":
+                            #self.warning(partitionname)
+                            partitionname_b = partitionname_a[:-1] + "b"
+                            resp = self.detect_partition(arguments=None, partitionname=partitionname_b)
+                            if not resp[0]:
+                                self.error(f"Cannot find partition {partitionname_b}")
+                                return False
+                            part_a = guid_gpt.partentries[partitionname_a]
+                            _, lun_part_b, part_b = resp
+                            pdata_a, pdata_b, poffset_a, poffset_b = patch_helper(
+                                                                     header_data, guid_gpt,
+                                                                     part_a, part_b, slot_a_status)
+                            #TODO: remove assert
+                            assert(len(pdata_a) == 128)
+                            assert(len(pdata_b) == 128)
+                            header_data_a[poffset_a:poffset_a + len(pdata_a)] = pdata_a
+                            #header_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
+                            new_header_a = guid_gpt.fix_gpt_crc(header_data_a)
+                            if new_header_a is not None:
+                                start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
+                                byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
+                                cmd_patch_multiple(lun, start_sector_patch_a, byte_offset_patch_a, pdata_a)
+
+                                headeroffset_a = guid_gpt.header.current_lba * guid_gpt.sectorsize
+                                start_sector_hdr = guid_gpt.header.current_lba
+                                pheader = new_header_a[headeroffset_a : headeroffset_a+guid_gpt.header.header_size]
+                                cmd_patch_multiple(lun, start_sector_hdr, 0, pheader)
+
+                                self.warning(f"partition_a:{partitionname_a}, partition_b:{partitionname_b}")
+                                self.warning(f"sector_a: {start_sector_patch_a}, byte_offset_a: {byte_offset_patch_a}")
+                                self.warning(f"pdata_a: {hexlify(pdata_a)}")
+                                self.warning(f"sector_b: {start_sector_patch_b}, byte_offset_b: {byte_offset_patch_b}")
+                                self.warning(f"pdata_b: {hexlify(pdata_b)}")
+                                self.warning(f"header_sector: {start_sector_hdr}")
+                            
+                                self.warning(f"header_data: {hexlify(pheader)}")
+                            if new_header_b is not None:
+                                start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
+                                byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
+                                cmd_patch_multiple(lun_part_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
+
         except Exception as err:
             self.error(str(err))
             return False
