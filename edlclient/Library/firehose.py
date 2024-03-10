@@ -446,7 +446,6 @@ class firehose(metaclass=LogBase):
             data += self.modules.addpatch()
         data += f"/>\n</data>"
 
-        return True
         rsp = self.xmlsend(data)
         if rsp.resp:
             if display:
@@ -1327,28 +1326,41 @@ class firehose(metaclass=LogBase):
                 offset += size_each_patch
             return True
 
-        def set_flags(flags, active):
+        def set_flags(flags, active, is_boot):
             new_flags = flags
             if active:
-                new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
+                if is_boot:
+                    new_flags = 0x006f << (AB_FLAG_OFFSET*8)
+                else:
+                    new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
             else:
-                new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
+                if is_boot:
+                    new_flags = 0x003a << (AB_FLAG_OFFSET*8)
+                else:
+                    new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
             return new_flags
         
-        def patch_helper(header_data, guid_gpt, partition, slot_status):
+        def patch_helper(header_data_a, header_data_b, guid_gpt, partition_a, partition_b, slot_a_status, slot_b_status, is_boot):
             part_entry_size = guid_gpt.header.part_entry_size
 
-            rf = BytesIO(header_data)
+            rf_a = BytesIO(header_data_a)
+            rf_b = BytesIO(header_data_b)
 
-            rf.seek(partition.entryoffset)
-            sdata = rf.read(part_entry_size)
-            partentry = gpt.gpt_partition(sdata)
-            partentry.flags = set_flags(partentry.flags, slot_status)
+            rf_a.seek(partition_a.entryoffset)
+            rf_b.seek(partition_b.entryoffset)
 
-            pdata = partentry.create()
+            sdata_a = rf_a.read(part_entry_size)
+            sdata_b = rf_b.read(part_entry_size)
 
-            return pdata, partition.entryoffset
+            partentry_a = gpt.gpt_partition(sdata_a)
+            partentry_b = gpt.gpt_partition(sdata_b)
 
+            partentry_a.flags = set_flags(partentry_a.flags, slot_a_status, is_boot)
+            partentry_b.flags = set_flags(partentry_b.flags, slot_b_status, is_boot)
+            partentry_a.type, partentry_b.type = partentry_b.type, partentry_a.type
+
+            pdata_a, pdata_b = partentry_a.create(), partentry_b.create()
+            return pdata_a, partition_a.entryoffset, pdata_b, partition_b.entryoffset
 
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
@@ -1379,9 +1391,16 @@ class firehose(metaclass=LogBase):
                             _, lun_b, header_data_b, guid_gpt_b = resp
 
                             part_a = guid_gpt_a.partentries[partitionname_a]
-                            pdata_a, poffset_a = patch_helper(header_data_a, guid_gpt_a, part_a, slot_a_status)
                             part_b = guid_gpt_b.partentries[partitionname_b]
-                            pdata_b, poffset_b = patch_helper(header_data_b, guid_gpt_b, part_b, slot_b_status)
+                            is_boot = False
+                            if partitionname_a == "boot_a":
+                                is_boot = True
+                            pdata_a, poffset_a, pdata_b, poffset_b = patch_helper(
+                                header_data_a, header_data_b,
+                                guid_gpt_a, part_a, part_b,
+                                slot_a_status, slot_b_status,
+                                is_boot
+                            )
 
                             header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
                             new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
