@@ -1,1 +1,0 @@
-{"supported_functions": ["program", "read", "nop", "patch", "configure", "setbootablestoragedrive", "erase", "power", "firmwarewrite", "getstorageinfo", "benchmark", "emmc", "ufs", "fixgpt"], "programmer": "", "serial": 1715676728}
