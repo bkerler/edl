@@ -19,7 +19,8 @@ from threading import Thread
 
 from edlclient.Library.Modules.nothing import nothing
 from edlclient.Library.utils import *
-from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
+from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE, MAX_PRIORITY, PART_ATT_PRIORITY_BIT
+from edlclient.Library.gpt import PART_ATT_PRIORITY_VAL, PART_ATT_ACTIVE_VAL, PART_ATT_MAX_RETRY_COUNT_VAL, PART_ATT_SUCCESSFUL_VAL, PART_ATT_UNBOOTABLE_VAL
 from edlclient.Library.sparse import QCSparse
 from edlclient.Library.utils import progress
 from queue import Queue
@@ -1312,7 +1313,6 @@ class firehose(metaclass=LogBase):
             return None
 
     def cmd_setactiveslot(self, slot: str):
-        # TODO: need to switch the type of partitions _a and partitions _b
         def cmd_patch_multiple(lun, start_sector, byte_offset, patch_data):
             offset = 0
             size_each_patch = 4
@@ -1330,12 +1330,14 @@ class firehose(metaclass=LogBase):
             new_flags = flags
             if active:
                 if is_boot:
-                    new_flags = 0x006f << (AB_FLAG_OFFSET*8)
+                    new_flags |= (PART_ATT_PRIORITY_VAL | PART_ATT_ACTIVE_VAL | PART_ATT_MAX_RETRY_COUNT_VAL)
+                    new_flags &= (~PART_ATT_SUCCESSFUL_VAL & ~PART_ATT_UNBOOTABLE_VAL)
                 else:
                     new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
             else:
                 if is_boot:
-                    new_flags = 0x003a << (AB_FLAG_OFFSET*8)
+                    new_flags &= (~PART_ATT_PRIORITY_VAL & ~PART_ATT_ACTIVE_VAL)
+                    new_flags |= ((MAX_PRIORITY-1) << PART_ATT_PRIORITY_BIT)
                 else:
                     new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
             return new_flags
@@ -1401,7 +1403,6 @@ class firehose(metaclass=LogBase):
                                 slot_a_status, slot_b_status,
                                 is_boot
                             )
-
                             header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
                             new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
 
@@ -1422,12 +1423,6 @@ class firehose(metaclass=LogBase):
                                     start_sector_hdr_a = guid_gpt_a.header.current_lba
                                     pheader_a = new_header_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
                                     cmd_patch_multiple(lun, start_sector_hdr_a, 0, pheader_a)
-
-                                    self.warning(f"partition_a:{partitionname_a}")
-                                    self.warning(f"sector_a: {start_sector_patch_a}, byte_offset_a: {byte_offset_patch_a}")
-                                    self.warning(f"pdata_a: {hexlify(pdata_a)}")
-                                    self.warning(f"header_sector_a: {start_sector_hdr_a}")
-                                    self.warning(f"header_data_a: {hexlify(pheader_a)}")
                             
                             if new_header_b is not None:
                                 start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -1438,12 +1433,6 @@ class firehose(metaclass=LogBase):
                                 start_sector_hdr_b = guid_gpt_b.header.current_lba
                                 pheader_b = new_header_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
                                 cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, pheader_b)
-
-                                self.warning(f"partition_b:{partitionname_b}")
-                                self.warning(f"sector_b: {start_sector_patch_b}, byte_offset_b: {byte_offset_patch_b}")
-                                self.warning(f"pdata_b: {hexlify(pdata_b)}")
-                                self.warning(f"header_sector_b: {start_sector_hdr_b}")
-                                self.warning(f"header_data_b: {hexlify(pheader_b)}")
         except Exception as err:
             self.error(str(err))
             return False
