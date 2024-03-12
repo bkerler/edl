@@ -1375,10 +1375,10 @@ class firehose(metaclass=LogBase):
         slot_b_status = not slot_a_status
         fpartitions = {}
         try: 
-            for lun in self.luns:
-                lunname = "Lun" + str(lun)
+            for lun_a in self.luns:
+                lunname = "Lun" + str(lun_a)
                 fpartitions[lunname] = []
-                header_data_a, guid_gpt_a = self.get_gpt(lun, int(0), int(0), int(0))
+                header_data_a, guid_gpt_a = self.get_gpt(lun_a, int(0), int(0), int(0))
                 if guid_gpt_a is None:
                     break
                 else:
@@ -1386,11 +1386,16 @@ class firehose(metaclass=LogBase):
                         slot = partitionname_a.lower()[-2:]
                         if slot == "_a":
                             partitionname_b = partitionname_a[:-1] + "b"
-                            resp = self.detect_partition(arguments=None, partitionname=partitionname_b, send_full=True)
-                            if not resp[0]:
-                                self.error(f"Cannot find partition {partitionname_b}")
-                                return False
-                            _, lun_b, header_data_b, guid_gpt_b = resp
+                            if partitionname_b in guid_gpt_a.partentries:
+                                lun_b = lun_a
+                                header_data_b = header_data_a
+                                guid_gpt_b = guid_gpt_a
+                            else:
+                                resp = self.detect_partition(arguments=None, partitionname=partitionname_b, send_full=True)
+                                if not resp[0]:
+                                    self.error(f"Cannot find partition {partitionname_b}")
+                                    return False
+                                _, lun_b, header_data_b, guid_gpt_b = resp
 
                             part_a = guid_gpt_a.partentries[partitionname_a]
                             part_b = guid_gpt_b.partentries[partitionname_b]
@@ -1403,26 +1408,24 @@ class firehose(metaclass=LogBase):
                                 slot_a_status, slot_b_status,
                                 is_boot
                             )
+                            assert(poffset_b != poffset_a)
+
                             header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
                             new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
-
-                            if lun == lun_b:
-                                assert(poffset_b != poffset_a)
-                                header_data_b = new_header_a
                             header_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
                             new_header_b = guid_gpt_b.fix_gpt_crc(header_data_b)
 
                             if new_header_a is not None:
                                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
                                 byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
-                                cmd_patch_multiple(lun, start_sector_patch_a, byte_offset_patch_a, pdata_a)
+                                cmd_patch_multiple(lun_a, start_sector_patch_a, byte_offset_patch_a, pdata_a)
 
                                 # header will be updated in partitionname_b if in same lun
-                                if lun != lun_b:
+                                if lun_a != lun_b:
                                     headeroffset_a = guid_gpt_a.header.current_lba * guid_gpt_a.sectorsize
                                     start_sector_hdr_a = guid_gpt_a.header.current_lba
                                     pheader_a = new_header_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
-                                    cmd_patch_multiple(lun, start_sector_hdr_a, 0, pheader_a)
+                                    cmd_patch_multiple(lun_a, start_sector_hdr_a, 0, pheader_a)
                             
                             if new_header_b is not None:
                                 start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
