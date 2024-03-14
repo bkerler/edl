@@ -1408,7 +1408,6 @@ class firehose(metaclass=LogBase):
                                 slot_a_status, slot_b_status,
                                 is_boot
                             )
-                            assert(poffset_b != poffset_a)
 
                             header_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
                             new_header_a = guid_gpt_a.fix_gpt_crc(header_data_a)
