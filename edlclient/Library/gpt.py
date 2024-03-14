@@ -194,6 +194,20 @@ AB_SLOT_ACTIVE = 1
 AB_SLOT_INACTIVE = 0
 
 
+PART_ATT_PRIORITY_BIT = 48
+PART_ATT_ACTIVE_BIT = 50
+PART_ATT_MAX_RETRY_CNT_BIT = 51
+MAX_PRIORITY = 3
+PART_ATT_SUCCESS_BIT = 54
+PART_ATT_UNBOOTABLE_BIT = 55
+
+PART_ATT_PRIORITY_VAL = 0x3 << PART_ATT_PRIORITY_BIT
+PART_ATT_ACTIVE_VAL = 0x1 << PART_ATT_ACTIVE_BIT
+PART_ATT_MAX_RETRY_COUNT_VAL = 0x7 << PART_ATT_MAX_RETRY_CNT_BIT
+PART_ATT_SUCCESSFUL_VAL  = 0x1 << PART_ATT_SUCCESS_BIT
+PART_ATT_UNBOOTABLE_VAL = 0x1 << PART_ATT_UNBOOTABLE_BIT
+
+
 class gpt(metaclass=LogBase):
     class gpt_header:
         def __init__(self, data):
@@ -481,32 +495,6 @@ class gpt(metaclass=LogBase):
     def test_gpt(self):
         res = self.print_gptfile(os.path.join("TestFiles", "gpt_sm8180x.bin"))
         assert res, "GPT Partition wasn't decoded properly"
-
-    def patch(self, data:bytes, partitionname="boot", active: bool = True):
-        try:
-            rf = BytesIO(data)
-            for sectorsize in [512, 4096]:
-                result = self.parse(data, sectorsize)
-                if result:
-                    for rname in self.partentries:
-                        if partitionname.lower() == rname.lower():
-                            partition = self.partentries[rname]
-                            rf.seek(partition.entryoffset)
-                            sdata = rf.read(self.header.part_entry_size)
-                            partentry = self.gpt_partition(sdata)
-                            flags = partentry.flags
-                            if active:
-                                flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
-                            else:
-                                flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
-                            partentry.flags = flags
-                            pdata = partentry.create()
-                            return pdata, partition.entryoffset
-                    break
-            return None, None
-        except Exception as e:
-            self.error(str(e))
-        return None, None
 
     def fix_gpt_crc(self, data):
         partentry_size = self.header.num_part_entries * self.header.part_entry_size
