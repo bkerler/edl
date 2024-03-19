@@ -49,6 +49,8 @@ USB_RECIP_OTHER = 0x03
 USB_RECIP_PORT = 0x04
 USB_RECIP_RPIPE = 0x05
 
+MAX_USB_BULK_BUFFER_SIZE = 16384
+
 tag = 0
 
 CDC_CMDS = {
@@ -336,7 +338,8 @@ class usb_class(DeviceClass):
 
     def write(self, command, pktsize=None):
         if pktsize is None:
-            pktsize = self.EP_OUT.wMaxPacketSize
+            #pktsize = self.EP_OUT.wMaxPacketSize
+            pktsize = MAX_USB_BULK_BUFFER_SIZE
         if isinstance(command, str):
             command = bytes(command, 'utf-8')
         pos = 0
