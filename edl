@@ -45,6 +45,7 @@ Usage:
     edl qfp <filename> [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]
     edl getstorageinfo [--loader=filename] [--memory=memtype] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]  [--devicemodel=value]
     edl setbootablestoragedrive <lun> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]  [--devicemodel=value]
+    edl getactiveslot [--memory=memtype] [--loader=filename] [--debugmode] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]  [--devicemodel=value]
     edl setactiveslot <slot> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]  [--devicemodel=value]
     edl send <command> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--portname=portname] [--serial]  [--devicemodel=value]
     edl xml <xmlfile> [--loader=filename] [--debugmode] [--skipresponse] [--vid=vid] [--pid=pid] [--skipstorageinit] [--portname=portname] [--serial]  [--devicemodel=value]
@@ -153,7 +154,7 @@ print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2023.")
 def parse_cmd(rargs):
     cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
             "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
-            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "setactiveslot",
+            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "getactiveslot", "setactiveslot",
             "send", "xml", "rawxml", "reset", "nop", "modules", "memorydump", "provision", "qfil"]
     for cmd in cmds:
         if rargs[cmd]:
