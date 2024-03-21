@@ -647,7 +647,7 @@ class firehose_client(metaclass=LogBase):
                 partition = res[2]
                 active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
-                    self.printer("Current active slot : a")
+                    self.printer("Current active slot: a")
                     return True
             res = self.firehose.detect_partition(options, "boot_b")
             if res[0]:
@@ -655,7 +655,7 @@ class firehose_client(metaclass=LogBase):
                 partition = res[2]
                 active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
-                    self.printer("Current active slot : b")
+                    self.printer("Current active slot: b")
                     return True
             self.error("Can't detect active slot. Please make sure your device has slot A/B")
             return False
