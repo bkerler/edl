@@ -1326,7 +1326,7 @@ class firehose(metaclass=LogBase):
                 offset += size_each_patch
             return True
 
-        # flags: 0x3a for inactive and 0x6f for inactive boot partition
+        # flags: 0x3a for inactive and 0x6f for active boot partition
         def set_flags(flags, active, is_boot):
             new_flags = flags
             if active:
