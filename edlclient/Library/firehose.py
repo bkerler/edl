@@ -1326,18 +1326,21 @@ class firehose(metaclass=LogBase):
                 offset += size_each_patch
             return True
 
+        # flags: 0x3a for inactive and 0x6f for active boot partition
         def set_flags(flags, active, is_boot):
             new_flags = flags
             if active:
                 if is_boot:
-                    new_flags |= (PART_ATT_PRIORITY_VAL | PART_ATT_ACTIVE_VAL | PART_ATT_MAX_RETRY_COUNT_VAL)
-                    new_flags &= (~PART_ATT_SUCCESSFUL_VAL & ~PART_ATT_UNBOOTABLE_VAL)
+                    #new_flags |= (PART_ATT_PRIORITY_VAL | PART_ATT_ACTIVE_VAL | PART_ATT_MAX_RETRY_COUNT_VAL)
+                    #new_flags &= (~PART_ATT_SUCCESSFUL_VAL & ~PART_ATT_UNBOOTABLE_VAL)
+                    new_flags = 0x6f << (AB_FLAG_OFFSET*8)
                 else:
                     new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
             else:
                 if is_boot:
-                    new_flags &= (~PART_ATT_PRIORITY_VAL & ~PART_ATT_ACTIVE_VAL)
-                    new_flags |= ((MAX_PRIORITY-1) << PART_ATT_PRIORITY_BIT)
+                    #new_flags &= (~PART_ATT_PRIORITY_VAL & ~PART_ATT_ACTIVE_VAL)
+                    #new_flags |= ((MAX_PRIORITY-1) << PART_ATT_PRIORITY_BIT)
+                    new_flags = 0x3a << (AB_FLAG_OFFSET*8)
                 else:
                     new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
             return new_flags
