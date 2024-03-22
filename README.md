@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2023
+(c) B. Kerler 2018-2024
 Licensed under GPLv3 license.
 
 # Be aware that if you use anything from this repository in any (including) compiled form, you need to opensource your code as well !
