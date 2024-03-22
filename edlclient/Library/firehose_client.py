@@ -16,6 +16,7 @@ from edlclient.Library.firehose import firehose
 from edlclient.Library.xmlparser import xmlparser
 from edlclient.Library.utils import do_tcp_server
 from edlclient.Library.utils import LogBase, getint
+from edlclient.Library.gpt import AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Config.qualcomm_config import memory_type
 from edlclient.Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
 import fnmatch
@@ -639,6 +640,25 @@ class firehose_client(metaclass=LogBase):
                 return False
             else:
                 return self.firehose.cmd_setbootablestoragedrive(int(options["<lun>"]))
+        elif cmd == "getactiveslot":
+            res = self.firehose.detect_partition(options, "boot_a")
+            if res[0]:
+                lun = res[1]
+                partition = res[2]
+                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                if active:
+                    self.printer("Current active slot: a")
+                    return True
+            res = self.firehose.detect_partition(options, "boot_b")
+            if res[0]:
+                lun = res[1]
+                partition = res[2]
+                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                if active:
+                    self.printer("Current active slot: b")
+                    return True
+            self.error("Can't detect active slot. Please make sure your device has slot A/B")
+            return False
         elif cmd == "setactiveslot":
             if not self.check_param(["<slot>"]):
                 return False
