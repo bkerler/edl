@@ -351,7 +351,6 @@ class gpt(metaclass=LogBase):
 
 
     def parse(self, gptdata, sectorsize=512):
-        self.warning("got here")
         self.header = self.gpt_header(gptdata[sectorsize:sectorsize + 0x5C])
         self.sectorsize = sectorsize
         if self.header.signature != b"EFI PART":
@@ -362,7 +361,7 @@ class gpt(metaclass=LogBase):
         if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
         else:
-            start = self.header.part_entry_start_lba * sectorsize
+            start = 2 * sectorsize # mbr + header + part_table
 
         entrysize = self.header.part_entry_size
         self.partentries = {}
@@ -395,7 +394,7 @@ class gpt(metaclass=LogBase):
             pa.sector = partentry.first_lba
             pa.sectors = partentry.last_lba - partentry.first_lba + 1
             pa.flags = partentry.flags
-            pa.entryoffset = start + (idx * entrysize)
+            pa.entryoffset = (self.header.part_entry_start_lba * sectorsize) + (idx * entrysize)
             type = int(unpack("<I", partentry.type[0:0x4])[0])
             try:
                 pa.type = self.efi_type(type).name

@@ -754,7 +754,7 @@ class firehose(metaclass=LogBase):
         return response(resp=resp, data=resData, error=rsp[2])  # Do not remove, needed for oneplus
 
     # TODO: this should be able to get backup gpt as well
-    def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, start_sector=0, primary=True):
+    def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, start_sector=1):
         try:
             resp = self.cmd_read_buffer(lun, 0, 1, False)
         except Exception as err:
@@ -803,51 +803,39 @@ class firehose(metaclass=LogBase):
                 loglevel=self.__logger.level
             )
             try:
-                offset = self.cfg.SECTOR_SIZE_IN_BYTES if primary else 0
-                header = guid_gpt.parseheader(data, offset)
-                if not primary:
-                    print(f"signature: {header.signature}")
-                    print(f"revision: {header.revision}")
-                    print(f"header size: {header.header_size}")
-                    print(f"crc32: {header.crc32}")
-                    print(f"reserved: {header.reserved}")
-                    print(f"current_lba: {header.current_lba}")
-                    print(f"backup_lba: {header.backup_lba}")
-                    print(f"first_usable_lba: {header.first_usable_lba}")
-                    print(f"last_usable_lba: {header.last_usable_lba}")
-                    print(f"disk_guid: {header.disk_guid}")
-                    print(f"part_entry_stzrt_lba: {header.part_entry_start_lba}")
-                    print(f"num_part_entries: {header.num_part_entries}")
-                    print(f"part_entry_size: {header.part_entry_size}")
-                    print(f"crc32_part_entries: {header.crc32_part_entries}")
-                    return None, None
+                sectorsize = self.cfg.SECTOR_SIZE_IN_BYTES
+                header = guid_gpt.parseheader(data, sectorsize)
+                #if not primary:
+                #    print(f"signature: {header.signature}")
+                #    print(f"revision: {header.revision}")
+                #    print(f"header size: {header.header_size}")
+                #    print(f"crc32: {header.crc32}")
+                #    print(f"reserved: {header.reserved}")
+                #    print(f"current_lba: {header.current_lba}")
+                #    print(f"backup_lba: {header.backup_lba}")
+                #    print(f"first_usable_lba: {header.first_usable_lba}")
+                #    print(f"last_usable_lba: {header.last_usable_lba}")
+                #    print(f"disk_guid: {header.disk_guid}")
+                #    print(f"part_entry_stzrt_lba: {header.part_entry_start_lba}")
+                #    print(f"num_part_entries: {header.num_part_entries}")
+                #    print(f"part_entry_size: {header.part_entry_size}")
+                #    print(f"crc32_part_entries: {header.crc32_part_entries}")
+                #    return None, None
 
                 if header.signature == b"EFI PART":
-                    gptsize = (header.part_entry_start_lba * self.cfg.SECTOR_SIZE_IN_BYTES) + (
-                            header.num_part_entries * header.part_entry_size)
-                    sectors = gptsize // self.cfg.SECTOR_SIZE_IN_BYTES
-                    if gptsize % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
+                    part_table_size = header.num_part_entries * header.part_entry_size
+                    sectors = part_table_size // self.cfg.SECTOR_SIZE_IN_BYTES
+                    if part_table_size % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                         sectors += 1
                     if sectors == 0:
                         return None, None
                     if sectors > 64:
                         sectors = 64
-                    data = self.cmd_read_buffer(lun, start_sector, sectors, False)
+                    data += self.cmd_read_buffer(lun, header.part_entry_start_lba, sectors, False).data
                     if data == b"":
                         return None, None
-                    guid_gpt.parse(data.data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                    return data.data, guid_gpt
-                    #else:
-                    #    num_part_sectors = (header.num_part_entries * header.part_entry_size)//self.cfg.SECTOR_SIZE_IN_BYTES
-                    #    if num_part_sectors % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
-                    #        num_part_sectors += 1
-                    #    self.warning(f"{num_part_sectors}")
-                    #    part_table = self.cmd_read_buffer(lun, header.part_entry_start_lba, num_part_sectors, False)
-                    #    #self.warning("got here")
-                    #    #self.warning(f"{data}")
-                    #    parse_data =  (b'0' * self.cfg.SECTOR_SIZE_IN_BYTES) + data + part_table.data
-                    #    guid_gpt.parse(parse_data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                    #    return parse_data, guid_gpt
+                    guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                    return data, guid_gpt
                 else:
                     return None, None
             except Exception as err:
@@ -1350,43 +1338,6 @@ class firehose(metaclass=LogBase):
     def check_gpt_integrity(self, gptData, guid_gpt):
         primary_header = guid_gpt.header
 
-    def cmd_patch_multiple(self, lun, start_sector, byte_offset, patch_data):
-        offset = 0
-        size_each_patch = 4
-        write_size = len(patch_data)
-        for i in range(0, write_size, size_each_patch):
-            pdata_subset = int(unpack("<I", patch_data[offset:offset+size_each_patch])[0])
-            self.cmd_patch( lun, start_sector, \
-                            byte_offset + offset, \
-                            pdata_subset, \
-                            size_each_patch, True)
-            offset += size_each_patch
-        return True
-
-    def update_gpt_info(self, new_hdr_a, new_hdr_b,
-                        pdata_a, pdata_b,
-                        lun_a, lun_b,
-                        start_sector_hdr_a, start_sector_hdr_b,
-                        start_sector_patch_a, start_sector_patch_b,
-                        byte_offset_patch_a, byte_offset_patch_b
-                        ):
-
-        self.cmd_patch_multiple(lun_a, start_sector_patch_a, byte_offset_patch_a, pdata_a)
-
-        # header will be updated in partitionname_b if in same lun
-        if lun_a != lun_b:
-            #headeroffset_a = guid_gpt_a.header.current_lba * guid_gpt_a.sectorsize
-            #start_sector_hdr_a = guid_gpt_a.header.current_lba
-            #pheader_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
-            self.cmd_patch_multiple(lun_a, start_sector_hdr_a, 0, new_hdr_a)
-
-        self.cmd_patch_multiple(lun_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
-        #headeroffset_b = guid_gpt_b.header.current_lba * guid_gpt_b.sectorsize
-        #start_sector_hdr_b = guid_gpt_b.header.current_lba
-        #pheader_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
-        self.cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, new_hdr_b)
-
-
     def cmd_setactiveslot(self, slot: str):
         # flags: 0x3a for inactive and 0x6f for active boot partition
         def set_flags(flags, active, is_boot):
@@ -1429,6 +1380,65 @@ class firehose(metaclass=LogBase):
             pdata_a, pdata_b = partentry_a.create(), partentry_b.create()
             return pdata_a, partition_a.entryoffset, pdata_b, partition_b.entryoffset
 
+        def cmd_patch_multiple(lun, start_sector, byte_offset, patch_data):
+            offset = 0
+            size_each_patch = 4
+            write_size = len(patch_data)
+            for i in range(0, write_size, size_each_patch):
+                pdata_subset = int(unpack("<I", patch_data[offset:offset+size_each_patch])[0])
+                self.cmd_patch( lun, start_sector, \
+                                byte_offset + offset, \
+                                pdata_subset, \
+                                size_each_patch, True)
+                offset += size_each_patch
+            return True
+
+        def update_gpt_info(guid_gpt_a, guid_gpt_b, partitionname_a, partitionname_b,
+                            gpt_data_a, gpt_data_b, slot_a_status, slot_b_status, lun_a, lun_b
+                            ):
+
+            part_a = guid_gpt_a.partentries[partitionname_a]
+            part_b = guid_gpt_b.partentries[partitionname_b]
+            is_boot = False
+            if partitionname_a == "boot_a":
+                is_boot = True
+            pdata_a, poffset_a, pdata_b, poffset_b = patch_helper(
+                gpt_data_a, gpt_data_b,
+                guid_gpt_a, part_a, part_b,
+                slot_a_status, slot_b_status,
+                is_boot
+            )
+
+            if gpt_data_a and gpt_data_b:
+                start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
+                byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
+                #cmd_patch_multiple(lun_a, start_sector_patch_a, byte_offset_patch_a, pdata_a)
+
+                if lun_a != lun_b:
+                    entryoffset_a = poffset_a - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
+                    gpt_data_a[entryoffset_a: entryoffset_a+len(pdata_a)] = pdata_a
+                    new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
+                    start_sector_hdr_a = guid_gpt_a.header.current_lba
+                    headeroffset_a = guid_gpt_a.sectorsize # gptData: mbr + gpt header + part array
+                    new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
+                    cmd_patch_multiple(lun_a, start_sector_hdr_a, 0, new_hdr_a)
+
+
+                start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
+                byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
+                cmd_patch_multiple(lun_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
+
+                entryoffset_b = poffset_b - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
+                gpt_data_b[entryoffset_b:entryoffset_b + len(pdata_b)] = pdata_b
+                new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
+                start_sector_hdr_b = guid_gpt_b.header.current_lba
+                headeroffset_b = guid_gpt_b.sectorsize
+                new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+                cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, new_hdr_b)
+                return True
+            return True
+
+
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
             return False
@@ -1444,6 +1454,7 @@ class firehose(metaclass=LogBase):
                 lunname = "Lun" + str(lun_a)
                 fpartitions[lunname] = []
                 gpt_data_a, guid_gpt_a = self.get_gpt(lun_a, int(0), int(0), int(0))
+                #back_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, guid_gpt_a.header.backup_lba)
                 if guid_gpt_a is None:
                     break
                 else:
@@ -1456,43 +1467,58 @@ class firehose(metaclass=LogBase):
                                 gpt_data_b = gpt_data_a
                                 guid_gpt_b = guid_gpt_a
                             else:
-                                resp = self.detect_partition(arguments=None, partitionname=partitionname_b, send_full=True)
+                                resp = self.detect_partition(arguments=None,
+                                                             partitionname=partitionname_b,
+                                                             send_full=True)
                                 if not resp[0]:
-                                    self.warning("in here")
                                     self.error(f"Cannot find partition {partitionname_b}")
                                     return False
                                 _, lun_b, gpt_data_b, guid_gpt_b = resp
 
-                            part_a = guid_gpt_a.partentries[partitionname_a]
-                            part_b = guid_gpt_b.partentries[partitionname_b]
-                            is_boot = False
-                            if partitionname_a == "boot_a":
-                                is_boot = True
-                            pdata_a, poffset_a, pdata_b, poffset_b = patch_helper(
-                                gpt_data_a, gpt_data_b,
-                                guid_gpt_a, part_a, part_b,
-                                slot_a_status, slot_b_status,
-                                is_boot
-                            )
+                            update_gpt_info(guid_gpt_a, guid_gpt_b,
+                                            partitionname_a, partitionname_b,
+                                            gpt_data_a, gpt_data_b,
+                                            slot_a_status, slot_b_status,
+                                            lun_a, lun_b
+                                            )
 
-                            if gpt_data_a and gpt_data_b:
-                                gpt_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
-                                new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
-                                gpt_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
-                                new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
+                            #part_a = guid_gpt_a.partentries[partitionname_a]
+                            #part_b = guid_gpt_b.partentries[partitionname_b]
+                            #is_boot = False
+                            #if partitionname_a == "boot_a":
+                            #    is_boot = True
+                            #pdata_a, poffset_a, pdata_b, poffset_b = patch_helper(
+                            #    gpt_data_a, gpt_data_b,
+                            #    guid_gpt_a, part_a, part_b,
+                            #    slot_a_status, slot_b_status,
+                            #    is_boot
+                            #)
 
-                                prim_start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
-                                prim_byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
-                                prim_start_sector_hdr_a = guid_gpt_a.header.current_lba
+                            #if gpt_data_a and gpt_data_b:
+                            #    gpt_data_a[poffset_a : poffset_a+len(pdata_a)] = pdata_a
+                            #    new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
+                            #    gpt_data_b[poffset_b:poffset_b + len(pdata_b)] = pdata_b
+                            #    new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
 
-                                prim_start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
-                                prim_byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
-                                prim_start_sector_hdr_b = guid_gpt_b.header.current_lba
+                            #    prim_start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
+                            #    prim_byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
+                            #    prim_start_sector_hdr_a = guid_gpt_a.header.current_lba
 
-                                headeroffset_a = prim_start_sector_hdr_a * guid_gpt_a.sectorsize
-                                new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
-                                headeroffset_b = prim_start_sector_hdr_b * guid_gpt_b.sectorsize
-                                new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+                            #    prim_start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
+                            #    prim_byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
+                            #    prim_start_sector_hdr_b = guid_gpt_b.header.current_lba
+
+                            #    headeroffset_a = prim_start_sector_hdr_a * guid_gpt_a.sectorsize
+                            #    prim_new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
+                            #    headeroffset_b = prim_start_sector_hdr_b * guid_gpt_b.sectorsize
+                            #    prim_new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+
+                                #self.update_gpt_info(prim_new_hdr_a, prim_new_hdr_b,
+                                #                     pdata_a, pdata_b,
+                                #                     lun_a, lun_b,
+                                #                     prim_start_sector_hdr_a, prim_start_sector_hdr_b,
+                                #                     prim_start_sector_patch_a, prim_start_sector_patch_b,
+                                #                     prim_byte_offset_patch_a, prim_byte_offset_patch_b)
 
                                 #self.update_gpt_info(new_hdr_a, new_hdr_b,
                                 #                     pdata_a, pdata_b,
@@ -1501,46 +1527,29 @@ class firehose(metaclass=LogBase):
                                 #                     prim_start_sector_patch_a, prim_start_sector_patch_b,
                                 #                     prim_byte_offset_patch_a, prim_byte_offset_patch_b)
 
-                                #resp_a = self.cmd_read_buffer(lun_a, guid_gpt_a.header.backup_lba, 1, False)
-                                #if not (resp_a.resp):
-                                #    self.error("Error in trying to retrieve backup gpt headers")
-                                #    return False
-                                #backup_hdr_a = gpt.gpt_header(resp_a.data)
-                                #sectors = (backup_hdr_a.num_part_entries * backup_hdr_a.part_entry_size) // self.cfg.SECTOR_SIZE_IN_BYTES
-                                #part_table_a = self.cmd_read_buffer(lun_a, backup_hdr_a.part_entry_start_lba, sectors, False)
-                                #if lun_a == lun_b:
-                                #    backup_hdr_b = backup_hdr_a
-                                #    part_table_b = part_table_a
-                                #else:
-                                #    resp_b = self.cmd_read_buffer(lun_b, guid_gpt_b.header.backup_lba, 1, False)
-                                #    backup_hdr_b = gpt.gpt_header(resp_b.data)
-                                #    part_table_b = self.cmd_read_buffer(lun_b, backup_hdr_b.part_entry_start_lba, sectors, False)
 
+                                #back_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, guid_gpt_a.header.backup_lba)
+                                #print(f"signature: {backup_guid_gpt_a.header.signature}")
+                                #print(f"revision: {backup_guid_gpt_a.header.revision}")
+                                #print(f"header size: {backup_guid_gpt_a.header.header_size}")
+                                #print(f"crc32: {backup_guid_gpt_a.header.crc32}")
+                                #print(f"reserved: {backup_guid_gpt_a.header.reserved}")
+                                #print(f"current_lba: {backup_guid_gpt_a.header.current_lba}")
+                                #print(f"backup_lba: {backup_guid_gpt_a.header.backup_lba}")
+                                #print(f"first_usable_lba: {backup_guid_gpt_a.header.first_usable_lba}")
+                                #print(f"last_usable_lba: {backup_guid_gpt_a.header.last_usable_lba}")
+                                #print(f"disk_guid: {backup_guid_gpt_a.header.disk_guid}")
+                                #print(f"part_entry_stzrt_lba: {backup_guid_gpt_a.header.part_entry_start_lba}")
+                                #print(f"num_part_entries: {backup_guid_gpt_a.header.num_part_entries}")
+                                #print(f"part_entry_size: {backup_guid_gpt_a.header.part_entry_size}")
+                                #print(f"crc32_part_entries: {backup_guid_gpt_a.header.crc32_part_entries}")
 
-                                #print(f"signature: {backup_hdr_a.signature}")
-                                #print(f"revision: {backup_hdr_a.revision}")
-                                #print(f"header size: {backup_hdr_a.header_size}")
-                                #print(f"crc32: {backup_hdr_a.crc32}")
-                                #print(f"reserved: {backup_hdr_a.reserved}")
-                                #print(f"current_lba: {backup_hdr_a.current_lba}")
-                                #print(f"backup_lba: {backup_hdr_a.backup_lba}")
-                                #print(f"first_usable_lba: {backup_hdr_a.first_usable_lba}")
-                                #print(f"last_usable_lba: {backup_hdr_a.last_usable_lba}")
-                                #print(f"disk_guid: {backup_hdr_a.disk_guid}")
-                                #print(f"part_entry_stzrt_lba: {backup_hdr_a.part_entry_start_lba}")
-                                #print(f"num_part_entries: {backup_hdr_a.num_part_entries}")
-                                #print(f"part_entry_size: {backup_hdr_a.part_entry_size}")
-                                #print(f"crc32_part_entries: {backup_hdr_a.crc32_part_entries}")
+                                #return True
 
-
-                                back_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, start_sector=guid_gpt_a.header.backup_lba, primary=False)
                                 #if (backup_guid_gpt_a is None):
                                 #    self.error("error in backup")
                                 #    return False
 
-                                return True
-
-                                #self self.update_gpt_info()
 
         except Exception as err:
             self.error(str(err))
