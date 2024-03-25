@@ -351,6 +351,7 @@ class gpt(metaclass=LogBase):
 
 
     def parse(self, gptdata, sectorsize=512):
+        self.warning("got here")
         self.header = self.gpt_header(gptdata[sectorsize:sectorsize + 0x5C])
         self.sectorsize = sectorsize
         if self.header.signature != b"EFI PART":

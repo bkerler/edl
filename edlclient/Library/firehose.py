@@ -768,7 +768,7 @@ class firehose(metaclass=LogBase):
             return None, None
         data = resp.data
         magic = unpack("<I", data[0:4])[0]
-        data = self.cmd_read_buffer(lun, start_sector, 1, False).data
+        data += self.cmd_read_buffer(lun, start_sector, 1, False).data
         if magic == 0x844bdcd1:
             self.info("Nand storage detected.")
             self.info("Scanning for partition table ...")
@@ -776,7 +776,7 @@ class firehose(metaclass=LogBase):
             if self.nandpart.partitiontblsector is None:
                 sector = 0x280
                 progbar.show_progress(prefix="Scanning", pos=sector, total=1024, display=True)
-                resp = self.cmd_read_buffer(start_sector, sector, 1, False)
+                resp = self.cmd_read_buffer(0, sector, 1, False)
                 if resp.resp:
                     if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
                         progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
@@ -786,7 +786,7 @@ class firehose(metaclass=LogBase):
                     self.error("Error on reading partition table data")
                     return None, None
             if self.nandpart.partitiontblsector is not None:
-                resp = self.cmd_read_buffer(start_sector, self.nandpart.partitiontblsector + 1, 2, False)
+                resp = self.cmd_read_buffer(0, self.nandpart.partitiontblsector + 1, 2, False)
                 if resp.resp:
                     if self.nandpart.parse(resp.data):
                         return resp.data, self.nandpart
@@ -805,6 +805,23 @@ class firehose(metaclass=LogBase):
             try:
                 offset = self.cfg.SECTOR_SIZE_IN_BYTES if primary else 0
                 header = guid_gpt.parseheader(data, offset)
+                if not primary:
+                    print(f"signature: {header.signature}")
+                    print(f"revision: {header.revision}")
+                    print(f"header size: {header.header_size}")
+                    print(f"crc32: {header.crc32}")
+                    print(f"reserved: {header.reserved}")
+                    print(f"current_lba: {header.current_lba}")
+                    print(f"backup_lba: {header.backup_lba}")
+                    print(f"first_usable_lba: {header.first_usable_lba}")
+                    print(f"last_usable_lba: {header.last_usable_lba}")
+                    print(f"disk_guid: {header.disk_guid}")
+                    print(f"part_entry_stzrt_lba: {header.part_entry_start_lba}")
+                    print(f"num_part_entries: {header.num_part_entries}")
+                    print(f"part_entry_size: {header.part_entry_size}")
+                    print(f"crc32_part_entries: {header.crc32_part_entries}")
+                    return None, None
+
                 if header.signature == b"EFI PART":
                     gptsize = (header.part_entry_start_lba * self.cfg.SECTOR_SIZE_IN_BYTES) + (
                             header.num_part_entries * header.part_entry_size)
@@ -812,30 +829,26 @@ class firehose(metaclass=LogBase):
                     if gptsize % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                         sectors += 1
                     if sectors == 0:
-                        self.error("sectors == 0")
                         return None, None
                     if sectors > 64:
                         sectors = 64
-                    if primary:
-                        data = self.cmd_read_buffer(lun, start_sector, sectors, False)
-                        if data == b"":
-                            self.error("data is empty")
-                            return None, None
-                        guid_gpt.parse(data.data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                        return data.data, guid_gpt
-                    else:
-                        num_part_sectors = (header.num_part_entries * header.part_entry_size)//self.cfg.SECTOR_SIZE_IN_BYTES
-                        if num_part_sectors % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
-                            num_part_sectors += 1
-                        self.warning(f"{num_part_sectors}")
-                        part_table = self.cmd_read_buffer(lun, header.part_entry_start_lba, num_part_sectors, False)
-                        #self.warning("got here")
-                        #self.warning(f"{data}")
-                        parse_data =  (b'0' * self.cfg.SECTOR_SIZE_IN_BYTES) + data + part_table.data
-                        guid_gpt.parse(parse_data, self.cfg.SECTOR_SIZE_IN_BYTES)
-                        return parse_data, guid_gpt
+                    data = self.cmd_read_buffer(lun, start_sector, sectors, False)
+                    if data == b"":
+                        return None, None
+                    guid_gpt.parse(data.data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                    return data.data, guid_gpt
+                    #else:
+                    #    num_part_sectors = (header.num_part_entries * header.part_entry_size)//self.cfg.SECTOR_SIZE_IN_BYTES
+                    #    if num_part_sectors % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
+                    #        num_part_sectors += 1
+                    #    self.warning(f"{num_part_sectors}")
+                    #    part_table = self.cmd_read_buffer(lun, header.part_entry_start_lba, num_part_sectors, False)
+                    #    #self.warning("got here")
+                    #    #self.warning(f"{data}")
+                    #    parse_data =  (b'0' * self.cfg.SECTOR_SIZE_IN_BYTES) + data + part_table.data
+                    #    guid_gpt.parse(parse_data, self.cfg.SECTOR_SIZE_IN_BYTES)
+                    #    return parse_data, guid_gpt
                 else:
-                    self.error(" in error efipart")
                     return None, None
             except Exception as err:
                 self.debug(str(err))
@@ -1488,20 +1501,20 @@ class firehose(metaclass=LogBase):
                                 #                     prim_start_sector_patch_a, prim_start_sector_patch_b,
                                 #                     prim_byte_offset_patch_a, prim_byte_offset_patch_b)
 
-                                resp_a = self.cmd_read_buffer(lun_a, guid_gpt_a.header.backup_lba, 1, False)
-                                if not (resp_a.resp):
-                                    self.error("Error in trying to retrieve backup gpt headers")
-                                    return False
-                                backup_hdr_a = gpt.gpt_header(resp_a.data)
-                                sectors = (backup_hdr_a.num_part_entries * backup_hdr_a.part_entry_size) // self.cfg.SECTOR_SIZE_IN_BYTES
-                                part_table_a = self.cmd_read_buffer(lun_a, backup_hdr_a.part_entry_start_lba, sectors, False)
-                                if lun_a == lun_b:
-                                    backup_hdr_b = backup_hdr_a
-                                    part_table_b = part_table_a
-                                else:
-                                    resp_b = self.cmd_read_buffer(lun_b, guid_gpt_b.header.backup_lba, 1, False)
-                                    backup_hdr_b = gpt.gpt_header(resp_b.data)
-                                    part_table_b = self.cmd_read_buffer(lun_b, backup_hdr_b.part_entry_start_lba, sectors, False)
+                                #resp_a = self.cmd_read_buffer(lun_a, guid_gpt_a.header.backup_lba, 1, False)
+                                #if not (resp_a.resp):
+                                #    self.error("Error in trying to retrieve backup gpt headers")
+                                #    return False
+                                #backup_hdr_a = gpt.gpt_header(resp_a.data)
+                                #sectors = (backup_hdr_a.num_part_entries * backup_hdr_a.part_entry_size) // self.cfg.SECTOR_SIZE_IN_BYTES
+                                #part_table_a = self.cmd_read_buffer(lun_a, backup_hdr_a.part_entry_start_lba, sectors, False)
+                                #if lun_a == lun_b:
+                                #    backup_hdr_b = backup_hdr_a
+                                #    part_table_b = part_table_a
+                                #else:
+                                #    resp_b = self.cmd_read_buffer(lun_b, guid_gpt_b.header.backup_lba, 1, False)
+                                #    backup_hdr_b = gpt.gpt_header(resp_b.data)
+                                #    part_table_b = self.cmd_read_buffer(lun_b, backup_hdr_b.part_entry_start_lba, sectors, False)
 
 
                                 #print(f"signature: {backup_hdr_a.signature}")
@@ -1520,7 +1533,7 @@ class firehose(metaclass=LogBase):
                                 #print(f"crc32_part_entries: {backup_hdr_a.crc32_part_entries}")
 
 
-                                #back_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, start_sector=guid_gpt_a.header.backup_lba, primary=False)
+                                back_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, start_sector=guid_gpt_a.header.backup_lba, primary=False)
                                 #if (backup_guid_gpt_a is None):
                                 #    self.error("error in backup")
                                 #    return False
