@@ -1410,14 +1410,18 @@ class firehose(metaclass=LogBase):
             )
 
             if gpt_data_a and gpt_data_b:
+                entryoffset_a = poffset_a - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
+                gpt_data_a[entryoffset_a: entryoffset_a+len(pdata_a)] = pdata_a
+                new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
+                entryoffset_b = poffset_b - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
+                gpt_data_b[entryoffset_b:entryoffset_b + len(pdata_b)] = pdata_b
+                new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
+
                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
                 byte_offset_patch_a = poffset_a % self.cfg.SECTOR_SIZE_IN_BYTES
-                #cmd_patch_multiple(lun_a, start_sector_patch_a, byte_offset_patch_a, pdata_a)
+                cmd_patch_multiple(lun_a, start_sector_patch_a, byte_offset_patch_a, pdata_a)
 
                 if lun_a != lun_b:
-                    entryoffset_a = poffset_a - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
-                    gpt_data_a[entryoffset_a: entryoffset_a+len(pdata_a)] = pdata_a
-                    new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
                     start_sector_hdr_a = guid_gpt_a.header.current_lba
                     headeroffset_a = guid_gpt_a.sectorsize # gptData: mbr + gpt header + part array
                     new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
@@ -1428,9 +1432,6 @@ class firehose(metaclass=LogBase):
                 byte_offset_patch_b = poffset_b % self.cfg.SECTOR_SIZE_IN_BYTES
                 cmd_patch_multiple(lun_b, start_sector_patch_b, byte_offset_patch_b, pdata_b)
 
-                entryoffset_b = poffset_b - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
-                gpt_data_b[entryoffset_b:entryoffset_b + len(pdata_b)] = pdata_b
-                new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
                 start_sector_hdr_b = guid_gpt_b.header.current_lba
                 headeroffset_b = guid_gpt_b.sectorsize
                 new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
