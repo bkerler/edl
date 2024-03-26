@@ -361,7 +361,7 @@ class gpt(metaclass=LogBase):
         if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
         else:
-            start = self.header.part_entry_start_lba * sectorsize
+            start = 2 * sectorsize # mbr + header + part_table
 
         entrysize = self.header.part_entry_size
         self.partentries = {}
@@ -394,7 +394,7 @@ class gpt(metaclass=LogBase):
             pa.sector = partentry.first_lba
             pa.sectors = partentry.last_lba - partentry.first_lba + 1
             pa.flags = partentry.flags
-            pa.entryoffset = start + (idx * entrysize)
+            pa.entryoffset = (self.header.part_entry_start_lba * sectorsize) + (idx * entrysize)
             type = int(unpack("<I", partentry.type[0:0x4])[0])
             try:
                 pa.type = self.efi_type(type).name
@@ -498,9 +498,9 @@ class gpt(metaclass=LogBase):
 
     def fix_gpt_crc(self, data):
         partentry_size = self.header.num_part_entries * self.header.part_entry_size
-        partentry_offset = self.header.part_entry_start_lba * self.sectorsize
+        partentry_offset = 2 * self.sectorsize
         partdata = data[partentry_offset:partentry_offset + partentry_size]
-        headeroffset = self.header.current_lba * self.sectorsize
+        headeroffset = self.sectorsize
         headerdata = bytearray(data[headeroffset:headeroffset + self.header.header_size])
         headerdata[0x58:0x58 + 4] = pack("<I", crc32(partdata))
         headerdata[0x10:0x10 + 4] = pack("<I", 0)

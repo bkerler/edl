@@ -207,13 +207,15 @@ class firehose_client(metaclass=LogBase):
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
                     break
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data)
+                #with open(sfilename, "wb") as write_handle:
+                #    #write_handle.write(data)
+                #    pass
 
                 self.printer(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
                 sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+                #with open(sfilename, "wb") as write_handle:
+                #    #write_handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+                #    pass
                 self.printer(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, self.firehose.cfg.SECTOR_SIZE_IN_BYTES, directory)
