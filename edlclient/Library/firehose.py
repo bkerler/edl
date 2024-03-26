@@ -1411,37 +1411,33 @@ class firehose(metaclass=LogBase):
                 return True
             return False
 
-        def fix_gpt_header(lun, fix_guid_gpt, good_hdr_crc, good_part_table_crc, good_part_table):
-            cmd_patch_multiple(lun, fix_guid_gpt.header.current_lba, 0x10, good_hdr_crc)
-            cmd_patch_multiple(lun, fix_guid_gpt.header.current_lba, 0x58, good_part_table_crc)
-            cmd_patch_multiple(lun, fix_guid_gpt.header.part_entry_start_lba, 0, good_part_table)
-
-        def check_fix_gpt_hdr(lun, guid_gpt, backup_guid_gpt, gpt_data, backup_gpt_data):
+        def check_fix_gpt_hdr(guid_gpt, backup_guid_gpt, gpt_data, backup_gpt_data):
             headeroffset = guid_gpt.sectorsize
             prim_corrupted, backup_corrupted = False, False
 
             prim_hdr = gpt_data[headeroffset : headeroffset + guid_gpt.header.header_size]
-            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset : headeroffset + guid_gpt_a.header.header_size]
+            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset : headeroffset + guid_gpt.header.header_size]
             prim_hdr_crc, test_hdr_crc = prim_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
             prim_part_table_crc, test_part_table_crc = prim_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
             prim_corrupted = prim_hdr_crc != test_hdr_crc or prim_part_table_crc != test_part_table_crc
 
-            backup_hdr = backup_gpt_data[headeroffset : headeroffset + backup_guid_gpt_a.header.header_size]
-            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[headeroffset : headeroffset + guid_gpt_a.header.header_size]
+            backup_hdr = backup_gpt_data[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
+            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
             backup_hdr_crc, test_hdr_crc = backup_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
             backup_part_table_crc, test_part_table_crc = backup_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
             backup_corrupted = backup_hdr_crc != test_hdr_crc or backup_part_table_crc != test_part_table_crc
 
-            if prim_corrupted:
+            prim_backup_consistent = prim_part_table_crc == backup_part_table_crc
+            if prim_corrupted or not prim_backup_consistent:
                 if backup_corrupted:
-                    self.error("Both the gpt headers are corrupted, cannot recover")
-                    return False
-                good_part_table = backup_gpt_data[2*backup_gpt_data.sectorsize]
-                fix_gpt_header(lun, guid_gpt, backup_hdr_crc, backup_part_table_crc, good_part_table)
-            elif backup_corrupted:
-                good_part_table = gpt_data[2*guid_gpt.sectorsize]
-                fix_gpt_header(lun, backup_guid_gpt, prim_hdr_crc, prim_part_table_crc, good_part_table)
-            return True
+                    self.error("both are gpt headers are corrupted, cannot recover")
+                    return False, None, None
+                gpt_data[2*guid_gpt.sectorsize:] = backup_gpt_data[2*backup_guid_gpt.sectorsize:]
+                gpt_data = guid_gpt.fix_gpt_crc(gpt_data)
+            elif backup_corrupted or not prim_backup_consistent:
+                backup_gpt_data[2*backup_guid_gpt.sectorsize:] = gpt_data[2*guid_gpt.sectorsize:]
+                backup_gpt_data = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)
+            return True, gpt_data, backup_gpt_data
 
         if slot.lower() not in ["a", "b"]:
             self.error("Only slots a or b are accepted. Aborting.")
@@ -1484,17 +1480,13 @@ class firehose(metaclass=LogBase):
                                 backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0 , 0, guid_gpt_b.header.backup_lba)
 
                             if not check_gpt_hdr:
-                                good_headers_a = check_fix_gpt_hdr(lun_a, guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
-                                if not good_headers_a:
+                                sts, gpt_data_a, backup_gpt_data_a = check_fix_gpt_hdr(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
+                                if not sts:
                                     return False
-                                else:
-                                    self.warning(f"good gpt header a: {partitionname_a[:-2]}")
                                 if lun_a != lun_b:
-                                    good_headers_b = check_fix_gpt_hdr(lun_b, guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
-                                    if not good_headers_b:
+                                    sts, gpt_data_b, backup_gpt_data_b = check_fix_gpt_hdr(guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
+                                    if not sts:
                                         return False
-                                    else:
-                                        self.warning(f"good gpt header b: {partitionname_a[:-2]}")
                                 check_gpt_hdr = True
 
                             update_gpt_info(guid_gpt_a, guid_gpt_b,
@@ -1503,11 +1495,12 @@ class firehose(metaclass=LogBase):
                                             slot_a_status, slot_b_status,
                                             lun_a, lun_b)
 
-                            update_gpt_info(backup_guid_gpt_a, backup_guid_gpt_b,
-                                            partitionname_a, partitionname_b,
-                                            backup_gpt_data_a, backup_gpt_data_b,
-                                            slot_a_status, slot_b_status,
-                                            lun_a, lun_b)
+                            # TODO: this updates the backup gpt header, but is it needed, since it is updated when xbl loads
+                            #update_gpt_info(backup_guid_gpt_a, backup_guid_gpt_b,
+                            #                partitionname_a, partitionname_b,
+                            #                backup_gpt_data_a, backup_gpt_data_b,
+                            #                slot_a_status, slot_b_status,
+                            #                lun_a, lun_b)
 
         except Exception as err:
             self.error(str(err))
