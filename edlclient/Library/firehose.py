@@ -1411,7 +1411,7 @@ class firehose(metaclass=LogBase):
                 return True
             return False
 
-        def check_fix_gpt_hdr(guid_gpt, backup_guid_gpt, gpt_data, backup_gpt_data):
+        def ensure_gpt_hdr_consistency(guid_gpt, backup_guid_gpt, gpt_data, backup_gpt_data):
             headeroffset = guid_gpt.sectorsize
             prim_corrupted, backup_corrupted = False, False
 
@@ -1480,11 +1480,11 @@ class firehose(metaclass=LogBase):
                                 backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0 , 0, guid_gpt_b.header.backup_lba)
 
                             if not check_gpt_hdr:
-                                sts, gpt_data_a, backup_gpt_data_a = check_fix_gpt_hdr(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
+                                sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
                                 if not sts:
                                     return False
                                 if lun_a != lun_b:
-                                    sts, gpt_data_b, backup_gpt_data_b = check_fix_gpt_hdr(guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
+                                    sts, gpt_data_b, backup_gpt_data_b = ensure_gpt_hdr_consistency(guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
                                     if not sts:
                                         return False
                                 check_gpt_hdr = True
