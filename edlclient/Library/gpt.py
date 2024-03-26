@@ -498,9 +498,9 @@ class gpt(metaclass=LogBase):
 
     def fix_gpt_crc(self, data):
         partentry_size = self.header.num_part_entries * self.header.part_entry_size
-        partentry_offset = self.header.part_entry_start_lba * self.sectorsize
+        partentry_offset = 2 * self.sectorsize
         partdata = data[partentry_offset:partentry_offset + partentry_size]
-        headeroffset = self.header.current_lba * self.sectorsize
+        headeroffset = self.sectorsize
         headerdata = bytearray(data[headeroffset:headeroffset + self.header.header_size])
         headerdata[0x58:0x58 + 4] = pack("<I", crc32(partdata))
         headerdata[0x10:0x10 + 4] = pack("<I", 0)
