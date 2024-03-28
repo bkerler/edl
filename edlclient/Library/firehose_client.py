@@ -643,19 +643,21 @@ class firehose_client(metaclass=LogBase):
             else:
                 return self.firehose.cmd_setbootablestoragedrive(int(options["<lun>"]))
         elif cmd == "getactiveslot":
-            res = self.firehose.detect_partition(options, "boot_a")
+            res = self.firehose.detect_partition(options, "boot_a", send_full=True)
             if res[0]:
                 lun = res[1]
-                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0)
+                prim_guid_gpt = res[3]
+                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
                 partition = backup_guid_gpt.partentries["boot_a"]
                 active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
                     self.printer("Current active slot: a")
                     return True
-            res = self.firehose.detect_partition(options, "boot_b")
+            res = self.firehose.detect_partition(options, "boot_b", send_full=True)
             if res[0]:
                 lun = res[1]
-                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0)
+                prim_guid_gpt = res[3]
+                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
                 partition = backup_guid_gpt.partentries["boot_a"]
                 active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
