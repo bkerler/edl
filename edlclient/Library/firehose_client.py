@@ -658,7 +658,7 @@ class firehose_client(metaclass=LogBase):
                 lun = res[1]
                 prim_guid_gpt = res[3]
                 _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
-                partition = backup_guid_gpt.partentries["boot_a"]
+                partition = backup_guid_gpt.partentries["boot_b"]
                 active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
                     self.printer("Current active slot: b")
