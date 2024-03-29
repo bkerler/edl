@@ -18,6 +18,9 @@ sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import LogBase, print_progress
 
 
+MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2 # 2 GBs
+
+
 class QCSparse(metaclass=LogBase):
     def __init__(self, filename, loglevel):
         self.rf = open(filename, 'rb')
@@ -35,6 +38,8 @@ class QCSparse(metaclass=LogBase):
         self.total_blks = None
         self.total_chunks = None
         self.image_checksum = None
+
+        self.tmp_offset = 0
 
         self.info = self.__logger.info
         self.debug = self.__logger.debug
@@ -172,17 +177,20 @@ class QCSparse(metaclass=LogBase):
         return length
 
     def read(self, length=None):
+        if self.tmp_offset >= MAX_STORE_SIZE:
+            self.tmpdata = self.tmpdata[self.tmp_offset:]
+            self.tmp_offset = 0
         if length is None:
             return self.unsparse()
-        if length <= len(self.tmpdata):
-            tdata = self.tmpdata[:length]
-            self.tmpdata = self.tmpdata[length:]
+        if (self.tmp_offset + length) <= len(self.tmpdata):
+            tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+            self.tmp_offset += length
             return tdata
-        while len(self.tmpdata) < length:
+        while (self.tmp_offset + length) > len(self.tmpdata):
             self.tmpdata.extend(self.unsparse())
-            if length <= len(self.tmpdata):
-                tdata = self.tmpdata[:length]
-                self.tmpdata = self.tmpdata[length:]
+            if (self.tmp_offset + length) <= len(self.tmpdata):
+                tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+                self.tmp_offset += length
                 return tdata
 
 
