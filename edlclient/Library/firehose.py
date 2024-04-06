@@ -1356,10 +1356,11 @@ class firehose(metaclass=LogBase):
 
         def cmd_patch_multiple(lun, start_sector, byte_offset, patch_data):
             offset = 0
-            size_each_patch = 4
+            size_each_patch = 8 if len(patch_data) % 8 == 0 else 4
+            unpack_fmt = "<I" if size_each_patch == 4 else "<Q"
             write_size = len(patch_data)
             for i in range(0, write_size, size_each_patch):
-                pdata_subset = int(unpack("<I", patch_data[offset:offset+size_each_patch])[0])
+                pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset+size_each_patch])[0])
                 self.cmd_patch( lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, True)
                 offset += size_each_patch
             return True
