@@ -1480,7 +1480,7 @@ class firehose(metaclass=LogBase):
                                 _, lun_b, gpt_data_b, guid_gpt_b = resp
                                 backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0 , 0, guid_gpt_b.header.backup_lba)
 
-                            if not check_gpt_hdr:
+                            if not check_gpt_hdr and partitionname_a[:3] != "xbl": # xbl partition don't need check consistency
                                 sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
                                 if not sts:
                                     return False
