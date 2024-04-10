@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import sys
 import logging
 import logging.config
@@ -145,7 +149,7 @@ class progress:
                                suffix=prefix + ' (Sector 0x%X of 0x%X) %0.2f MB/s' %
                                       (pos // self.pagesize,
                                        total // self.pagesize,
-                                       0), bar_length=50)
+                                       0), bar_length=10)
 
         if prog > self.prog or prog==100.0:
             if display:
@@ -179,7 +183,7 @@ class progress:
                                    suffix=prefix + f' (Sector 0x%X of 0x%X, {hinfo}) %0.2f MB/s' %
                                           (pos // self.pagesize,
                                            total // self.pagesize,
-                                           throughput), bar_length=50)
+                                           throughput), bar_length=10)
                 self.prog = prog
                 self.progpos = pos
                 self.progtime = t0

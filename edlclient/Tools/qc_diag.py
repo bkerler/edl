@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""
-Licensed under MIT License, (c) B. Kerler 2018-2021
-"""
+# -*- coding: utf-8 -*-
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import inspect
 import argparse
 import json
@@ -16,12 +19,18 @@ import os, sys
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, parent_dir)
-
-from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
-from edlclient.Library.Connection.usblib import usb_class
-from edlclient.Library.Connection.seriallib import serial_class
-from edlclient.Library.hdlc import hdlc
-from edlclient.Config.usb_ids import default_diag_vid_pid
+try:
+    from Library.utils import print_progress, read_object, write_object, LogBase
+    from Library.Connection.usblib import usb_class
+    from Library.Connection.seriallib import serial_class
+    from Library.hdlc import hdlc
+    from Config.usb_ids import default_diag_vid_pid
+except:
+    from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
+    from edlclient.Library.Connection.usblib import usb_class
+    from edlclient.Library.Connection.seriallib import serial_class
+    from edlclient.Library.hdlc import hdlc
+    from edlclient.Config.usb_ids import default_diag_vid_pid
 
 qcerror = {
     1: "None",
@@ -332,9 +341,14 @@ class qcdiag(metaclass=LogBase):
             self.__logger.addHandler(fh)
         import os, inspect
         current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-        parent_dir = os.path.dirname(os.path.dirname(current_dir))
-        nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
-        e = ElementTree.parse(nvxml).getroot()
+        try:
+            parent_dir = os.path.dirname(os.path.dirname(current_dir))
+            nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
+            e = ElementTree.parse(nvxml).getroot()
+        except:
+            current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+            nvxml = os.path.join(current_dir, "edlclient", "Config", "nvitems.xml")
+            e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
             identifier = int(atype.get("id"))
@@ -1141,22 +1155,42 @@ class DiagTools(metaclass=LogBase):
         self.interface = -1
         self.vid = None
         self.pid = None
-        self.serial = args.serial
-        if args.portname is not None:
+        try:
+            self.serial = args.serial
+        except:
+            self.serial = False
+        try:
             self.portname = args.portname
-            self.serial = True
-        else:
+        except:
             self.portname = ""
 
-        if args.vid != "":
+        if self.portname is not None and self.portname != "":
+            self.serial = True
+        try:
             self.vid = int(args.vid, 16)
-        if args.pid != "":
+        except:
+            pass
+        try:
             self.pid = int(args.pid, 16)
-        if args.interface != "":
+        except:
+            pass
+        try:
             self.interface = int(args.interface, 16)
+        except:
+            pass
+
+        try:
+            self.debugmode = args.debugmode
+        except:
+            self.debugmode = False
+
+        if self.vid is not None:
+            self.vid = int(args.vid, 16)
+        if self.pid is not None:
+            self.pid = int(args.pid, 16)
 
         logfilename = "diag.txt"
-        if args.debugmode:
+        if self.debugmode:
             if os.path.exists(logfilename):
                 os.remove(logfilename)
             fh = logging.FileHandler(logfilename)

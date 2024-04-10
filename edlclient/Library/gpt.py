@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 MIT License
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import os
 import sys
 import argparse
@@ -190,6 +194,20 @@ AB_SLOT_ACTIVE = 1
 AB_SLOT_INACTIVE = 0
 
 
+PART_ATT_PRIORITY_BIT = 48
+PART_ATT_ACTIVE_BIT = 50
+PART_ATT_MAX_RETRY_CNT_BIT = 51
+MAX_PRIORITY = 3
+PART_ATT_SUCCESS_BIT = 54
+PART_ATT_UNBOOTABLE_BIT = 55
+
+PART_ATT_PRIORITY_VAL = 0x3 << PART_ATT_PRIORITY_BIT
+PART_ATT_ACTIVE_VAL = 0x1 << PART_ATT_ACTIVE_BIT
+PART_ATT_MAX_RETRY_COUNT_VAL = 0x7 << PART_ATT_MAX_RETRY_CNT_BIT
+PART_ATT_SUCCESSFUL_VAL  = 0x1 << PART_ATT_SUCCESS_BIT
+PART_ATT_UNBOOTABLE_VAL = 0x1 << PART_ATT_UNBOOTABLE_BIT
+
+
 class gpt(metaclass=LogBase):
     class gpt_header:
         def __init__(self, data):
@@ -220,7 +238,7 @@ class gpt(metaclass=LogBase):
             self.name = sh.string(72)
 
         def create(self):
-            val = pack("16s16sQQQ72s", self.type, self.unique, self.first_lba, self.last_lba, self.flags, self.name)
+            val = pack("<16s16sQQQ72s", self.type, self.unique, self.first_lba, self.last_lba, self.flags, self.name)
             return val
 
     class efi_type(Enum):
@@ -343,7 +361,7 @@ class gpt(metaclass=LogBase):
         if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
         else:
-            start = self.header.part_entry_start_lba * sectorsize
+            start = 2 * sectorsize # mbr + header + part_table
 
         entrysize = self.header.part_entry_size
         self.partentries = {}
@@ -376,7 +394,7 @@ class gpt(metaclass=LogBase):
             pa.sector = partentry.first_lba
             pa.sectors = partentry.last_lba - partentry.first_lba + 1
             pa.flags = partentry.flags
-            pa.entryoffset = start + (idx * entrysize)
+            pa.entryoffset = (self.header.part_entry_start_lba * sectorsize) + (idx * entrysize)
             type = int(unpack("<I", partentry.type[0:0x4])[0])
             try:
                 pa.type = self.efi_type(type).name
@@ -386,7 +404,7 @@ class gpt(metaclass=LogBase):
             if pa.type == "EFI_UNUSED":
                 continue
             self.partentries[pa.name]=pa
-        self.totalsectors = self.header.last_usable_lba + 34
+        self.totalsectors = self.header.first_usable_lba + self.header.last_usable_lba
         return True
 
     def print(self):
@@ -478,37 +496,11 @@ class gpt(metaclass=LogBase):
         res = self.print_gptfile(os.path.join("TestFiles", "gpt_sm8180x.bin"))
         assert res, "GPT Partition wasn't decoded properly"
 
-    def patch(self, data:bytes, partitionname="boot", active: bool = True):
-        try:
-            rf = BytesIO(data)
-            for sectorsize in [512, 4096]:
-                result = self.parse(data, sectorsize)
-                if result:
-                    for rname in self.partentries:
-                        if partitionname.lower() == rname.lower():
-                            partition = self.partentries[rname]
-                            rf.seek(partition.entryoffset)
-                            sdata = rf.read(self.header.part_entry_size)
-                            partentry = self.gpt_partition(sdata)
-                            flags = partentry.flags
-                            if active:
-                                flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
-                            else:
-                                flags |= AB_PARTITION_ATTR_UNBOOTABLE << (AB_FLAG_OFFSET*8)
-                            partentry.flags = flags
-                            pdata = partentry.create()
-                            return pdata, partition.entryoffset
-                    break
-            return None, None
-        except Exception as e:
-            self.error(str(e))
-        return None, None
-
     def fix_gpt_crc(self, data):
         partentry_size = self.header.num_part_entries * self.header.part_entry_size
-        partentry_offset = self.header.part_entry_start_lba * self.sectorsize
+        partentry_offset = 2 * self.sectorsize
         partdata = data[partentry_offset:partentry_offset + partentry_size]
-        headeroffset = self.header.current_lba * self.sectorsize
+        headeroffset = self.sectorsize
         headerdata = bytearray(data[headeroffset:headeroffset + self.header.header_size])
         headerdata[0x58:0x58 + 4] = pack("<I", crc32(partdata))
         headerdata[0x10:0x10 + 4] = pack("<I", 0)

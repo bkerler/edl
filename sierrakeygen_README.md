@@ -1,6 +1,6 @@
 # Challenge/Response Generator for Sierra Wireless Cards V1.2
-(c) B. Kerler 2019-2020
-MIT License
+(c) B. Kerler 2019-2023
+GPLv3 License
 
 ## Why
 
@@ -20,11 +20,12 @@ MIT License
                 "WP75xx", "WP85xx", "WP8548", "WP8548G", "AC340U"],
     "MDM9x30": ["EM7455", "MC7455", "EM7430", "MC7430"],
     "MDM9x30_V1": ["Netgear AC790S/AC791L"],
-    "MDM9x40": ["AC815s", "AC785s","Netgear MR1100"],
+    "MDM9x40": ["MR1100", "AC815s", "AC785s"],
     "MDM9x50": ["EM7565", "EM7565-9", "EM7511"],
     "MDM9x06": ["WP77xx"],
-    "MDM9x07": ["SWI9X07Y", "WP76xx"]
-    
+    "MDM9x07": ["SWI9X07Y", "WP76xx"],
+    "SDX65": ["MR6400", "MR6500", "MR6110", "MR6150", "MR6450", "MR6550"]
+
 ## Installation
 
 - Get python >=3.6 64-Bit
@@ -346,7 +347,7 @@ MIT License
  
 ## License
 
-Published under MIT license
+Published under GPLv3 license
 Additional license limitations: No use in commercial products without prior permit by me.
 
 Enjoy !

@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import logging
 from edlclient.Library.utils import LogBase
@@ -23,9 +27,12 @@ class generic(metaclass=LogBase):
         if res[0]:
             lun = res[1]
             rpartition = res[2]
-            offsettopatch = 0x7FFFF
-            sector = rpartition.sector + (offsettopatch // self.fh.cfg.SECTOR_SIZE_IN_BYTES)
-            offset = offsettopatch % self.fh.cfg.SECTOR_SIZE_IN_BYTES
+            if rpartition.sectors <= (0x8000//self.fh.cfg.SECTOR_SIZE_IN_BYTES):
+                offsettopatch = 0x7FFF
+                sector, offset = self.fh.calc_offset(rpartition.sector, offsettopatch)
+            else:
+                offsettopatch = 0x7FFFF
+                sector, offset = self.fh.calc_offset(rpartition.sector, offsettopatch)
             if enable:
                 value = 0x1
             else:

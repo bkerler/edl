@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2019
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import os
 import sys
@@ -12,6 +16,7 @@ from edlclient.Library.firehose import firehose
 from edlclient.Library.xmlparser import xmlparser
 from edlclient.Library.utils import do_tcp_server
 from edlclient.Library.utils import LogBase, getint
+from edlclient.Library.gpt import AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Config.qualcomm_config import memory_type
 from edlclient.Config.qualcomm_config import infotbl, msmids, secureboottbl, sochw
 import fnmatch
@@ -132,10 +137,11 @@ class firehose_client(metaclass=LogBase):
                 return True
         return False
 
-    def find_bootable_partition(self, rawprogram):
+    def find_bootable_partition(self, imagedir, rawprogram):
         part = -1
         for xml in rawprogram:
-            with open(xml, "r") as fl:
+            filename = os.path.join(imagedir, xml)
+            with open(filename, "r") as fl:
                 for evt, elem in ET.iterparse(fl, events=["end"]):
                     if elem.tag == "program":
                         label = elem.get("label")
@@ -201,13 +207,15 @@ class firehose_client(metaclass=LogBase):
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
                     break
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data)
+                #with open(sfilename, "wb") as write_handle:
+                #    #write_handle.write(data)
+                #    pass
 
                 self.printer(f"Dumped GPT from Lun {str(lun)} to {sfilename}")
                 sfilename = os.path.join(directory, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+                #with open(sfilename, "wb") as write_handle:
+                #    #write_handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+                #    pass
                 self.printer(f"Dumped Backup GPT from Lun {str(lun)} to {sfilename}")
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, self.firehose.cfg.SECTOR_SIZE_IN_BYTES, directory)
@@ -634,6 +642,29 @@ class firehose_client(metaclass=LogBase):
                 return False
             else:
                 return self.firehose.cmd_setbootablestoragedrive(int(options["<lun>"]))
+        elif cmd == "getactiveslot":
+            res = self.firehose.detect_partition(options, "boot_a", send_full=True)
+            if res[0]:
+                lun = res[1]
+                prim_guid_gpt = res[3]
+                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
+                partition = backup_guid_gpt.partentries["boot_a"]
+                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                if active:
+                    self.printer("Current active slot: a")
+                    return True
+            res = self.firehose.detect_partition(options, "boot_b", send_full=True)
+            if res[0]:
+                lun = res[1]
+                prim_guid_gpt = res[3]
+                _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
+                partition = backup_guid_gpt.partentries["boot_b"]
+                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                if active:
+                    self.printer("Current active slot: b")
+                    return True
+            self.error("Can't detect active slot. Please make sure your device has slot A/B")
+            return False
         elif cmd == "setactiveslot":
             if not self.check_param(["<slot>"]):
                 return False
@@ -724,17 +755,17 @@ class firehose_client(metaclass=LogBase):
             filenames = []
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
-            for dirName, subdirList, fileList in os.walk(directory):
-                for fname in fileList:
-                    filenames.append(os.path.join(dirName, fname))
+            for fname in filter(os.path.isfile, [ os.path.join(directory, i) for i in os.listdir(directory) ]):
+                filenames.append(fname)
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
                                                        int(options["--gpt-part-entry-size"]),
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
+                    self.error("Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
                     break
                 for filename in filenames:
-                    partname = filename[filename.rfind("/") + 1:]
+                    partname = os.path.basename(filename)
                     if ".bin" in partname[-4:] or ".img" in partname[-4:] or ".mbn" in partname[-4:]:
                         partname = partname[:-4]
                     if partname in skip:
@@ -953,7 +984,8 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.warning(f"File : {filename} not found.")
             self.info("[qfil] patching ok")
-            bootable = self.find_bootable_partition(rawprogram)
+
+            bootable = self.find_bootable_partition(imagedir, rawprogram)
             if bootable != -1:
                 if self.firehose.cmd_setbootablestoragedrive(bootable):
                     self.info("[qfil] partition({partition}) is now bootable\n".format(partition=bootable))

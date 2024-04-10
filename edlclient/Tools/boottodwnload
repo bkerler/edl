@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2020 under MIT license
+# (c) B.Kerler 2018-2023 under GPLv3 license
 # If you use my code, make sure you refer to my name
-# If you want to use in a commercial product, ask me before integrating it
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import time
 import serial
 import serial.tools.list_ports
 import argparse
 import requests
-from telnetlib import Telnet
+from Exscript.protocols.telnetlib import Telnet
 import usb.core
 from enum import Enum
 
@@ -53,7 +55,7 @@ class connection(metaclass=LogBase):
             port = self.detect(port)
             if port == "":
                 try:
-                    self.tn = Telnet("192.168.1.1", 5510, 5)
+                    self.tn = Telnet("192.168.1.1", 5510)
                     self.connected = True
                 except:
                     self.connected = False

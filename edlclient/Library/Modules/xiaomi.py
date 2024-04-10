@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import logging
 from edlclient.Library.utils import LogBase
@@ -31,15 +35,15 @@ class xiaomi(metaclass=LogBase):
 
     def edl_auth(self):
         """
-        Poco F1, Redmi 5 Pro, 6 Pro, 7 Pro, 7A, 8, 8A, 8A Dual, 8A Pro, Y2, S2
+        Redmi A1, Poco F1, Redmi 5 Pro, 6 Pro, 7 Pro, 7A, 8, 8A, 8A Dual, 8A Pro, Y2, S2
         """
         authcmd = b"<?xml version=\"1.0\" ?><data> <sig TargetName=\"sig\" size_in_bytes=\"256\" verbose=\"1\"/></data>"
         rsp = self.fh.xmlsend(authcmd)
-        if rsp[0]:
+        if rsp.resp:
             rsp = self.fh.xmlsend(self.xiaomi_authdata)
-            if len(rsp) > 1:
-                if rsp[0]:
-                    if b"EDL Authenticated" in rsp[2] or b"ACK" in rsp[2]:
-                        return True
-            return True
+            if rsp.resp:
+                if "value" in rsp.resp:
+                    if rsp.resp["value"]=="ACK":
+                        if 'authenticated' in rsp.log[0].lower() and 'true' in rsp.log[0].lower():
+                            return True
         return False

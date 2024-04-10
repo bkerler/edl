@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import io
 import logging
 
@@ -9,17 +13,22 @@ import usb.util
 import time
 import inspect
 import array
-from edlclient.Library.utils import is_windows
 import usb.backend.libusb0
-if not is_windows():
-    import usb.backend.libusb1
 from enum import Enum
 from binascii import hexlify
 from ctypes import c_void_p, c_int
-from edlclient.Library.utils import *
+try:
+    from edlclient.Library.utils import *
+except:
+    from Library.utils import *
+if not is_windows():
+    import usb.backend.libusb1
 from struct import pack, calcsize
 import traceback
-from edlclient.Library.Connection.devicehandler import DeviceClass
+try:
+    from edlclient.Library.Connection.devicehandler import DeviceClass
+except:
+    from Library.Connection.devicehandler import DeviceClass
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
 
@@ -40,6 +49,8 @@ USB_RECIP_OTHER = 0x03
 USB_RECIP_PORT = 0x04
 USB_RECIP_RPIPE = 0x05
 
+MAX_USB_BULK_BUFFER_SIZE = 16384
+
 tag = 0
 
 CDC_CMDS = {
@@ -57,8 +68,9 @@ CDC_CMDS = {
 
 class usb_class(DeviceClass):
 
-    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
+    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1, serial_number=None):
         super().__init__(loglevel, portconfig, devclass)
+        self.serial_number = serial_number
         self.load_windows_dll()
         self.EP_IN = None
         self.EP_OUT = None
@@ -210,9 +222,13 @@ class usb_class(DeviceClass):
         for dev in devices:
             for usbid in self.portconfig:
                 if dev.idProduct == usbid[1] and dev.idVendor == usbid[0]:
+                    if self.serial_number is not None:
+                        if dev.serial_number != self.serial_number:
+                            continue
                     self.device = dev
                     self.vid = dev.idVendor
                     self.pid = dev.idProduct
+                    self.serial_number = dev.serial_number
                     self.interface = usbid[2]
                     break
             if self.device is not None:
@@ -322,7 +338,8 @@ class usb_class(DeviceClass):
 
     def write(self, command, pktsize=None):
         if pktsize is None:
-            pktsize = self.EP_OUT.wMaxPacketSize
+            #pktsize = self.EP_OUT.wMaxPacketSize
+            pktsize = MAX_USB_BULK_BUFFER_SIZE
         if isinstance(command, str):
             command = bytes(command, 'utf-8')
         pos = 0

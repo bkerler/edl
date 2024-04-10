@@ -1,5 +1,9 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2022
+(c) B. Kerler 2018-2024
+Licensed under GPLv3 license.
+
+# Be aware that if you use anything from this repository in any (including) compiled form, you need to opensource your code as well !
+# Violating against the GPLv3 license will enforce me to stop developing these opensource tools.
 
 ## Why
 
@@ -7,6 +11,10 @@
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
 
+## QC Sahara V3 additional information for newer QC devices
+- For newer qc phones, loader autodetection doesn't work anymore as the sahara loader doesn't offer a way to read the pkhash anymore
+- Thus, for Sahara V3, you need to give a valid loader via --loader option !
+  
 ### Use LiveDVD (everything ready to go, based on Ubuntu):
 User: user, Password:user (based on Ubuntu 22.04 LTS)
 
@@ -15,6 +23,14 @@ User: user, Password:user (based on Ubuntu 22.04 LTS)
 [Live DVD V4 Mirror](https://drive.google.com/file/d/10OEw1d-Ul_96MuT3WxQ3iAHoPC4NhM_X/view?usp=sharing)
 
 ## Installation
+
+#### Grab files and install
+```
+git clone https://github.com/bkerler/edl
+cd edl
+git submodule update --init --recursive
+pip3 install -r requirements.txt
+```
 
 ### Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
@@ -37,9 +53,11 @@ cd edl
 git submodule update --init --recursive
 sudo cp Drivers/51-edl.rules /etc/udev/rules.d
 sudo cp Drivers/50-android.rules /etc/udev/rules.d
-python setup.py build
-sudo python setup.py install
+python3 setup.py build
+sudo python3 setup.py install
 ```
+
+If you have SELinux enabled, you may need to set it to permissive mode temporarily to prevent permission issues. SELinux is commonly used by RedHat-like distros (for example, RHEL, Fedora, and CentOS). You can set it to permissive run-time until next boot with `sudo setenforce 0`.
 
 ### macOS:
 ```bash
@@ -48,8 +66,8 @@ brew install libusb git
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
-python setup.py build
-sudo python setup.py install
+python3 setup.py build
+sudo python3 setup.py install
 ```
 
 ### Windows:
@@ -58,13 +76,6 @@ sudo python setup.py install
 - If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
 - WIN+R ```cmd```
 
-#### Grab files and install
-```
-git clone https://github.com/bkerler/edl
-cd edl
-git submodule update --init --recursive
-pip3 install -r requirements.txt
-```
 
 #### Get latest UsbDk 64-Bit
 - Install normal QC 9008 Serial Port driver (or use default Windows COM Port one, make sure no exclamation is seen)
@@ -246,7 +257,7 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 - Oneplus 3T/5/6T/7T/8/8t/9/Nord CE/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Netgear MR1100-10EUS, Netgear MR5100
 - SIMCOM SIM8905E
 
-Published under MIT license
+Published under GPLv3 license
 Additional license limitations: No use in commercial products without prior permit.
 
 Enjoy !

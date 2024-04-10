@@ -1,12 +1,16 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2019
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import hashlib
-from Crypto.Cipher import AES
-from Crypto.Util import Counter
-from Crypto.Hash import CMAC
-from Crypto.Util.number import long_to_bytes, bytes_to_long
+from Cryptodome.Cipher import AES
+from Cryptodome.Util import Counter
+from Cryptodome.Hash import CMAC
+from Cryptodome.Util.number import long_to_bytes, bytes_to_long
 from binascii import hexlify, unhexlify
 
 

@@ -1,6 +1,10 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021
+# (c) B.Kerler 2018-2023 under GPLv3 license
+# If you use my code, make sure you refer to my name
+#
+# !!!!! If you use this code in commercial products, your product is automatically
+# GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import logging
 import sys
 import os
@@ -12,6 +16,9 @@ current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfra
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import LogBase, print_progress
+
+
+MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2 # 2 GBs
 
 
 class QCSparse(metaclass=LogBase):
@@ -31,6 +38,8 @@ class QCSparse(metaclass=LogBase):
         self.total_blks = None
         self.total_chunks = None
         self.image_checksum = None
+
+        self.tmp_offset = 0
 
         self.info = self.__logger.info
         self.debug = self.__logger.debug
@@ -77,20 +86,22 @@ class QCSparse(metaclass=LogBase):
         chunk_sz = header[2]
         total_sz = header[3]
         data_sz = total_sz - 12
+
         if chunk_type == 0xCAC1:
             if data_sz != (chunk_sz * self.blk_sz):
                 self.error(
                     "Raw chunk input size (%u) does not match output size (%u)" % (data_sz, chunk_sz * self.blk_sz))
                 return -1
             else:
-                self.rf.seek(self.rf.tell() + chunk_sz * self.blk_sz)
+                self.rf.seek(self.rf.tell() + data_sz)
                 return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC2:
             if data_sz != 4:
                 self.error("Fill chunk should have 4 bytes of fill, but this has %u" % data_sz)
                 return -1
             else:
-                return chunk_sz * self.blk_sz // 4
+                self.rf.seek(self.rf.tell() + data_sz)
+                return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC3:
             return chunk_sz * self.blk_sz
         elif chunk_type == 0xCAC4:
@@ -98,7 +109,7 @@ class QCSparse(metaclass=LogBase):
                 self.error("CRC32 chunk should have 4 bytes of CRC, but this has %u" % data_sz)
                 return -1
             else:
-                self.rf.seek(self.rf.tell() + 4)
+                self.rf.seek(self.rf.tell() + data_sz)
                 return 0
         else:
             self.debug("Unknown chunk type 0x%04X" % chunk_type)
@@ -166,17 +177,20 @@ class QCSparse(metaclass=LogBase):
         return length
 
     def read(self, length=None):
+        if self.tmp_offset >= MAX_STORE_SIZE:
+            self.tmpdata = self.tmpdata[self.tmp_offset:]
+            self.tmp_offset = 0
         if length is None:
             return self.unsparse()
-        if length <= len(self.tmpdata):
-            tdata = self.tmpdata[:length]
-            self.tmpdata = self.tmpdata[length:]
+        if (self.tmp_offset + length) <= len(self.tmpdata):
+            tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+            self.tmp_offset += length
             return tdata
-        while len(self.tmpdata) < length:
+        while (self.tmp_offset + length) > len(self.tmpdata):
             self.tmpdata.extend(self.unsparse())
-            if length <= len(self.tmpdata):
-                tdata = self.tmpdata[:length]
-                self.tmpdata = self.tmpdata[length:]
+            if (self.tmp_offset + length) <= len(self.tmpdata):
+                tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+                self.tmp_offset += length
                 return tdata
 
 
