@@ -1462,7 +1462,12 @@ class firehose(metaclass=LogBase):
                 else:
                     for partitionname_a in guid_gpt_a.partentries:
                         slot = partitionname_a.lower()[-2:]
+                        partition_a = backup_guid_gpt_a.partentries[partitionname_a]
                         if slot == "_a":
+                            active_a = ((partition_a.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                            if (active_a and slot_a_status) or (not active_a and slot_b_status):
+                                return True
+
                             partitionname_b = partitionname_a[:-1] + "b"
                             if partitionname_b in guid_gpt_a.partentries:
                                 lun_b = lun_a
