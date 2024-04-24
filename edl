@@ -379,7 +379,10 @@ class main(metaclass=LogBase):
             if cmd != "":
                 self.info("Trying to connect to firehose loader ...")
                 if fh.connect(sahara):
-                    fh.handle_firehose(cmd, options)
+                    if not fh.handle_firehose(cmd, options):
+                        sys.exit(1)
+                else:
+                    sys.exit(1)
 
 
 if __name__ == '__main__':
