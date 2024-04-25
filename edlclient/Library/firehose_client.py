@@ -847,7 +847,7 @@ class firehose_client(metaclass=LogBase):
                             f"Erased {partitionname} starting at sector {str(partition.sector)} " +
                             f"with sector count {str(partition.sectors)}.")
                         return True
-            self.printer(
+            self.error(
                 f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
             return False
         elif cmd == "ep":
