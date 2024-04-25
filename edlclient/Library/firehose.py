@@ -1361,7 +1361,7 @@ class firehose(metaclass=LogBase):
             write_size = len(patch_data)
             for i in range(0, write_size, size_each_patch):
                 pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset+size_each_patch])[0])
-                self.cmd_patch( lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, True)
+                self.cmd_patch( lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, False)
                 offset += size_each_patch
             return True
 
