@@ -343,6 +343,9 @@ class main(metaclass=LogBase):
                             print("Error on sahara handshake, resetting.")
                             self.sahara.cmd_reset()
                             sys.exit(1)
+        else:
+            if self.__logger.level != logging.DEBUG:
+                self.__logger.setLevel(logging.ERROR)
         if mode == "error":
             print("Connection detected, quiting.")
             sys.exit(1)
