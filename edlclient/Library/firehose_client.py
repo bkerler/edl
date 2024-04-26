@@ -831,7 +831,6 @@ class firehose_client(metaclass=LogBase):
             luns = self.getluns(options)
             partitionname = options["<partitionname>"]
             partitions = partitionname.split(",")
-            error = False
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
                                                        int(options["--gpt-part-entry-size"]),
@@ -847,14 +846,10 @@ class firehose_client(metaclass=LogBase):
                         self.printer(
                             f"Erased {partitionname} starting at sector {str(partition.sector)} " +
                             f"with sector count {str(partition.sectors)}.")
-                    else:
-                        self.printer(
-                            f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
-                        error = True
-                        continue
-            if error:
-                return False
-            return True
+                        return True
+            self.error(
+                f"Couldn't erase partition {partitionname}. Either wrong memorytype given or no gpt partition.")
+            return False
         elif cmd == "ep":
             if not self.check_param(["<partitionname>", "<sectors>"]):
                 return False
