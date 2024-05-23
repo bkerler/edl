@@ -149,7 +149,7 @@ class oneplus(metaclass=LogBase):
                 data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1, False)
                 value = data.data[24:24 + 5]
                 try:
-                    test = int(value.decode('utf-8'))
+                    test = int(value.decode('utf-8'), 16)
                     self.info("Oneplus protection with prjid %d detected" % test)
                     projid = value.decode('utf-8')
                 except:
