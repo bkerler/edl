@@ -30,10 +30,12 @@ try:
 except ImportError:
     print("Keystone library is missing (optional).")
 
+
 def is_windows():
     if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
         return True
     return False
+
 
 class structhelper_io:
     pos = 0
@@ -84,6 +86,7 @@ class structhelper_io:
     def seek(self, pos):
         self.data.seek(pos)
 
+
 def find_binary(data, strf, pos=0):
     t = strf.split(b".")
     pre = 0
@@ -113,6 +116,7 @@ def find_binary(data, strf, pos=0):
             offsets.append(pre)
             pre += 1
     return None
+
 
 class progress:
     def __init__(self, pagesize):
@@ -152,7 +156,7 @@ class progress:
                                        total // self.pagesize,
                                        0), bar_length=10)
 
-        if prog > self.prog or prog==100.0:
+        if prog > self.prog or prog == 100.0:
             if display:
                 t0 = time.time()
                 tdiff = t0 - self.progtime
@@ -188,6 +192,7 @@ class progress:
                 self.prog = prog
                 self.progpos = pos
                 self.progtime = t0
+
 
 class structhelper:
     pos = 0
@@ -248,6 +253,7 @@ class structhelper:
 
     def seek(self, pos):
         self.pos = pos
+
 
 def do_tcp_server(client, arguments, handler):
     def tcpprint(arg):

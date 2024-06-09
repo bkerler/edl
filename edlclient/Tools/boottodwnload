@@ -284,6 +284,9 @@ def main():
         help='use logfile for debug log',
         default="")
     args = parser.parse_args()
+    if not args.port:
+        parser.print_help()
+        return
     dw = dwnloadtools()
     dw.run(args)
 

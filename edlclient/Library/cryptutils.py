@@ -469,18 +469,12 @@ class cryptutils:
             if salt is not None:
                 inBlock = b"\x00" * 8 + msghash + salt
                 mhash = self.hash(inBlock)
-                if mhash == mhash:
-                    return True
-                else:
-                    return False
+                return mhash == mhash
             else:
                 salt = TS[-self.digestLen:]
                 inBlock = b"\x00" * 8 + msghash + salt
                 mhash = self.hash(inBlock)
-                if mhash == mhash:
-                    return True
-                else:
-                    return False
+                return mhash == mhash
 
     class hash:
         def __init__(self, hashtype="SHA256"):

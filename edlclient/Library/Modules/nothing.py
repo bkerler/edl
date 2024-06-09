@@ -17,7 +17,7 @@ class nothing(metaclass=LogBase):
                  loglevel=logging.INFO):
         self.fh = fh
         self.projid = projid
-        #self.projid == "22111":
+        # self.projid == "22111":
         self.hashverify = "16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150"
         self.serial = serial
         self.supported_functions = supported_functions

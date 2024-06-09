@@ -7,7 +7,7 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 # TXT to EDL Loader (c) B.Kerler 2023
 
-import os, sys
+import sys
 from struct import unpack
 
 
