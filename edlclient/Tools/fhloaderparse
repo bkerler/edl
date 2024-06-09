@@ -13,10 +13,14 @@ from io import BytesIO
 from os import walk
 from shutil import copyfile
 from struct import unpack
-
-from Config.qualcomm_config import vendor
-from Library.loader_db import loader_utils
-from Library.utils import elf
+try:
+    from Config.qualcomm_config import vendor
+    from Library.loader_db import loader_utils
+    from Library.utils import elf
+except ModuleNotFoundError:
+    from edlclient.Config.qualcomm_config import vendor
+    from edlclient.Library.loader_db import loader_utils
+    from edlclient.Library.utils import elf
 
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
