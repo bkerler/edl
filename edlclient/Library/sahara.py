@@ -49,7 +49,7 @@ class sahara(metaclass=LogBase):
         self.bit64 = False
         self.pktsize = None
         self.ch = CommandHandler()
-        self.loader_handler=loader_utils(loglevel=loglevel)
+        self.loader_handler = loader_utils(loglevel=loglevel)
         self.loaderdb = self.loader_handler.init_loader_db()
 
         self.__logger.setLevel(loglevel)
@@ -70,12 +70,12 @@ class sahara(metaclass=LogBase):
             if data == b'':
                 return {}
             if b"<?xml" in data:
-                return {"firehose":"yes"}
+                return {"firehose": "yes"}
             pkt = self.ch.pkt_cmd_hdr(data)
             if pkt.cmd == cmd_t.SAHARA_HELLO_REQ:
-                return {"cmd":pkt.cmd,"data":self.ch.pkt_hello_req(data)}
+                return {"cmd": pkt.cmd, "data": self.ch.pkt_hello_req(data)}
             elif pkt.cmd == cmd_t.SAHARA_DONE_RSP:
-                return {"cmd": pkt.cmd, "data":self.ch.pkt_done(data)}
+                return {"cmd": pkt.cmd, "data": self.ch.pkt_done(data)}
             elif pkt.cmd == cmd_t.SAHARA_END_TRANSFER:
                 return {"cmd": pkt.cmd, "data": self.ch.pkt_image_end(data)}
             elif pkt.cmd == cmd_t.SAHARA_64BIT_MEMORY_READ_DATA:
@@ -93,7 +93,7 @@ class sahara(metaclass=LogBase):
             elif pkt.cmd == cmd_t.SAHARA_EXECUTE_RSP:
                 return {"cmd": pkt.cmd, "data": self.ch.pkt_execute_rsp_cmd(data)}
             elif pkt.cmd == cmd_t.SAHARA_CMD_READY or pkt.cmd == cmd_t.SAHARA_RESET_RSP:
-                return {"cmd": pkt.cmd, "data": None }
+                return {"cmd": pkt.cmd, "data": None}
             return {}
         except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
@@ -113,7 +113,7 @@ class sahara(metaclass=LogBase):
 
     def connect(self):
         try:
-            v = self.cdc.read(length=0xC * 0x4,timeout=1)
+            v = self.cdc.read(length=0xC * 0x4, timeout=1)
             if len(v) > 1:
                 if v[0] == 0x01:
                     pkt = self.ch.pkt_cmd_hdr(v)
@@ -122,23 +122,23 @@ class sahara(metaclass=LogBase):
                         self.pktsize = rsp.cmd_packet_length
                         self.version = rsp.version
                         self.info(f"Protocol version: {rsp.version}, Version supported: {rsp.version_supported}")
-                        return {"mode":"sahara", "cmd":cmd_t.SAHARA_HELLO_REQ, "data":rsp}
+                        return {"mode": "sahara", "cmd": cmd_t.SAHARA_HELLO_REQ, "data": rsp}
                     elif pkt.cmd == cmd_t.SAHARA_END_TRANSFER:
                         rsp = self.ch.pkt_image_end(v)
-                        return {"mode":"sahara", "cmd":cmd_t.SAHARA_END_TRANSFER, "data":rsp}
+                        return {"mode": "sahara", "cmd": cmd_t.SAHARA_END_TRANSFER, "data": rsp}
                 elif b"<?xml" in v:
-                    return {"mode":"firehose"}
+                    return {"mode": "firehose"}
                 elif v[0] == 0x7E:
-                    return {"mode":"nandprg"}
+                    return {"mode": "nandprg"}
             else:
                 data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
                 self.cdc.write(data)
                 res = self.cdc.read(timeout=1)
                 if b"<?xml" in res:
                     return {"mode": "firehose"}
-                elif len(res)> 0:
+                elif len(res) > 0:
                     if res[0] == 0x7E:
-                        return {"mode":"nandprg"}
+                        return {"mode": "nandprg"}
                     elif res[0] == cmd_t.SAHARA_END_TRANSFER:
                         rsp = self.ch.pkt_image_end(res)
                         return {"mode": "sahara", "cmd": cmd_t.SAHARA_END_TRANSFER, "data": rsp}
@@ -147,7 +147,7 @@ class sahara(metaclass=LogBase):
                     self.cdc.write(data)
                     res = self.cdc.read()
                     if len(res) > 0 and res[1] == 0x12:
-                        return {"mode":"nandprg"}
+                        return {"mode": "nandprg"}
                     elif len(res) == 0:
                         print("Device is in Sahara error state, please reboot the device.")
                         return {"mode": "error"}
@@ -176,20 +176,20 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_serial_num(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SERIAL_NUM_READ)
-        return int.from_bytes(res,'little')
+        return int.from_bytes(res, 'little')
 
     def cmdexec_get_msm_hwid(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
         if res is not None:
-            return int.from_bytes(res[:8],'little')
+            return int.from_bytes(res[:8], 'little')
         return None
 
     def cmdexec_get_pkhash(self):
         try:
             res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)
-            idx=res[4:].find(res[:4])
-            if idx!=-1:
-                res=res[:4+idx]
+            idx = res[4:].find(res[:4])
+            if idx != -1:
+                res = res[:4 + idx]
             return res.hex()
         except Exception as e:  # pylint: disable=broad-except
             self.error(str(e))
@@ -197,7 +197,7 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_sbl_version(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
-        return int.from_bytes(res,'little')
+        return int.from_bytes(res, 'little')
 
     def cmdexec_switch_to_dmss_dload(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SWITCH_TO_DMSS_DLOAD)
@@ -310,7 +310,7 @@ class sahara(metaclass=LogBase):
             else:
                 self.info(f"\nVersion {hex(version)}\n------------------------\n" +
                           f"Serial:            0x{self.serials}\n")
-                if self.programmer=="":
+                if self.programmer == "":
                     self.error("No autodetection of loader possible with sahara version 3 and above :( Aborting.")
                     return False
             self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
@@ -348,7 +348,6 @@ class sahara(metaclass=LogBase):
         self.cdc.write(pack("<II", cmd_t.SAHARA_RESET_STATE_MACHINE_ID, 0x8))
         return True
 
-
     def cmd_reset(self):
         self.cdc.write(pack("<II", cmd_t.SAHARA_RESET_REQ, 0x8))
         try:
@@ -361,7 +360,7 @@ class sahara(metaclass=LogBase):
                 return True
             elif res["cmd"] == cmd_t.SAHARA_END_TRANSFER:
                 if "data" in res:
-                    pkt=res["data"]
+                    pkt = res["data"]
                     self.error(self.get_error_desc(pkt.image_tx_status))
         return False
 
@@ -537,7 +536,7 @@ class sahara(metaclass=LogBase):
                     else:
                         self.error("Timeout while uploading loader. Wrong loader ?")
                         return ""
-                elif cmd in [cmd_t.SAHARA_64BIT_MEMORY_READ_DATA,cmd_t.SAHARA_READ_DATA]:
+                elif cmd in [cmd_t.SAHARA_64BIT_MEMORY_READ_DATA, cmd_t.SAHARA_READ_DATA]:
                     if cmd == cmd_t.SAHARA_64BIT_MEMORY_READ_DATA:
                         self.bit64 = True
                         if loop == 0:
@@ -563,7 +562,7 @@ class sahara(metaclass=LogBase):
                     else:
                         self.error(f"Unknown sahara id: {self.id}")
                         return "error"
-                    loop+=1
+                    loop += 1
                     data_offset = pkt.data_offset
                     data_len = pkt.data_len
                     if data_offset + data_len > len(programmer):
