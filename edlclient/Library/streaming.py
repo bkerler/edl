@@ -168,7 +168,7 @@ class Streaming(metaclass=LogBase):
 
     def send_section_header(self, name):
         # 0x1b open muliimage, 0xe for user-defined partition
-        resp = self.send(b"\x1b\x0e" + bytes("0:"+name, 'utf-8') + b"\x00")
+        resp = self.send(b"\x1b\x0e" + bytes("0:" + name, 'utf-8') + b"\x00")
         if resp[0] == 0x1c:
             return True
         self.error("Error on sending section header")
@@ -186,7 +186,7 @@ class Streaming(metaclass=LogBase):
             return True
         return False
 
-    def write_flash(self, lba:int=0, partname="", filename="", info=True):
+    def write_flash(self, lba: int = 0, partname="", filename="", info=True):
         wbsize = 1024
         filesize = os.stat(filename).st_size
         total = filesize
@@ -197,8 +197,8 @@ class Streaming(metaclass=LogBase):
                 adr = lba
                 while filesize > 0:
                     subdata = rf.read(wbsize)
-                    if len(subdata)<1024:
-                        subdata += (1024-len(subdata))*b'\xFF'
+                    if len(subdata) < 1024:
+                        subdata += (1024 - len(subdata)) * b'\xFF'
                     scmd = b"\x07" + pack("<I", adr) + subdata
                     resp = self.send(scmd)
                     if len(resp) == 0 or resp[0] != 0x8:
@@ -664,7 +664,7 @@ class Streaming(metaclass=LogBase):
             for i in range(partcount):
                 if magic1 == 0xAA7D1B9a and magic2 == 0x1F7D48BC:
                     name, length, spare, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
-                                                                                    data[i * 0x1C:(i * 0x1C) + 0x1C])
+                                                                                   data[i * 0x1C:(i * 0x1C) + 0x1C])
                 else:
                     name, offset, length, attr1, attr2, attr3, which_flash = unpack("16sIIBBBB",
                                                                                     data[i * 0x1C:(i * 0x1C) + 0x1C])
@@ -672,10 +672,10 @@ class Streaming(metaclass=LogBase):
                 if name[1] != 0x3A:
                     break
                 partitions[name[2:].rstrip(b"\x00").decode('utf-8')] = dict(offset=offset,
-                                                                                    length=(length+spare) & 0xFFFF,
-                                                                                    attr1=attr1, attr2=attr2,
-                                                                                    attr3=attr3,
-                                                                                    which_flash=which_flash)
+                                                                            length=(length + spare) & 0xFFFF,
+                                                                            attr1=attr1, attr2=attr2,
+                                                                            attr3=attr3,
+                                                                            which_flash=which_flash)
                 if magic1 == 0xAA7D1B9a and magic2 == 0x1F7D48BC:
                     offset += length + spare
             return partitions
@@ -861,9 +861,9 @@ class Streaming(metaclass=LogBase):
 
             val = resp[1].flashId.decode('utf-8') if resp[1].flashId[0] != 0x65 else ""
             self.info("Flash memory: %s %s, %s (vendor: 0x%02X image_id: 0x%02X)" % (self.settings.flash_mfr, val,
-                                                                               self.settings.flash_descr,
-                                                                               self.settings.flash_pid,
-                                                                               self.settings.flash_fid))
+                                                                                     self.settings.flash_descr,
+                                                                                     self.settings.flash_pid,
+                                                                                     self.settings.flash_fid))
             # self.info("Maximum packet size: %i byte",*((unsigned int*)&rbuf[0x24]))
             self.info(
                 "Page size: %d bytes (%d sectors)" % (self.settings.PAGESIZE, self.settings.sectors_per_page))
@@ -923,7 +923,7 @@ class Streaming(metaclass=LogBase):
         totallength = length * self.settings.num_pages_per_blk * self.settings.PAGESIZE
         progbar.show_progress(prefix="Read", pos=pos, total=totallength, display=info)
 
-        for curblock in range(block,block+length):
+        for curblock in range(block, block + length):
             for curpage in range(self.settings.num_pages_per_blk):
                 data, spare = self.flash_read(curblock, curpage, self.settings.sectors_per_page, cwsize)
                 pos = (curblock * self.settings.num_pages_per_blk + curpage) * self.settings.PAGESIZE
@@ -1079,7 +1079,7 @@ def test_nand_config():
     errorids = []
     for test in testconfig:
         nandid, buswidth, density, pagesize, blocksize, oobsize, bchecc, cfg0, \
-        cfg1, eccbufcfg, bccbchcfg, badblockbyte = test
+            cfg1, eccbufcfg, bccbchcfg, badblockbyte = test
         res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg = qs.nanddevice.nand_setup(nandid)
         if cfg0 != res_cfg0 or cfg1 != res_cfg1 or eccbufcfg != res_ecc_buf_cfg or res_ecc_bch_cfg != bccbchcfg:
             errorids.append([nandid, res_cfg0, res_cfg1, res_ecc_buf_cfg, res_ecc_bch_cfg])

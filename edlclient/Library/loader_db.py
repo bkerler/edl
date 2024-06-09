@@ -5,13 +5,11 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import binascii
-import time
+import inspect
+import logging
 import os
 import sys
-import logging
-import inspect
-from struct import unpack, pack
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -21,6 +19,7 @@ try:
 except:
     from Library.utils import read_object, print_progress, rmrf, LogBase
     from Config.qualcomm_config import sochw, msmids, root_cert_hash
+
 
 class loader_utils(metaclass=LogBase):
     def __init__(self, loglevel=logging.INFO):
@@ -38,7 +37,7 @@ class loader_utils(metaclass=LogBase):
         self.loaderdb = {}
 
     def init_loader_db(self):
-        for (dirpath, dirnames, filenames) in os.walk(os.path.join(parent_dir,"..","Loaders")):
+        for (dirpath, dirnames, filenames) in os.walk(os.path.join(parent_dir, "..", "Loaders")):
             for filename in filenames:
                 fn = os.path.join(dirpath, filename)
                 found = False
@@ -52,13 +51,13 @@ class loader_utils(metaclass=LogBase):
                     hwid = filename.split("_")[0].lower()
                     msmid = hwid[:8]
                     try:
-                        int(msmid,16)
+                        int(msmid, 16)
                     except:
                         continue
                     devid = hwid[8:]
                     if devid == '':
                         continue
-                    if len(filename.split("_"))<2:
+                    if len(filename.split("_")) < 2:
                         continue
                     pkhash = filename.split("_")[1].lower()
                     for msmid in self.convertmsmid(msmid):
@@ -88,4 +87,3 @@ class loader_utils(metaclass=LogBase):
                             rmsmid = '0' + rmsmid
                         msmiddb.append(rmsmid)
         return msmiddb
-

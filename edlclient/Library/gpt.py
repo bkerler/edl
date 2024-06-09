@@ -5,18 +5,19 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import os
-import sys
 import argparse
-import colorama
 import copy
 import logging
 import logging.config
-from enum import Enum
-from binascii import hexlify
-from struct import calcsize, unpack, pack
-from io import BytesIO
+import os
+import sys
 from binascii import crc32
+from binascii import hexlify
+from enum import Enum
+from struct import calcsize, unpack, pack
+
+import colorama
+
 
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {

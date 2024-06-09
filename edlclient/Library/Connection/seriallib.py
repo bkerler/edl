@@ -5,25 +5,25 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import os.path
-import time
 import sys
+
 if not sys.platform.startswith('win32'):
     import termios
-    
+
 
 def _reset_input_buffer():
     return
+
 
 def _reset_input_buffer_org(self):
     if not sys.platform.startswith('win32'):
         return termios.tcflush(self.fd, termios.TCIFLUSH)
 
+
 import serial
 import serial.tools.list_ports
 import inspect
-import traceback
-from binascii import hexlify
+
 try:
     from edlclient.Library.utils import *
     from edlclient.Library.Connection.devicehandler import DeviceClass
@@ -38,13 +38,13 @@ class serial_class(DeviceClass):
         super().__init__(loglevel, portconfig, devclass)
         self.is_serial = True
 
-    def connect(self, EP_IN=-1, EP_OUT=-1, portname:str=""):
+    def connect(self, EP_IN=-1, EP_OUT=-1, portname: str = ""):
         if self.connected:
             self.close()
             self.connected = False
         if portname == "":
-            devices=self.detectdevices()
-            if len(devices)>0:
+            devices = self.detectdevices()
+            if len(devices) > 0:
                 portname = devices[0]
         if portname != "":
             self.device = serial.Serial(baudrate=115200, bytesize=serial.EIGHTBITS,
@@ -88,12 +88,11 @@ class serial_class(DeviceClass):
         self.debug("Break set")
 
     def setcontrollinestate(self, RTS=None, DTR=None, isFTDI=False):
-        if RTS==1:
+        if RTS == 1:
             self.device.setRTS(RTS)
-        if DTR==1:
+        if DTR == 1:
             self.device.setDTR(DTR)
         self.debug("Linecoding set")
-
 
     def write(self, command, pktsize=None):
         if pktsize is None:
@@ -169,18 +168,18 @@ class serial_class(DeviceClass):
         epr = self.device.read
         extend = res.extend
         if self.xmlread:
-            info=self.device.read(6)
-            bytestoread=resplen-len(info)
+            info = self.device.read(6)
+            bytestoread = resplen - len(info)
             extend(info)
             if b"<?xml " in info:
-                while not b"response " in res or res[-7:]!=b"</data>":
+                while not b"response " in res or res[-7:] != b"</data>":
                     extend(epr(1))
                 return res
         bytestoread = resplen
         while len(res) < bytestoread:
             try:
-                val=epr(bytestoread)
-                if len(val)==0:
+                val = epr(bytestoread)
+                if len(val) == 0:
                     break
                 extend(val)
             except Exception as e:
@@ -218,5 +217,3 @@ class serial_class(DeviceClass):
         self.device.flush()
         res = self.usbread(resplen)
         return res
-
-

@@ -25,6 +25,7 @@ from struct import pack
 import logging
 from edlclient.Library.utils import LogBase
 from edlclient.Library.Modules.oneplus_param import paramtools
+
 try:
     from edlclient.Library.cryptutils import cryptutils
 except Exception as e:
@@ -128,7 +129,8 @@ deviceconfig = {
 
 
 class oneplus(metaclass=LogBase):
-    def __init__(self, fh, projid:str="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
+    def __init__(self, fh, projid: str = "18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0,
+                 supported_functions=None,
                  args=None, loglevel=logging.INFO):
         self.fh = fh
         self.__logger = self.__logger
@@ -203,7 +205,7 @@ class oneplus(metaclass=LogBase):
                 else:
                     assert "Device is not supported"
                     exit(0)
-        assert "Unknown projid:"+str(projid)
+        assert "Unknown projid:" + str(projid)
         return None
 
     def run(self):
@@ -446,7 +448,7 @@ class oneplus2(metaclass=LogBase):
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-    def crypt_token(self, data, pk, device_timestamp:int, decrypt=False):
+    def crypt_token(self, data, pk, device_timestamp: int, decrypt=False):
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
                  pack("<Q", device_timestamp)  # we get this using setprocstart

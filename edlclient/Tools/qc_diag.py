@@ -90,7 +90,7 @@ subnvitem_type = [
 ]
 
 
-class fs_factimage_read_info():
+class fs_factimage_read_info:
     def_fs_factimage_read_info = [
         ("stream_state", "B"),  # 0 indicates no more data to be sent, otherwise set to 1
         ("info_cluster_sent", "B"),  # 0 indicates if info_cluster was not sent, else 1
@@ -117,7 +117,7 @@ class fs_factimage_read_info():
         return data
 
 
-class FactoryHeader():
+class FactoryHeader:
     def_factory_header = [
         ("magic1", "I"),
         ("magic2", "I"),
@@ -160,7 +160,7 @@ class FactoryHeader():
         return data
 
 
-class nvitem():
+class nvitem:
     item = 0x0
     data = b""
     status = 0x0
@@ -409,7 +409,7 @@ class qcdiag(metaclass=LogBase):
         self.cdc.close(True)
 
     def send(self, cmd):
-        if self.hdlc != None:
+        if self.hdlc is not None:
             return self.hdlc.send_cmd_np(cmd)
 
     def cmd_info(self):
@@ -809,7 +809,7 @@ class qcdiag(metaclass=LogBase):
             return False
 
         write_handle.close()
-        if efserr == False:
+        if not efserr:
             print("Successfully read EFS.")
             return True
         else:
@@ -1408,7 +1408,7 @@ def main():
     parser_nvwritesub.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_writeimei = subparser.add_parser("writeimei", help="Write imei")
-    parser_writeimei.add_argument("imei", metavar=("<imei1,imei2,...>"), help="[Option] IMEI to write", default="")
+    parser_writeimei.add_argument("imei", metavar="<imei1,imei2,...>", help="[Option] IMEI to write", default="")
     parser_writeimei.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_writeimei.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_writeimei.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",

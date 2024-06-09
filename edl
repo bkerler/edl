@@ -127,28 +127,29 @@ Options:
     --resetmode=mode                   Resetmode for reset (poweroff, reset, edl, etc.)
 """
 
+import logging
 import os
+import re
+import subprocess
 import sys
 import time
-import logging
-import subprocess
-import re
+
 from docopt import docopt
+
 from edlclient.Config.usb_ids import default_ids
-from edlclient.Library.utils import LogBase
-from edlclient.Library.Connection.usblib import usb_class
 from edlclient.Library.Connection.seriallib import serial_class
-from edlclient.Library.sahara import sahara
-from edlclient.Library.streaming_client import streaming_client
+from edlclient.Library.Connection.usblib import usb_class
 from edlclient.Library.firehose_client import firehose_client
-from edlclient.Library.streaming import Streaming
+from edlclient.Library.sahara import sahara
 from edlclient.Library.sahara_defs import cmd_t, sahara_mode_t
+from edlclient.Library.streaming import Streaming
+from edlclient.Library.streaming_client import streaming_client
+from edlclient.Library.utils import LogBase
 from edlclient.Library.utils import is_windows
-from binascii import hexlify
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2023.")
+print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2024.")
 
 
 def parse_cmd(rargs):

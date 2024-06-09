@@ -7,9 +7,8 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import logging
-from binascii import hexlify
-from struct import unpack
 import time
+from struct import unpack
 
 MAX_PACKET_LEN = 4096
 

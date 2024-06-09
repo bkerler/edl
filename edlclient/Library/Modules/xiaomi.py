@@ -43,7 +43,7 @@ class xiaomi(metaclass=LogBase):
             rsp = self.fh.xmlsend(self.xiaomi_authdata)
             if rsp.resp:
                 if "value" in rsp.resp:
-                    if rsp.resp["value"]=="ACK":
+                    if rsp.resp["value"] == "ACK":
                         if 'authenticated' in rsp.log[0].lower() and 'true' in rsp.log[0].lower():
                             return True
         return False

@@ -36,8 +36,9 @@ except ImportError as e:
     nothing = None
     pass
 
+
 class modules(metaclass=LogBase):
-    def __init__(self, fh, serial:int, supported_functions, loglevel, devicemodel:str, args):
+    def __init__(self, fh, serial: int, supported_functions, loglevel, devicemodel: str, args):
         self.fh = fh
         self.args = args
         self.serial = serial
@@ -132,7 +133,7 @@ class modules(metaclass=LogBase):
                     if paramdata.data == b"":
                         self.error("Error on reading param partition.")
                         return False
-                    wdata = self.ops.enable_ops(paramdata.data, enable,self.devicemodel,self.serial)
+                    wdata = self.ops.enable_ops(paramdata.data, enable, self.devicemodel, self.serial)
                     if wdata is not None:
                         self.ops.run()
                         if self.fh.cmd_program_buffer(lun, rpartition.sector, wdata, False):

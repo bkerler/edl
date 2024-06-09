@@ -31,10 +31,11 @@ class nothing(metaclass=LogBase):
         if token1 is None:
             token1 = random.randbytes(32).hex()
         authresp = token1 + self.projid + ("%x" % self.serial) + self.hashverify
-        token2 = hashlib.sha256(bytes(authresp,'utf-8')).hexdigest()[:64]
+        token2 = hashlib.sha256(bytes(authresp, 'utf-8')).hexdigest()[:64]
         token3 = self.hashverify
-        return bytes(f"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data>\n    <ntprojectverify  token1=\"{token1}\" token2=\"{token2}\" token3=\"{token3}\"/>\n</data>\n",'utf-8')
-
+        return bytes(
+            f"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data>\n    <ntprojectverify  token1=\"{token1}\" token2=\"{token2}\" token3=\"{token3}\"/>\n</data>\n",
+            'utf-8')
 
     def ntprojectverify(self):
         """
@@ -57,9 +58,9 @@ class nothing(metaclass=LogBase):
 
 if __name__ == "__main__":
     nt = nothing(fh=None, projid="22111", serial=1729931115)
-    res=nt.generatetoken(token1="512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671")
-    org=b"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data>\n    <ntprojectverify  token1=\"512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671\" token2=\"1ecd222465436eb8acc0cfc41e90d1e677165c184ea7d9631615014dac88c669\" token3=\"16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150\"/>\n</data>\n"
-    if res!=org:
+    res = nt.generatetoken(token1="512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671")
+    org = b"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data>\n    <ntprojectverify  token1=\"512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671\" token2=\"1ecd222465436eb8acc0cfc41e90d1e677165c184ea7d9631615014dac88c669\" token3=\"16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150\"/>\n</data>\n"
+    if res != org:
         print("Error !")
     print(res)
     print(nt.generatetoken())

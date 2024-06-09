@@ -5,13 +5,13 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
+import inspect
 import logging
-import sys
 import os
 import sys
-import inspect
 from queue import Queue
 from struct import unpack
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)

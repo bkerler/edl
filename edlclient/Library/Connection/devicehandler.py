@@ -5,8 +5,6 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import serial
-import serial.tools.list_ports
 import inspect
 import traceback
 from binascii import hexlify

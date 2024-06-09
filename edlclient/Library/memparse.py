@@ -6,10 +6,10 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
-import os
-import pt64
-import pt
 import argparse
+
+import pt
+import pt64
 
 
 def pt64_walk(data, ttbr, tnsz, levels=3):

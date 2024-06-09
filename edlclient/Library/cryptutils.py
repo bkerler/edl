@@ -425,7 +425,7 @@ class cryptutils:
                 return q
 
         def pss_verify(self, e, N, msghash, signature, emBits=1024, salt=None):
-            if salt == None:
+            if salt is None:
                 slen = self.digestLen
             else:
                 slen = len(salt)
@@ -482,7 +482,7 @@ class cryptutils:
                 else:
                     return False
 
-    class hash():
+    class hash:
         def __init__(self, hashtype="SHA256"):
             if hashtype == "SHA1":
                 self.hash = self.sha1

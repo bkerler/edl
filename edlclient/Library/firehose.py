@@ -7,26 +7,21 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import binascii
-import io
+import json
 import os.path
 import platform
-import time
-import json
-from struct import unpack
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
 
 from edlclient.Library.Modules.nothing import nothing
-from edlclient.Library.utils import *
-from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE, MAX_PRIORITY, PART_ATT_PRIORITY_BIT
-from edlclient.Library.gpt import PART_ATT_PRIORITY_VAL, PART_ATT_ACTIVE_VAL, PART_ATT_MAX_RETRY_COUNT_VAL, PART_ATT_SUCCESSFUL_VAL, PART_ATT_UNBOOTABLE_VAL
+from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Library.sparse import QCSparse
+from edlclient.Library.utils import *
 from edlclient.Library.utils import progress
-from queue import Queue
-from threading import Thread
 
 rq = Queue()
+
 
 def writedata(filename, rq):
     pos = 0
@@ -146,11 +141,10 @@ def writefile(wf, q, stop):
             break
 
 
-class asyncwriter():
+class asyncwriter:
     def __init__(self, wf):
         self.writequeue = Queue()
-        self.worker = Thread(target=writefile, args=(wf, self.writequeue, lambda: self.stopthreads,))
-        self.worker.setDaemon(True)
+        self.worker = Thread(target=writefile, args=(wf, self.writequeue, lambda: self.stopthreads,), daemon=True)
         self.stopthreads = False
         self.worker.start()
 
@@ -216,9 +210,9 @@ class firehose(metaclass=LogBase):
     def detect_partition(self, arguments, partitionname, send_full=False):
         if arguments is None:
             arguments = {
-                "--gpt-num-part-entries"     : 0,
-                "--gpt-part-entry-size"      : 0,
-                "--gpt-part-entry-start-lba" : 0
+                "--gpt-num-part-entries": 0,
+                "--gpt-part-entry-size": 0,
+                "--gpt-part-entry-start-lba": 0
             }
         fpartitions = {}
         for lun in self.luns:
@@ -231,7 +225,8 @@ class firehose(metaclass=LogBase):
                 break
             else:
                 if partitionname in guid_gpt.partentries:
-                    return [True, lun, data, guid_gpt] if send_full else [True, lun, guid_gpt.partentries[partitionname]]
+                    return [True, lun, data, guid_gpt] if send_full else [True, lun,
+                                                                          guid_gpt.partentries[partitionname]]
             for part in guid_gpt.partentries:
                 fpartitions[lunname].append(part)
         return [False, fpartitions]
@@ -682,7 +677,7 @@ class firehose(metaclass=LogBase):
             rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
-                    if bytestoread!=0:
+                    if bytestoread != 0:
                         self.error(f"Error:")
                         for line in info:
                             self.error(line)
@@ -1044,8 +1039,8 @@ class firehose(metaclass=LogBase):
             self.parse_storage()
             for function in self.supported_functions:
                 if function == "checkntfeature":
-                    if type(self.devicemodel)==list:
-                        self.devicemodel=self.devicemodel[0]
+                    if type(self.devicemodel) == list:
+                        self.devicemodel = self.devicemodel[0]
                     self.nothing = nothing(fh=self, projid=self.devicemodel, serial=self.serial,
                                            supported_functions=self.supported_functions,
                                            loglevel=self.loglevel)
@@ -1148,7 +1143,7 @@ class firehose(metaclass=LogBase):
                     try:
                         serial = line.split("0x")[1][:-1]
                         if ")" in serial:
-                            serial=serial[:serial.rfind(")")]
+                            serial = serial[:serial.rfind(")")]
                         self.serial = int(serial, 16)
                     except Exception as err:  # pylint: disable=broad-except
                         self.debug(str(err))
@@ -1182,8 +1177,8 @@ class firehose(metaclass=LogBase):
                     "serial": self.serial
                 }
                 if os.path.exists("edl_config.json"):
-                    data = json.loads(open("edl_config.json","rb").read().decode('utf-8'))
-                    if "serial" in data and data["serial"]!=state["serial"]:
+                    data = json.loads(open("edl_config.json", "rb").read().decode('utf-8'))
+                    if "serial" in data and data["serial"] != state["serial"]:
                         open("edl_config.json", "w").write(json.dumps(state))
                     else:
                         self.supported_functions = data["supported_functions"]
@@ -1318,26 +1313,29 @@ class firehose(metaclass=LogBase):
                 if is_boot:
                     #new_flags |= (PART_ATT_PRIORITY_VAL | PART_ATT_ACTIVE_VAL | PART_ATT_MAX_RETRY_COUNT_VAL)
                     #new_flags &= (~PART_ATT_SUCCESSFUL_VAL & ~PART_ATT_UNBOOTABLE_VAL)
-                    new_flags = 0x6f << (AB_FLAG_OFFSET*8)
+                    new_flags = 0x6f << (AB_FLAG_OFFSET * 8)
                 else:
-                    new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
+                    new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET * 8)
             else:
                 if is_boot:
                     #new_flags &= (~PART_ATT_PRIORITY_VAL & ~PART_ATT_ACTIVE_VAL)
                     #new_flags |= ((MAX_PRIORITY-1) << PART_ATT_PRIORITY_BIT)
-                    new_flags = 0x3a << (AB_FLAG_OFFSET*8)
+                    new_flags = 0x3a << (AB_FLAG_OFFSET * 8)
                 else:
-                    new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
+                    new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET * 8))
             return new_flags
 
-        def patch_helper(gpt_data_a, gpt_data_b, guid_gpt_a, guid_gpt_b, partition_a, partition_b, slot_a_status, slot_b_status, is_boot):
+        def patch_helper(gpt_data_a, gpt_data_b, guid_gpt_a, guid_gpt_b, partition_a, partition_b, slot_a_status,
+                         slot_b_status, is_boot):
             part_entry_size = guid_gpt_a.header.part_entry_size
 
             rf_a = BytesIO(gpt_data_a)
             rf_b = BytesIO(gpt_data_b)
 
-            entryoffset_a = partition_a.entryoffset - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
-            entryoffset_b = partition_b.entryoffset - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
+            entryoffset_a = partition_a.entryoffset - (
+                        (guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
+            entryoffset_b = partition_b.entryoffset - (
+                        (guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
             rf_a.seek(entryoffset_a)
             rf_b.seek(entryoffset_b)
 
@@ -1360,8 +1358,8 @@ class firehose(metaclass=LogBase):
             unpack_fmt = "<I" if size_each_patch == 4 else "<Q"
             write_size = len(patch_data)
             for i in range(0, write_size, size_each_patch):
-                pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset+size_each_patch])[0])
-                self.cmd_patch( lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, False)
+                pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset + size_each_patch])[0])
+                self.cmd_patch(lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, False)
                 offset += size_each_patch
             return True
 
@@ -1384,11 +1382,11 @@ class firehose(metaclass=LogBase):
 
             if gpt_data_a and gpt_data_b:
                 entryoffset_a = poffset_a - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
-                gpt_data_a[entryoffset_a : entryoffset_a + len(pdata_a)] = pdata_a
+                gpt_data_a[entryoffset_a: entryoffset_a + len(pdata_a)] = pdata_a
                 new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
 
                 entryoffset_b = poffset_b - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
-                gpt_data_b[entryoffset_b : entryoffset_b + len(pdata_b)] = pdata_b
+                gpt_data_b[entryoffset_b: entryoffset_b + len(pdata_b)] = pdata_b
                 new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
 
                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -1397,8 +1395,8 @@ class firehose(metaclass=LogBase):
 
                 if lun_a != lun_b:
                     start_sector_hdr_a = guid_gpt_a.header.current_lba
-                    headeroffset_a = guid_gpt_a.sectorsize # gptData: mbr + gpt header + part array
-                    new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
+                    headeroffset_a = guid_gpt_a.sectorsize  # gptData: mbr + gpt header + part array
+                    new_hdr_a = new_gpt_data_a[headeroffset_a: headeroffset_a + guid_gpt_a.header.header_size]
                     cmd_patch_multiple(lun_a, start_sector_hdr_a, 0, new_hdr_a)
 
                 start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -1407,7 +1405,7 @@ class firehose(metaclass=LogBase):
 
                 start_sector_hdr_b = guid_gpt_b.header.current_lba
                 headeroffset_b = guid_gpt_b.sectorsize
-                new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+                new_hdr_b = new_gpt_data_b[headeroffset_b: headeroffset_b + guid_gpt_b.header.header_size]
                 cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, new_hdr_b)
                 return True
             return False
@@ -1416,16 +1414,17 @@ class firehose(metaclass=LogBase):
             headeroffset = guid_gpt.sectorsize
             prim_corrupted, backup_corrupted = False, False
 
-            prim_hdr = gpt_data[headeroffset : headeroffset + guid_gpt.header.header_size]
-            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset : headeroffset + guid_gpt.header.header_size]
-            prim_hdr_crc, test_hdr_crc = prim_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
-            prim_part_table_crc, test_part_table_crc = prim_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
+            prim_hdr = gpt_data[headeroffset: headeroffset + guid_gpt.header.header_size]
+            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset: headeroffset + guid_gpt.header.header_size]
+            prim_hdr_crc, test_hdr_crc = prim_hdr[0x10: 0x10 + 4], test_hdr[0x10: 0x10 + 4]
+            prim_part_table_crc, test_part_table_crc = prim_hdr[0x58: 0x58 + 4], test_hdr[0x58: 0x58 + 4]
             prim_corrupted = prim_hdr_crc != test_hdr_crc or prim_part_table_crc != test_part_table_crc
 
-            backup_hdr = backup_gpt_data[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
-            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
-            backup_hdr_crc, test_hdr_crc = backup_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
-            backup_part_table_crc, test_part_table_crc = backup_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
+            backup_hdr = backup_gpt_data[headeroffset: headeroffset + backup_guid_gpt.header.header_size]
+            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[
+                       headeroffset: headeroffset + backup_guid_gpt.header.header_size]
+            backup_hdr_crc, test_hdr_crc = backup_hdr[0x10: 0x10 + 4], test_hdr[0x10: 0x10 + 4]
+            backup_part_table_crc, test_part_table_crc = backup_hdr[0x58: 0x58 + 4], test_hdr[0x58: 0x58 + 4]
             backup_corrupted = backup_hdr_crc != test_hdr_crc or backup_part_table_crc != test_part_table_crc
 
             prim_backup_consistent = prim_part_table_crc == backup_part_table_crc
@@ -1433,10 +1432,10 @@ class firehose(metaclass=LogBase):
                 if backup_corrupted:
                     self.error("both are gpt headers are corrupted, cannot recover")
                     return False, None, None
-                gpt_data[2*guid_gpt.sectorsize:] = backup_gpt_data[2*backup_guid_gpt.sectorsize:]
+                gpt_data[2 * guid_gpt.sectorsize:] = backup_gpt_data[2 * backup_guid_gpt.sectorsize:]
                 gpt_data = guid_gpt.fix_gpt_crc(gpt_data)
             elif backup_corrupted or not prim_backup_consistent:
-                backup_gpt_data[2*backup_guid_gpt.sectorsize:] = gpt_data[2*guid_gpt.sectorsize:]
+                backup_gpt_data[2 * backup_guid_gpt.sectorsize:] = gpt_data[2 * guid_gpt.sectorsize:]
                 backup_gpt_data = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)
             return True, gpt_data, backup_gpt_data
 
@@ -1456,7 +1455,7 @@ class firehose(metaclass=LogBase):
                 fpartitions[lunname] = []
                 check_gpt_hdr = False
                 gpt_data_a, guid_gpt_a = self.get_gpt(lun_a, int(0), int(0), int(0))
-                backup_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, guid_gpt_a.header.backup_lba)
+                backup_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0, 0, guid_gpt_a.header.backup_lba)
                 if guid_gpt_a is None:
                     break
                 else:
@@ -1464,7 +1463,8 @@ class firehose(metaclass=LogBase):
                         slot = partitionname_a.lower()[-2:]
                         partition_a = backup_guid_gpt_a.partentries[partitionname_a]
                         if slot == "_a":
-                            active_a = ((partition_a.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                            active_a = ((partition_a.flags >> (
+                                        AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                             if (active_a and slot_a_status) or (not active_a and slot_b_status):
                                 return True
 
@@ -1483,14 +1483,22 @@ class firehose(metaclass=LogBase):
                                     self.error(f"Cannot find partition {partitionname_b}")
                                     return False
                                 _, lun_b, gpt_data_b, guid_gpt_b = resp
-                                backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0 , 0, guid_gpt_b.header.backup_lba)
+                                backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0, 0,
+                                                                                    guid_gpt_b.header.backup_lba)
 
-                            if not check_gpt_hdr and partitionname_a[:3] != "xbl": # xbl partition don't need check consistency
-                                sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
+                            if not check_gpt_hdr and partitionname_a[
+                                                     :3] != "xbl":  # xbl partition don't need check consistency
+                                sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a,
+                                                                                                backup_guid_gpt_a,
+                                                                                                gpt_data_a,
+                                                                                                backup_gpt_data_a)
                                 if not sts:
                                     return False
                                 if lun_a != lun_b:
-                                    sts, gpt_data_b, backup_gpt_data_b = ensure_gpt_hdr_consistency(guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
+                                    sts, gpt_data_b, backup_gpt_data_b = ensure_gpt_hdr_consistency(guid_gpt_b,
+                                                                                                    backup_guid_gpt_b,
+                                                                                                    gpt_data_b,
+                                                                                                    backup_gpt_data_b)
                                     if not sts:
                                         return False
                                 check_gpt_hdr = True
@@ -1512,8 +1520,6 @@ class firehose(metaclass=LogBase):
             self.error(str(err))
             return False
         return True
-
-
 
     def cmd_test(self, cmd):
         token = "1234"

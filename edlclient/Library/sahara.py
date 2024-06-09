@@ -5,21 +5,22 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import binascii
-import time
+import inspect
+import logging
 import os
 import sys
-import logging
-import inspect
+import time
 from struct import pack
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-from edlclient.Library.utils import read_object, print_progress, rmrf, LogBase
-from edlclient.Config.qualcomm_config import sochw, msmids, root_cert_hash
+from edlclient.Library.utils import print_progress, rmrf, LogBase
+from edlclient.Config.qualcomm_config import msmids, root_cert_hash
 from edlclient.Library.loader_db import loader_utils
 from edlclient.Library.sahara_defs import ErrorDesc, cmd_t, exec_cmd_t, sahara_mode_t, status_t, \
-    CommandHandler, SAHARA_VERSION
+    CommandHandler
+
 
 class sahara(metaclass=LogBase):
     def __init__(self, cdc, loglevel):

@@ -17,7 +17,7 @@ class xmlparser:
                 continue
             line = b"<?xml" + line
             if b"\xf0\xe9\x88\x14" in line:
-                line=line.replace(b"\xf0\xe9\x88\x14",b"")
+                line = line.replace(b"\xf0\xe9\x88\x14", b"")
             parser = ET.XMLParser(encoding="utf-8")
             try:
                 tree = ET.fromstring(line, parser=parser)
@@ -37,7 +37,7 @@ class xmlparser:
                 continue
             line = b"<?xml" + line
             if b"\xf0\xe9\x88\x14" in line:
-                line=line.replace(b"\xf0\xe9\x88\x14",b"")
+                line = line.replace(b"\xf0\xe9\x88\x14", b"")
             parser = ET.XMLParser(encoding="utf-8")
             try:
                 tree = ET.fromstring(line, parser=parser)

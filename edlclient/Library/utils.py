@@ -5,20 +5,21 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import sys
+import codecs
+import copy
+import datetime as dt
 import logging
 import logging.config
-import codecs
-import struct
 import os
 import shutil
 import stat
-import colorama
-import copy
-import datetime as dt
+import struct
+import sys
 import time
 from io import BytesIO
-from struct import unpack, pack
+from struct import unpack
+
+import colorama
 
 try:
     from capstone import *
@@ -124,7 +125,7 @@ class progress:
     def calcProcessTime(self, starttime, cur_iter, max_iter):
         telapsed = time.time() - starttime
         if telapsed > 0 and cur_iter > 0:
-            testimated = (telapsed / cur_iter) * (max_iter)
+            testimated = (telapsed / cur_iter) * max_iter
             finishtime = starttime + testimated
             finishtime = dt.datetime.fromtimestamp(finishtime).strftime("%H:%M:%S")  # in time
             lefttime = testimated - telapsed  # in seconds
@@ -575,7 +576,7 @@ class patchtools:
             badchars = self.has_bad_uart_chars(data)
             if not badchars:
                 badchars = self.has_bad_uart_chars(data2)
-                if not (badchars):
+                if not badchars:
                     return div
             div += 4
 
@@ -685,7 +686,7 @@ class patchtools:
                                 continue
                             rt += 1
                             prep = data[rt:].find(t[i])
-                            if (prep != 0):
+                            if prep != 0:
                                 error = 1
                                 break
                             rt += len(t[i])
@@ -699,7 +700,7 @@ class patchtools:
         return None
 
 
-def read_object(data: object, definition: object) -> object:
+def read_object(data: object, definition: object) -> dict:
     """
     Unpacks a structure using the given data and definition.
     """
