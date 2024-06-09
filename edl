@@ -289,10 +289,10 @@ class main(metaclass=LogBase):
         self.cdc.timeout = 1500
         conninfo = self.doconnect(loop)
         mode = conninfo["mode"]
-        if "data" not in conninfo:
+        if conninfo.get("data"):
             version = 2
         else:
-            version = conninfo["data"].version
+            version = conninfo.get("data").version
         if mode == "sahara":
             cmd = conninfo["cmd"]
             if cmd == cmd_t.SAHARA_HELLO_REQ:
