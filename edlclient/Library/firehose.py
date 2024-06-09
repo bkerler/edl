@@ -328,7 +328,7 @@ class firehose(metaclass=LogBase):
     def cmd_reset(self, mode="reset"):
         if mode is None:
             mode = "reset"
-        data = "<?xml version=\"1.0\" ?><data><power value=\"" + mode + "\"/></data>"
+        data = f'<?xml version="1.0" ?><data><power value="{mode}"/></data>'
         val = self.xmlsend(data)
         try:
             v = None
@@ -361,7 +361,7 @@ class firehose(metaclass=LogBase):
                 return val.error
 
     def cmd_nop(self):
-        data = "<?xml version=\"1.0\" ?><data><nop /></data>"
+        data = '<?xml version="1.0" ?><data><nop /></data>'
         resp = self.xmlsend(data, True)
         self.debug(resp.data.hex())
         info = b""
@@ -1241,7 +1241,7 @@ class firehose(metaclass=LogBase):
         if len(imei) != 16:
             self.info("IMEI must be 16 digits")
             return False
-        data = "<?xml version=\"1.0\" ?><data><writeIMEI len=\"16\"/></data>"
+        data = '<?xml version="1.0" ?><data><writeIMEI len="16"/></data>'
         val = self.xmlsend(data)
         if val.resp:
             self.info("writeIMEI succeeded.")
@@ -1251,7 +1251,7 @@ class firehose(metaclass=LogBase):
             return False
 
     def cmd_getstorageinfo(self):
-        data = "<?xml version=\"1.0\" ?><data><getstorageinfo physical_partition_number=\"0\"/></data>"
+        data = '<?xml version="1.0" ?><data><getstorageinfo physical_partition_number="0"/></data>'
         val = self.xmlsend(data)
         if val.data == '' and val.log == '' and val.resp:
             return None
@@ -1266,7 +1266,7 @@ class firehose(metaclass=LogBase):
                     if len(v) > 1:
                         res[v[0]] = v[1]
                     else:
-                        if "\"storage_info\"" in value:
+                        if '"storage_info"' in value:
                             try:
                                 info = value.replace("INFO:", "")
                                 si = json.loads(info)["storage_info"]
@@ -1524,7 +1524,7 @@ class firehose(metaclass=LogBase):
     def cmd_test(self, cmd):
         token = "1234"
         pk = "1234"
-        data = "<?xml version=\"1.0\" ?>\n<data>\n<" + cmd + " token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+        data = f'<?xml version="1.0" ?>\n<data>\n<{cmd} token="{token}" pk="{pk}" />\n</data>'
         val = self.xmlsend(data)
         if val.resp:
             if b"raw hex token" in val[2]:
@@ -1534,7 +1534,7 @@ class firehose(metaclass=LogBase):
         return False
 
     def cmd_getstorageinfo_string(self):
-        data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
+        data = '<?xml version="1.0" ?><data><getstorageinfo /></data>'
         val = self.xmlsend(data)
         if val.resp:
             self.info(f"GetStorageInfo:\n--------------------\n")

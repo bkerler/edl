@@ -508,7 +508,7 @@ class SierraKeygen(metaclass=LogBase):
                             devicegeneration = "MDM9x30_V1"
                         else:
                             devicegeneration = "MDM9x30"
-                    elif "9X40" in revision and not "9X40C" in revision:
+                    elif "9X40" in revision and "9X40C" not in revision:
                         devicegeneration = "MDM9x40"
                     elif "9X50" in revision:
                         if "NTG9X50" in revision:

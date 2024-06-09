@@ -17,8 +17,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import LogBase, print_progress
 
-
-MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2 # 2 GBs
+MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2  # 2 GBs
 
 
 class QCSparse(metaclass=LogBase):
@@ -183,13 +182,13 @@ class QCSparse(metaclass=LogBase):
         if length is None:
             return self.unsparse()
         if (self.tmp_offset + length) <= len(self.tmpdata):
-            tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+            tdata = self.tmpdata[self.tmp_offset: self.tmp_offset + length]
             self.tmp_offset += length
             return tdata
         while (self.tmp_offset + length) > len(self.tmpdata):
             self.tmpdata.extend(self.unsparse())
             if (self.tmp_offset + length) <= len(self.tmpdata):
-                tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+                tdata = self.tmpdata[self.tmp_offset: self.tmp_offset + length]
                 self.tmp_offset += length
                 return tdata
 

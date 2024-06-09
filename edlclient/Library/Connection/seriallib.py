@@ -172,7 +172,7 @@ class serial_class(DeviceClass):
             bytestoread = resplen - len(info)
             extend(info)
             if b"<?xml " in info:
-                while not b"response " in res or res[-7:] != b"</data>":
+                while b"response " not in res or res[-7:] != b"</data>":
                     extend(epr(1))
                 return res
         bytestoread = resplen

@@ -575,11 +575,11 @@ def main():
         op2 = oneplus(None, projid="20889", serial=serial, ATOBuild=0, Flash_Mode=0, cf=0)
         op2.ops.device_timestamp = int(device_timestamp)
         # 20889 OP N10 5G Europe
-        print(f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><setprocstart /></data>\"")
+        print('./edl.py rawxml "<?xml version=\\"1.0\\" ?><data><setprocstart /></data>"')
         # Response should be : <?xml version="1.0" ?><data><response value=1 device_timestamp="%llu" /></data>
         pk, token = op2.generatetoken(False)
         print(
-            f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><setswprojmodel " +
+            './edl.py rawxml "<?xml version=\\"1.0\\" ?><data><setswprojmodel ' +
             f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\" --debugmode")
     elif args["setprojmodel_verify"]:
         projid = args["--projid"][0]
@@ -618,8 +618,7 @@ def main():
 
 
 def test_setswprojmodel_verify():
-    deviceresp = b"RX:<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\nRX:<data>\nRX:<response value=\"ACK\" " + \
-                 b"device_timestamp=\"2507003650\" /></data>\n<?xmlversion=\"1.0\" ? ><data><setprocstart /></data>"
+    deviceresp = b'RX:<?xml version="1.0" encoding="UTF-8" ?>\nRX:<data>\nRX:<response value="ACK" device_timestamp="2507003650" /></data>\n<?xmlversion="1.0" ? ><data><setprocstart /></data>'
     projid = "20889"
     op = oneplus(None, projid=projid, serial=123456)
     data = deviceresp.decode('utf-8')

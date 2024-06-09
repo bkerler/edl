@@ -153,8 +153,8 @@ class hdlc:
         data = unescape(replybuf)
         # print(hexlify(data))
         if len(data) > 3:
-            if data[0]==0x7E:
-                data=data[1:]
+            if data[0] == 0x7E:
+                data = data[1:]
             crc16val = crc16(0xFFFF, data[:-3])
             reccrc = int(data[-3]) + (int(data[-2]) << 8)
             if crc16val != reccrc:

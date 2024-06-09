@@ -50,7 +50,7 @@ def pt32_walk(data, ttbr, skip):
         i += 1
         if i <= skip:
             continue
-        if type(fl) == pt.pt_desc:
+        if isinstance(fl, pt.pt_desc):
             print("")
             print("Second level (va = %08x)" % va)
             print("---------------------------------------------")
