@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -155,7 +155,8 @@ print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2024.")
 def parse_cmd(rargs):
     cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
             "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
-            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "getactiveslot", "setactiveslot",
+            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "getactiveslot",
+            "setactiveslot",
             "send", "xml", "rawxml", "reset", "nop", "modules", "memorydump", "provision", "qfil"]
     for cmd in cmds:
         if rargs[cmd]:
@@ -240,7 +241,6 @@ class main(metaclass=LogBase):
             if re.findall(r'QCUSB', str(proper_driver)):
                 self.warning(f'Please first install libusb_win32 driver from Zadig')
 
-        mode = ""
         loop = 0
         vid = int(args["--vid"], 16)
         pid = int(args["--pid"], 16)
@@ -286,11 +286,10 @@ class main(metaclass=LogBase):
             self.sahara.programmer = loader
 
         self.info("Waiting for the device")
-        resp = None
         self.cdc.timeout = 1500
         conninfo = self.doconnect(loop)
         mode = conninfo["mode"]
-        if not "data" in conninfo:
+        if "data" not in conninfo:
             version = 2
         else:
             version = conninfo["data"].version
@@ -304,7 +303,7 @@ class main(metaclass=LogBase):
                             time.sleep(0.5)
                             print("Device is in memory dump mode, dumping memory")
                             if args["--partitions"]:
-                                self.sahara.debug_mode(args["--partitions"].split(","),version=version)
+                                self.sahara.debug_mode(args["--partitions"].split(","), version=version)
                             else:
                                 self.sahara.debug_mode(version=version)
                             self.exit()

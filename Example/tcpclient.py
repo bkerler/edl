@@ -2,7 +2,7 @@
 from edl.Library.tcpclient import tcpclient
 
 
-class client():
+class client:
     def __init__(self):
         self.commands = []
 

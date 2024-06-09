@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -502,7 +502,7 @@ class qcdiag(metaclass=LogBase):
         res, nvitem = self.read_nvitem(item)
         if res:
             info = self.DecodeNVItems(nvitem)
-            if res != False:
+            if res:
                 if nvitem.name != "":
                     ItemNumber = f"{hex(item)} ({nvitem.name}): "
                 else:
@@ -520,7 +520,7 @@ class qcdiag(metaclass=LogBase):
     def print_nvitemsub(self, item, index):
         res, nvitem = self.read_nvitemsub(item, index)
         info = self.DecodeNVItems(nvitem)
-        if res != False:
+        if res:
             if nvitem.name != "":
                 ItemNumber = f"{hex(item), hex(index)} ({nvitem.name}): "
             else:
@@ -545,7 +545,7 @@ class qcdiag(metaclass=LogBase):
                 print_progress(prog, 100, prefix="Progress:", suffix=f"Complete, item {hex(item)}", bar_length=50)
                 old = prog
             res, nvitem = self.read_nvitem(item)
-            if res != False:
+            if res:
                 if nvitem.status != 0x5:
                     nvitem.status = self.DecodeNVItems(nvitem)
                     nvitems.append(dict(id=nvitem.item, name=nvitem.name, data=hexlify(nvitem.data).decode("utf-8"),
@@ -649,7 +649,7 @@ class qcdiag(metaclass=LogBase):
         if len(res) > 0:
             if res[0] == 0x27:
                 res, nvitem = self.read_nvitem(item)
-                if res == False:
+                if not res:
                     print(f"Error while writing nvitem {hex(item)} data, %s" % data)
                 else:
                     if nvitem.data != data:
@@ -671,7 +671,7 @@ class qcdiag(metaclass=LogBase):
         if len(res) > 0:
             if res[0] == 0x4B:
                 res, nvitem = self.read_nvitemsub(item, index)
-                if res == False:
+                if not res:
                     print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, %s" % data)
                 else:
                     if nvitem.data != data:

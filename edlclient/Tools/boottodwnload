@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -15,6 +15,7 @@ import usb.core
 from enum import Enum
 
 import os, sys, inspect
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, current_dir)
 
@@ -23,6 +24,7 @@ try:
 except ImportError as e:
     print(current_dir)
     from qc_diag import qcdiag
+
     pass
 
 try:
@@ -38,12 +40,14 @@ class vendor(Enum):
     netgear = 0x0846
     telit = 0x413c
 
+
 class deviceclass:
-    vid=0
-    pid=0
-    def __init__(self,vid,pid):
-        self.vid=vid
-        self.pid=pid
+    vid = 0
+    pid = 0
+
+    def __init__(self, vid, pid):
+        self.vid = vid
+        self.pid = pid
 
 
 class connection(metaclass=LogBase):
@@ -63,7 +67,7 @@ class connection(metaclass=LogBase):
             self.serial = serial.Serial(port=port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1)
             self.connected = self.serial.is_open
 
-    def waitforusb(self,vid,pid):
+    def waitforusb(self, vid, pid):
         timeout = 0
         while timeout < 10:
             for device in self.detectusbdevices():
@@ -74,12 +78,13 @@ class connection(metaclass=LogBase):
             timeout += 1
         return False
 
-    def websend(self,url):
+    def websend(self, url):
         headers = {'Referer': 'http://192.168.0.1/index.html', 'Accept-Charset': 'UTF-8'}
         r = requests.get(url, headers=headers)
         if b"FACTORY:ok" in r.content or b"success" in r.content:
-            print(f"Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
-            return self.waitforusb(vendor.zte.value,0x0016)
+            print(
+                f"Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
+            return self.waitforusb(vendor.zte.value, 0x0016)
         return False
 
     def getserialports(self):
@@ -87,46 +92,46 @@ class connection(metaclass=LogBase):
 
     def detectusbdevices(self):
         dev = usb.core.find(find_all=True)
-        ids=[deviceclass(cfg.idVendor,cfg.idProduct) for cfg in dev]
+        ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
         return ids
 
     def detect(self, port):
-        vendortable={
-            0x1199:["Sierra Wireless",3],
-            0x2c7c:["Quectel",3],
-            0x19d2:["ZTE",2],
-            0x0846:["Netgear", 2],
-            0x413c:["Telit",0]
+        vendortable = {
+            0x1199: ["Sierra Wireless", 3],
+            0x2c7c: ["Quectel", 3],
+            0x19d2: ["ZTE", 2],
+            0x0846: ["Netgear", 2],
+            0x413c: ["Telit", 0]
         }
-        mode="Unknown"
+        mode = "Unknown"
         for device in self.detectusbdevices():
-            if device.vid==vendor.zte.value:
-                if device.pid==0x0016:
+            if device.vid == vendor.zte.value:
+                if device.pid == 0x0016:
                     print(f"Detected a {vendortable[device.vid][0]} device with pid {hex(device.pid)} in Diag mode")
-                    mode="AT"
+                    mode = "AT"
                     break
-                elif device.pid==0x1403:
+                elif device.pid == 0x1403:
                     print(f"Detected a {vendortable[device.vid][0]} device with pid {hex(device.pid)} in Web mode")
-                    mode="Web"
+                    mode = "Web"
                     # url = 'http://192.168.0.1/goform/goform_set_cmd_process?goformId=USB_MODE_SWITCH&usb_mode=1' #adb
                     url = 'http://192.168.0.1/goform/goform_process?goformId=MODE_SWITCH&switchCmd=FACTORY'
                     if self.websend(url):
-                        mode="AT"
+                        mode = "AT"
                         break
-            elif device.vid==vendor.telit.value:
-                if device.pid==0x81d7:
+            elif device.vid == vendor.telit.value:
+                if device.pid == 0x81d7:
                     print(f"Detected a {vendortable[device.vid][0]} device with pid {hex(device.pid)} in Diag mode")
                     print("Sending download mode command")
                     interface = 5
                     diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x413c, 0x81d7, interface]])
                     if diag.connect():
-                        data=diag.hdlc.receive_reply()
+                        data = diag.hdlc.receive_reply()
                         res = diag.send(b"\x4b\x65\x01\x00")
-                        if res[0]==0x4B:
+                        if res[0] == 0x4B:
                             print("Sending download mode succeeded")
                         diag.disconnect()
                     break
-        if mode=="AT" or mode=="Unknown":
+        if mode == "AT" or mode == "Unknown":
             for port in self.getserialports():
                 if port.vid in vendortable:
                     portid = port.location[-1:]
@@ -137,7 +142,7 @@ class connection(metaclass=LogBase):
 
     def readreply(self):
         info = []
-        timeout=0
+        timeout = 0
         if self.serial is not None:
             while True:
                 tmp = self.serial.readline().decode('utf-8').replace('\r', '').replace('\n', '')
@@ -146,11 +151,11 @@ class connection(metaclass=LogBase):
                     return info
                 elif "ERROR" in tmp:
                     return -1
-                if tmp!="":
+                if tmp != "":
                     info.append(tmp)
                 else:
-                    timeout+=1
-                    if timeout==20:
+                    timeout += 1
+                    if timeout == 20:
                         break
         return info
 
@@ -180,7 +185,7 @@ class connection(metaclass=LogBase):
             self.connected = False
 
     def ati(self):
-        data={}
+        data = {}
         info = self.send("ATI")
         if info != -1:
             for line in info:
@@ -191,20 +196,21 @@ class connection(metaclass=LogBase):
                 if "Quectel" in line:
                     data["vendor"] = "Quectel"
                 if "Manufacturer" in line:
-                    data["manufacturer"]=line.split(":")[1].strip()
+                    data["manufacturer"] = line.split(":")[1].strip()
                     if "Sierra Wireless" in data["manufacturer"]:
-                        data["vendor"]="Sierra Wireless"
+                        data["vendor"] = "Sierra Wireless"
                     elif "ZTE CORPORATION" in data["manufacturer"]:
-                        data["vendor"]="ZTE"
+                        data["vendor"] = "ZTE"
                     elif "Netgear" in data["manufacturer"]:
-                        data["vendor"]="Netgear"
+                        data["vendor"] = "Netgear"
                     elif "Telit" in data["manufacturer"]:
-                        data["vendor"]="Telit"
+                        data["vendor"] = "Telit"
         return data
 
+
 class dwnloadtools(metaclass=LogBase):
-    def sendcmd(self, tn,cmd):
-        tn.write(bytes(cmd,'utf-8')+b"\n")
+    def sendcmd(self, tn, cmd):
+        tn.write(bytes(cmd, 'utf-8') + b"\n")
         time.sleep(0.05)
         return tn.read_eager().strip().decode('utf-8')
 
@@ -212,45 +218,45 @@ class dwnloadtools(metaclass=LogBase):
         port = args.port
         cn = connection(port)
         if cn.connected:
-            info=cn.ati()
+            info = cn.ati()
             if "vendor" in info:
-                if info["vendor"]=="Sierra Wireless" or info["vendor"]=="Netgear":
+                if info["vendor"] == "Sierra Wireless" or info["vendor"] == "Netgear":
                     print("Sending download mode command")
                     print(cn.send("AT!BOOTHOLD\r"))
                     print(cn.send('AT!QPSTDLOAD\r'))
                     print("Done switching to download mode")
-                elif info["vendor"]=="Quectel":
+                elif info["vendor"] == "Quectel":
                     print("Sending download mode command")
-                    interface=0
-                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c,0x0125,interface]])
+                    interface = 0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c, 0x0125, interface]])
                     if diag.connect():
                         diag.hdlc.receive_reply()
                         res = diag.send(b"\x4b\x65\x01\x00")
                         diag.disconnect()
                         print("Done switching to download mode")
-                elif info["vendor"]=="Telit":
+                elif info["vendor"] == "Telit":
                     print("Sending download mode command")
-                    interface=0
-                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c,0x0125,interface]])
+                    interface = 0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x2c7c, 0x0125, interface]])
                     if diag.connect():
                         diag.hdlc.receive_reply()
                         res = diag.send(b"\x4b\x65\x01\x00")
                         diag.disconnect()
                         print("Done switching to download mode")
-                elif info["vendor"]=="ZTE":
+                elif info["vendor"] == "ZTE":
                     print("Sending download mode command")
-                    interface=0
-                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x19d2,0x0016, interface]])
+                    interface = 0
+                    diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x19d2, 0x0016, interface]])
                     if diag.connect():
                         diag.hdlc.receive_reply()
                         res = diag.send(b"\x4b\x65\x01\x00")
-                        if res[0]==0x4B:
+                        if res[0] == 0x4B:
                             print("Done switching to ENANDPRG mode")
                         else:
                             res = diag.send(b"\x3a")
-                            if res[0]==0x3A:
+                            if res[0] == 0x3A:
                                 while True:
-                                    state=cn.waitforusb(vendor.zte.value,0x0076)
+                                    state = cn.waitforusb(vendor.zte.value, 0x0076)
                                     if not state:
                                         diag.disconnect()
                                         if diag.connect():
@@ -264,10 +270,11 @@ class dwnloadtools(metaclass=LogBase):
                         diag.disconnect()
         cn.close()
 
+
 def main():
     version = "1.1"
     info = 'Modem Gimme-EDL ' + version + ' (c) B. Kerler 2020-2021'
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,description=info)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=info)
     parser.add_argument(
         '-port', '-p',
         help='use com port for auto unlock',
@@ -277,8 +284,9 @@ def main():
         help='use logfile for debug log',
         default="")
     args = parser.parse_args()
-    dw=dwnloadtools()
+    dw = dwnloadtools()
     dw.run(args)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()
