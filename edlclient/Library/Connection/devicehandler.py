@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import serial
-import serial.tools.list_ports
 import inspect
 import traceback
 from binascii import hexlify
+
 try:
     from edlclient.Library.utils import *
 except:
     from Library.utils import *
+
 
 class DeviceClass(metaclass=LogBase):
 
@@ -119,7 +119,7 @@ class DeviceClass(metaclass=LogBase):
             stack_trace = traceback.format_stack(frame)
             td = []
             for trace in stack_trace:
-                if not "verify_data" in trace and not "Port" in trace:
+                if "verify_data" not in trace and "Port" not in trace:
                     td.append(trace)
             self.debug(td[:-1])
 

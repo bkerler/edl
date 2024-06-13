@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -43,7 +43,7 @@ class xiaomi(metaclass=LogBase):
             rsp = self.fh.xmlsend(self.xiaomi_authdata)
             if rsp.resp:
                 if "value" in rsp.resp:
-                    if rsp.resp["value"]=="ACK":
+                    if rsp.resp["value"] == "ACK":
                         if 'authenticated' in rsp.log[0].lower() and 'true' in rsp.log[0].lower():
                             return True
         return False

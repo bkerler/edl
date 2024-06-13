@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -16,7 +16,7 @@ class generic(metaclass=LogBase):
         self.serial = serial
         self.args = args
         self.__logger.setLevel(loglevel)
-        self.error=self.__logger.error
+        self.error = self.__logger.error
         if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
@@ -27,7 +27,7 @@ class generic(metaclass=LogBase):
         if res[0]:
             lun = res[1]
             rpartition = res[2]
-            if rpartition.sectors <= (0x8000//self.fh.cfg.SECTOR_SIZE_IN_BYTES):
+            if rpartition.sectors <= (0x8000 // self.fh.cfg.SECTOR_SIZE_IN_BYTES):
                 offsettopatch = 0x7FFF
                 sector, offset = self.fh.calc_offset(rpartition.sector, offsettopatch)
             else:

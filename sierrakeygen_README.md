@@ -1,5 +1,5 @@
 # Challenge/Response Generator for Sierra Wireless Cards V1.2
-(c) B. Kerler 2019-2023
+(c) B. Kerler 2019-2024
 GPLv3 License
 
 ## Why

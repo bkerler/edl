@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -90,7 +90,7 @@ subnvitem_type = [
 ]
 
 
-class fs_factimage_read_info():
+class fs_factimage_read_info:
     def_fs_factimage_read_info = [
         ("stream_state", "B"),  # 0 indicates no more data to be sent, otherwise set to 1
         ("info_cluster_sent", "B"),  # 0 indicates if info_cluster was not sent, else 1
@@ -117,7 +117,7 @@ class fs_factimage_read_info():
         return data
 
 
-class FactoryHeader():
+class FactoryHeader:
     def_factory_header = [
         ("magic1", "I"),
         ("magic2", "I"),
@@ -160,7 +160,7 @@ class FactoryHeader():
         return data
 
 
-class nvitem():
+class nvitem:
     item = 0x0
     data = b""
     status = 0x0
@@ -409,7 +409,7 @@ class qcdiag(metaclass=LogBase):
         self.cdc.close(True)
 
     def send(self, cmd):
-        if self.hdlc != None:
+        if self.hdlc is not None:
             return self.hdlc.send_cmd_np(cmd)
 
     def cmd_info(self):
@@ -502,7 +502,7 @@ class qcdiag(metaclass=LogBase):
         res, nvitem = self.read_nvitem(item)
         if res:
             info = self.DecodeNVItems(nvitem)
-            if res != False:
+            if res:
                 if nvitem.name != "":
                     ItemNumber = f"{hex(item)} ({nvitem.name}): "
                 else:
@@ -520,7 +520,7 @@ class qcdiag(metaclass=LogBase):
     def print_nvitemsub(self, item, index):
         res, nvitem = self.read_nvitemsub(item, index)
         info = self.DecodeNVItems(nvitem)
-        if res != False:
+        if res:
             if nvitem.name != "":
                 ItemNumber = f"{hex(item), hex(index)} ({nvitem.name}): "
             else:
@@ -545,7 +545,7 @@ class qcdiag(metaclass=LogBase):
                 print_progress(prog, 100, prefix="Progress:", suffix=f"Complete, item {hex(item)}", bar_length=50)
                 old = prog
             res, nvitem = self.read_nvitem(item)
-            if res != False:
+            if res:
                 if nvitem.status != 0x5:
                     nvitem.status = self.DecodeNVItems(nvitem)
                     nvitems.append(dict(id=nvitem.item, name=nvitem.name, data=hexlify(nvitem.data).decode("utf-8"),
@@ -649,7 +649,7 @@ class qcdiag(metaclass=LogBase):
         if len(res) > 0:
             if res[0] == 0x27:
                 res, nvitem = self.read_nvitem(item)
-                if res == False:
+                if not res:
                     print(f"Error while writing nvitem {hex(item)} data, %s" % data)
                 else:
                     if nvitem.data != data:
@@ -671,7 +671,7 @@ class qcdiag(metaclass=LogBase):
         if len(res) > 0:
             if res[0] == 0x4B:
                 res, nvitem = self.read_nvitemsub(item, index)
-                if res == False:
+                if not res:
                     print(f"Error while writing nvitem {hex(item)} index {hex(index)} data, %s" % data)
                 else:
                     if nvitem.data != data:
@@ -809,7 +809,7 @@ class qcdiag(metaclass=LogBase):
             return False
 
         write_handle.close()
-        if efserr == False:
+        if not efserr:
             print("Successfully read EFS.")
             return True
         else:
@@ -1408,7 +1408,7 @@ def main():
     parser_nvwritesub.add_argument("-debugmode", help="[Option] Enable verbose logging", action="store_true")
 
     parser_writeimei = subparser.add_parser("writeimei", help="Write imei")
-    parser_writeimei.add_argument("imei", metavar=("<imei1,imei2,...>"), help="[Option] IMEI to write", default="")
+    parser_writeimei.add_argument("imei", metavar="<imei1,imei2,...>", help="[Option] IMEI to write", default="")
     parser_writeimei.add_argument("-vid", metavar="<vid>", help="[Option] Specify vid", default="")
     parser_writeimei.add_argument("-pid", metavar="<pid>", help="[Option] Specify pid", default="")
     parser_writeimei.add_argument("-interface", metavar="<pid>", help="[Option] Specify interface number, default=0)",

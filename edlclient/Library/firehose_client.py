@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -351,7 +351,7 @@ class firehose_client(metaclass=LogBase):
                                                                start_sector=0, num_partition_sectors=1, display=False)
                         if self.get_storage_info():
                             totalsectors = (self.cfg.block_size *
-                                            self.cfg.total_blocks ) // self.cfg.SECTOR_SIZE_IN_BYTES
+                                            self.cfg.total_blocks) // self.cfg.SECTOR_SIZE_IN_BYTES
 
                             if len(luns) > 1:
                                 sfilename = filename + f".lun{str(lun)}"
@@ -649,7 +649,8 @@ class firehose_client(metaclass=LogBase):
                 prim_guid_gpt = res[3]
                 _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
                 partition = backup_guid_gpt.partentries["boot_a"]
-                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                active = ((partition.flags >> (
+                            AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
                     self.printer("Current active slot: a")
                     return True
@@ -659,7 +660,8 @@ class firehose_client(metaclass=LogBase):
                 prim_guid_gpt = res[3]
                 _, backup_guid_gpt = self.firehose.get_gpt(lun, 0, 0, 0, prim_guid_gpt.header.backup_lba)
                 partition = backup_guid_gpt.partentries["boot_b"]
-                active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                active = ((partition.flags >> (
+                            AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                 if active:
                     self.printer("Current active slot: b")
                     return True
@@ -755,14 +757,15 @@ class firehose_client(metaclass=LogBase):
             filenames = []
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
-            for fname in filter(os.path.isfile, [ os.path.join(directory, i) for i in os.listdir(directory) ]):
+            for fname in filter(os.path.isfile, [os.path.join(directory, i) for i in os.listdir(directory)]):
                 filenames.append(fname)
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
                                                        int(options["--gpt-part-entry-size"]),
                                                        int(options["--gpt-part-entry-start-lba"]))
                 if guid_gpt is None:
-                    self.error("Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
+                    self.error(
+                        "Error: Can not fetch GPT table from device, you may need to use `edl w gpt` to write a partition table first.`")
                     break
                 for filename in filenames:
                     partname = os.path.basename(filename)

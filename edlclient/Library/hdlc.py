@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import logging
-from binascii import hexlify
-from struct import unpack
 import time
+from struct import unpack
 
 MAX_PACKET_LEN = 4096
 
@@ -154,8 +153,8 @@ class hdlc:
         data = unescape(replybuf)
         # print(hexlify(data))
         if len(data) > 3:
-            if data[0]==0x7E:
-                data=data[1:]
+            if data[0] == 0x7E:
+                data = data[1:]
             crc16val = crc16(0xFFFF, data[:-3])
             reccrc = int(data[-3]) + (int(data[-2]) << 8)
             if crc16val != reccrc:

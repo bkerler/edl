@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
 from edl.Library.tcpclient import tcpclient
 
-class client():
+
+class client:
     def __init__(self):
-        self.commands=[]
+        self.commands = []
 
     def send(self):
         self.tcp = tcpclient(1340)
         self.tcp.sendcommands(self.commands)
 
-    def read(self,src):
+    def read(self, src):
         self.commands.append(f"peekqword:{hex(src)}")
 
-    def write(self,dest,value):
+    def write(self, dest, value):
         self.commands.append(f"pokeqword:{hex(dest)},{hex(value)}")
 
-    def memcpy(self,dest,src,size):
+    def memcpy(self, dest, src, size):
         self.commands.append(f"memcpy:{hex(dest)},{hex(src)},{hex(size)}")
 
+
 def main():
-    exp=client()
+    exp = client()
     exp.commands = [
         "send:nop",
         "r:boot,boot.img",
@@ -29,5 +31,6 @@ def main():
     ]
     exp.send()
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

@@ -17,6 +17,7 @@ import logging.config
 import logging.handlers
 import colorama
 
+
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
         logging.ERROR: colorama.Fore.RED,
@@ -153,8 +154,8 @@ infotable = {
     "SDX65": ["MR6400", "MR6500", "MR6110", "MR6150", "MR6450", "MR6550"]
 }
 
-                      # 0 MC8775_H2.0.8.19 !OPENLOCK, !OPENCND .. MC8765V,MC8765,MC8755V,MC8775,MC8775V,MC8775,AC850,
-                      #   AC860,AC875,AC881,AC881U,AC875, AC340U 1.13.12.14
+# 0 MC8775_H2.0.8.19 !OPENLOCK, !OPENCND .. MC8765V,MC8765,MC8755V,MC8775,MC8775V,MC8775,AC850,
+#   AC860,AC875,AC881,AC881U,AC875, AC340U 1.13.12.14
 keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C, 0xCE, 0x84, 0x90, 0xBC, 0x7F, 0xED,
                       # 1 MC8775_H2.0.8.19 AC340U, OPENMEP default
                       0x61, 0x94, 0xCE, 0xA7, 0xB0, 0xEA, 0x4F, 0x0A, 0x73, 0xC5, 0xC3, 0xA6, 0x5E, 0xEC, 0x1C, 0xE2,
@@ -210,7 +211,8 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
                       0x46, 0x30, 0x33, 0x43, 0x44, 0x36, 0x42, 0x34, 0x41, 0x32, 0x31, 0x32, 0x30, 0x35, 0x39, 0x37
                       ])
 
-class SierraGenerator():
+
+class SierraGenerator:
     tbl = bytearray()
     rtbl = bytearray()
     devicegeneration = None
@@ -265,7 +267,7 @@ class SierraGenerator():
             {"challenge": "BE96CBBEE0829BCA", "devicegeneration": "MDM9200", "response": "EEDBF8BFF8DAE346"},
             {"challenge": "20E253156762DACE", "devicegeneration": "SDX55", "response": "03940D7067145323"},
             {"challenge": "2387885E7D290FEE", "devicegeneration": "MDM9x15A", "response": "DC3E51897BAA9C1E"},
-            {"challenge": "4B1FEF9FD43C6DAA", "devicegeneration": "SDX65", "response":"1253C1B1E447B697"}
+            {"challenge": "4B1FEF9FD43C6DAA", "devicegeneration": "SDX65", "response": "1253C1B1E447B697"}
         ]
         for test in test_table:
             challenge = test["challenge"]
@@ -425,7 +427,7 @@ class connection:
     def readreply(self):
         info = []
         if self.serial is not None:
-            while (True):
+            while True:
                 tmp = self.serial.readline().decode('utf-8').replace('\r', '').replace('\n', '')
                 if "OK" in info:
                     return info
@@ -464,7 +466,7 @@ class SierraKeygen(metaclass=LogBase):
     def __init__(self, cn, devicegeneration=None):
         self.cn = cn
         self.keygen = SierraGenerator()
-        if devicegeneration == None:
+        if devicegeneration is None:
             self.detectdevicegeneration()
         else:
             self.devicegeneration = devicegeneration
@@ -506,7 +508,7 @@ class SierraKeygen(metaclass=LogBase):
                             devicegeneration = "MDM9x30_V1"
                         else:
                             devicegeneration = "MDM9x30"
-                    elif "9X40" in revision and not "9X40C" in revision:
+                    elif "9X40" in revision and "9X40C" not in revision:
                         devicegeneration = "MDM9x40"
                     elif "9X50" in revision:
                         if "NTG9X50" in revision:
@@ -528,7 +530,7 @@ class SierraKeygen(metaclass=LogBase):
                                 devicegeneration = "SDX55"
                             else:  # MR6400 NTGX65_10.04.13.03
                                 devicegeneration = "SDX65"
-                                   # MR6550 NTGX65_12.01.31.00
+                                # MR6550 NTGX65_12.01.31.00
                         devicegeneration = "SDX65"
                     else:
                         devicegeneration = ""
