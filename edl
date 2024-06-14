@@ -289,7 +289,7 @@ class main(metaclass=LogBase):
         self.cdc.timeout = 1500
         conninfo = self.doconnect(loop)
         mode = conninfo["mode"]
-        if conninfo.get("data"):
+        if not conninfo.get("data"):
             version = 2
         else:
             version = conninfo.get("data").version
