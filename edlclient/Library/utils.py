@@ -706,7 +706,7 @@ class patchtools:
         return None
 
 
-def read_object(data: object, definition: object) -> dict:
+def read_object(data: object, definition: list) -> dict:
     """
     Unpacks a structure using the given data and definition.
     """

@@ -6,7 +6,6 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import copy
-import sys
 import argparse
 import time
 import serial.tools.list_ports
@@ -227,7 +226,7 @@ class SierraGenerator:
         challenge = bytearray(unhexlify(challenge))
 
         self.devicegeneration = devicegeneration
-        if not devicegeneration in prodtable:
+        if devicegeneration not in prodtable:
             print("Sorry, " + devicegeneration + " not supported.")
             exit(0)
 
@@ -577,9 +576,9 @@ class SierraKeygen(metaclass=LogBase):
         return False
 
 
-def main(args):
+def main():
     version = "1.5"
-    info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2021'
+    info = f'Sierra Wireless Generator {version} (c) B. Kerler 2019-2024'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=info)
 
     parser.add_argument(
@@ -674,14 +673,14 @@ def main(args):
         kg = SierraKeygen(None, devicegeneration)
         if openlock != "":
             resp = kg.keygen.run(devicegeneration, openlock, 0)
-            print("AT!OPENLOCK=\"" + resp + "\"")
+            print(f'AT!OPENLOCK="{resp}"')
         elif openmep != "":
             resp = kg.keygen.run(devicegeneration, openmep, 1)
-            print("AT!OPENMEP=\"" + resp + "\"")
+            print(f'AT!OPENMEP="{resp}"')
         elif opencnd != "":
             resp = kg.keygen.run(devicegeneration, opencnd, 2)
             print("AT!OPENCND=\"" + resp + "\"")
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()

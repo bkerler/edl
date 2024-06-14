@@ -331,7 +331,7 @@ def main(argv):
     if not os.path.exists(os.path.join(outputdir, "Duplicate")):
         os.mkdir(os.path.join(outputdir, "Duplicate"))
 
-    # Lets hash all the input files and extract the signature
+    # Let's hash all the input files and extract the signature
     filelist = []
     rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
     for filename in file_list:

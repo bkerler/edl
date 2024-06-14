@@ -83,14 +83,16 @@ class connection(metaclass=LogBase):
         r = requests.get(url, headers=headers)
         if b"FACTORY:ok" in r.content or b"success" in r.content:
             print(
-                f"Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
+                f'Detected a ZTE in web mode .... switching mode success (convert back by sending "AT+ZCDRUN=F" via AT port)')
             return self.waitforusb(vendor.zte.value, 0x0016)
         return False
 
-    def getserialports(self):
+    @staticmethod
+    def getserialports():
         return [port for port in serial.tools.list_ports.comports()]
 
-    def detectusbdevices(self):
+    @staticmethod
+    def detectusbdevices():
         dev = usb.core.find(find_all=True)
         ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
         return ids

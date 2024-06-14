@@ -1333,9 +1333,9 @@ class firehose(metaclass=LogBase):
             rf_b = BytesIO(gpt_data_b)
 
             entryoffset_a = partition_a.entryoffset - (
-                        (guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
+                    (guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
             entryoffset_b = partition_b.entryoffset - (
-                        (guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
+                    (guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
             rf_a.seek(entryoffset_a)
             rf_b.seek(entryoffset_b)
 
@@ -1464,7 +1464,7 @@ class firehose(metaclass=LogBase):
                         partition_a = backup_guid_gpt_a.partentries[partitionname_a]
                         if slot == "_a":
                             active_a = ((partition_a.flags >> (
-                                        AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                                    AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                             if (active_a and slot_a_status) or (not active_a and slot_b_status):
                                 return True
 

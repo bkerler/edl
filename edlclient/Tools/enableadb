@@ -6,6 +6,7 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import argparse
+import copy
 import hashlib
 import time
 
@@ -464,9 +465,9 @@ class adbtools(metaclass=LogBase):
                     #                        AUDIO    - 0x00010000,
                     #                        ECM      - 0x00080000,
                     #                        UBIST    - 0x00200000
-                    #if enable:
+                    # if enable:
                     cmd = f"AT!USBCOMP={index},{type},%08X" % 0x0080010E
-                    #else:
+                    # else:
                     #    cmd = f"AT!USBCOMP={index},{type},%08X" % 0x0000010D
                     resp = cn.send(cmd)
                     if resp != -1:
