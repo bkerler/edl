@@ -246,5 +246,5 @@ def main():
         print(disasm(bytes(segment),len(segment)))
         '''
 
-
-main()
+if __name__ == '__main__':
+    main()
