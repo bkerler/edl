@@ -490,10 +490,9 @@ class firehose_client(metaclass=LogBase):
                         if partition != pname:
                             continue
                         self.printer(f"Detected partition: {partition}")
-                        print
                         data = self.firehose.cmd_read_buffer(lun,
                                                              guid_gpt.partentries[partition].sector +
-                                                             ((guid_gpt.partentries[partition].sectors) -
+                                                             (guid_gpt.partentries[partition].sectors -
                                                               (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES)),
                                                              (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES), False)
                         if data == b"":
