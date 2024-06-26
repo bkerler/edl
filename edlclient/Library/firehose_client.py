@@ -487,21 +487,21 @@ class firehose_client(metaclass=LogBase):
                 pnames = ["userdata2", "metadata", "userdata", "reserved1", "reserved2", "reserved3"]
                 for pname in pnames:
                     for partition in guid_gpt.partentries:
-                        if partition.name != pname:
+                        if partition != pname:
                             continue
-                        self.printer(f"Detected partition: {partition.name}")
+                        self.printer(f"Detected partition: {partition}")
                         data = self.firehose.cmd_read_buffer(lun,
-                                                             partition.sector +
-                                                             (partition.sectors -
+                                                             guid_gpt.partentries[partition].sector +
+                                                             (guid_gpt.partentries[partition].sectors -
                                                               (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES)),
                                                              (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES), False)
                         if data == b"":
                             continue
-                        val = unpack("<I", data[:4])[0]
+                        val = unpack("<I", data.data[:4])[0]
                         if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
                             with open(filename, "wb") as write_handle:
                                 write_handle.write(data)
-                                self.printer(f"Dumped footer from {partition.name} as {filename}.")
+                                self.printer(f"Dumped footer from {partition} as {filename}.")
                                 return True
             self.error("Error: Couldn't detect footer partition.")
             return False
