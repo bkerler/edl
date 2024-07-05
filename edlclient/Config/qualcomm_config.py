@@ -324,7 +324,7 @@ msmids = {
     0x9660E1: "mdm9309",
     0x04E0E1: "apq8096au",
     0x9570E1: "msm8239", # Snapdragon 615
-
+    0x1990E1: "OlympicLE" # sdx62 lemur
 }
 
 sochw = {
@@ -547,7 +547,7 @@ infotbl = {
     "SA8295P": secgen[8],
     "SA8540P": secgen[8],
     "strait": secgen[8],
-
+    "OlympicLE": secgen[8],
     # "MSM7227A": [[], [], []],
     # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
     # "MSM8212": [[], [], []],
@@ -712,6 +712,7 @@ class memory_type:
         "strait": ufs,
         "WCN7850": emmc,
         "WCN7851": emmc,
+        "OlympicLE": emmc,
         # "MSM7227A": [[], [], []],
         # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
         # "MSM8212": [[], [], []],
@@ -855,7 +856,8 @@ secureboottbl = {
     "rennell": 0x000780498,
     "rennell_premier": 0x000780498,
     "rennell_V1.1": 0x000780498,
-    "sc7180": 0x000780498
+    "sc7180": 0x000780498,
+    # "OlympicLE": 0x01B40458
     # "MSM7227A":[[], [], []],
     # "MSM8210": [[], [], []],
     # "MSM8212":
