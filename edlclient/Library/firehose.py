@@ -915,6 +915,7 @@ class firehose(metaclass=LogBase):
                     except Exception as err:  # pylint: disable=broad-except
                         self.modules = None
                     if self.modules.edlauth():
+                        self.info("EDL Authenticated successfully.")
                         rsp = self.xmlsend(connectcmd)
                         return rsp.resp
                     else:
