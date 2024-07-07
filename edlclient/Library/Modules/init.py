@@ -7,6 +7,8 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import logging
+from functools import cached_property
+
 from edlclient.Library.utils import LogBase
 
 try:
@@ -52,25 +54,31 @@ class modules(metaclass=LogBase):
             self.__logger.addHandler(fh)
         self.options = {}
         self.devicemodel = devicemodel
-        self.generic = None
+
+    @cached_property
+    def generic(self):
         try:
-            self.generic = generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=loglevel)
+            return generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=self.__logger.loglevel)
         except Exception as e:
             self.error(e)
-            pass
-        self.ops = None
+            return None
+
+    @cached_property
+    def ops(self):
         try:
-            self.ops = oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial,
-                               supported_functions=self.supported_functions, args=self.args, loglevel=loglevel)
+            return oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial, loglevel=self.__logger.loglevel,
+                           supported_functions=self.supported_functions, args=self.args)
         except Exception as e:
             self.error(e)
-            pass
-        self.xiaomi = None
+            return None
+
+    @cached_property
+    def xiaomi(self):
         try:
-            self.xiaomi = xiaomi(fh=self.fh)
+            return xiaomi(fh=self.fh)
         except Exception as e:
             self.error(e)
-            pass
+            return None
 
     def addpatch(self):
         if self.ops is not None:
@@ -116,7 +124,6 @@ class modules(metaclass=LogBase):
             return self.generic.oem_unlock(enable)
         elif self.ops is not None and command == "ops":
             if self.devicemodel is not None:
-                enable = False
                 partition = "param"
                 if "enable" in options:
                     enable = True
