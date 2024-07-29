@@ -10,6 +10,10 @@ import binascii
 import json
 import os.path
 import platform
+import re
+import time
+import json
+from struct import unpack
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
@@ -1147,8 +1151,17 @@ class firehose(metaclass=LogBase):
                         self.serial = int(serial, 16)
                     except Exception as err:  # pylint: disable=broad-except
                         self.debug(str(err))
-                        serial = line.split(": ")[2]
-                        self.serial = int(serial.split(" ")[0])
+                        try:
+                            serial = line.split(": ")[2]
+                            self.serial = int(serial.split(" ")[0])
+                        except Exception as err1:
+                            self.debug(str(err1))
+                            try:
+                                # Firehose return format: "Chip serial num (0x%lx) Chip ID (0x%x)"
+                                serial_re = re.findall("Chip serial num \\(0x(.*?)\\)", line)
+                                self.serial = int(serial_re[0], 16)
+                            except Exception as err2:
+                                self.error(err2)
                 if supfunc and "end of supported functions" not in line.lower():
                     rs = line.replace("\n", "")
                     if rs != "":
