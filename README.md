@@ -51,6 +51,7 @@ sudo apt purge ModemManager
 git clone https://github.com/bkerler/edl.git
 cd edl
 git submodule update --init --recursive
+chmod +x ./install-linux-edl-drivers.sh
 bash ./install-linux-edl-drivers.sh
 python3 setup.py build
 sudo python3 setup.py install
