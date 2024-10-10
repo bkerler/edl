@@ -1,114 +1,158 @@
-# SPDX-FileCopyrightText: 2022 JoesCat, M0Rf30 and contributors
-#
-# SPDX-License-Identifier: GPL-3.0
+# SPDX-FileCopyrightText: 2012-2023 JoesCat, M0Rf30 and contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Latest version can be found at:
+# <https://github.com/M0Rf30/android-udev-rules>
 
 # These rules refer to:
-# https://developer.android.com/studio/run/device.html
+# <https://developer.android.com/studio/run/device.html>
 # and include many suggestions from Arch Linux, GitHub and other Communities.
-# Latest version can be found at: 
-# https://github.com/M0Rf30/android-udev-rules
+
 
 # Skip testing for android devices if device is not add, or usb
 ACTION!="add", ACTION!="bind", GOTO="android_usb_rules_end"
 SUBSYSTEM!="usb", GOTO="android_usb_rules_end"
 
-# For Android devices that enable this universal rule suggested here:
-# http://ktnr74.blogspot.com/2013/04/universal-udev-rule-for-all-android.html
-# Commented as a reminder (we prefer a punctual device detection)
-# ENV{ID_USB_INTERFACES}=="*:ff420?:*", SYMLINK+="android/$env{ID_SERIAL_SHORT}", GOTO="android_usb_rule_match"
-
-# Skip testing for unexpected devices like hubs or printers
+# Skip testing for unexpected devices like hubs, controllers or printers
 ATTR{bDeviceClass}=="09", GOTO="android_usb_rules_end"
-ENV{ID_USB_INTERFACES}=="*:0701??:*", ENV{adb_adb}="yes", GOTO="android_usb_rules_end"
+ENV{ID_MODEL}=="Controller", GOTO="android_usb_rules_end"
+ENV{ID_USB_INTERFACES}=="*:0701??:*", GOTO="android_usb_rules_end"
 
-LABEL="android_usb_rules_begin"
-# Devices listed here in android_usb_rules_{begin...end} are connected by USB
+# Devices listed here are connected by USB
+
 # Acer
 ATTR{idVendor}!="0502", GOTO="not_Acer"
 #   Iconia Tab A1-830
-ATTR{idProduct}=="3604", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="3604", GOTO="adbfast"
 #   Iconia Tab A210 (33cc=normal,33cb=debug)
-ATTR{idProduct}=="33cb", ENV{adb_adb}="yes"
+ATTR{idProduct}=="33cb", GOTO="adb"
 #   Iconia Tab A500
-ATTR{idProduct}=="3325", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="3325", GOTO="adbfast"
 #   Liquid (3202=normal,3203=debug)
-ATTR{idProduct}=="3203", ENV{adb_user}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="3203", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Acer"
 
 # Actions Semiconductor Co., Ltd
 #   Denver TAD 70111
-ATTR{idVendor}=="10d6", ATTR{idProduct}=="0c02", ENV{adb_adb}="yes"
+ATTR{idVendor}=="10d6", ATTR{idProduct}=="0c02", GOTO="adb"
 
 # ADVANCE (Need product specific rules)
 #   S5
-ATTR{idVendor}=="0a5c", ATTR{idProduct}=="e681", ENV{adb_adb}="yes"
+ATTR{idVendor}=="0a5c", ATTR{idProduct}=="e681", GOTO="adb"
+
+# Allwinner Technology
+ATTR{idVendor}!="1f3a", GOTO="not_Allwinner"
+#   Prestigio PER3464B ebook reader (Mass storage mode)
+ATTR{idProduct}=="1000", GOTO="adbmtp"
+#   Allwinner Technology Android device in fastboot mode
+ATTR{idProduct}=="1010", GOTO="adbfast"
+GOTO="android_usb_rules_end"
+LABEL="not_Allwinner"
 
 # Amazon Lab126
+ATTR{idVendor}!="1949", GOTO="not_Amazon"
 #   Amazon Kindle Fire
-ATTR{idVendor}=="1949", ATTR{idProduct}=="0006", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="0006", GOTO="adbfast"
+#   Amazon Kindle 8 2016 (giza) (0bb4:0c01=fastboot 0231=mtp 0232=adb,mtp 0233=ptp 0234=adb,ptp)
+ATTR{idProduct}=="0232", GOTO="adbmtp"
+ATTR{idProduct}=="0234", GOTO="adbptp"
+#   Amazon Kindle 10 2021 (trona) (05e0=fastboot 05e1=mtp 05e1=chg 05e2=adb,mtp 05e3=ptp 05e4=adb,ptp 05e8=adb,chg=05e8 2046=midi 2048=adb,midi)
+ATTR{idProduct}=="05e0", GOTO="adbfast"
+ATTR{idProduct}=="05e2", GOTO="adbmtp"
+ATTR{idProduct}=="05e4", GOTO="adbptp"
+ATTR{idProduct}=="05e8", GOTO="adb"
+ATTR{idProduct}=="2048", GOTO="adbmidi"
+#   Amazon Fire TV Stick Lite (3rd gen)
+ATTR{idProduct}=="03a8", GOTO="adbfast"
+#   Amazon Fire 7 (mustang)
+ATTR{idProduct}=="03c8", GOTO="adbfast"
+ATTR{idProduct}=="03cb", GOTO="adbfast"
+#   Amazon Fire HD 8 2018 (karnak)
+ATTR{idProduct}=="0338", GOTO="adbfast"
+ATTR{idProduct}=="033b", GOTO="adbfast"
+#   Amazon Fire HD 8 2022 (raphite)
+ATTR{idProduct}=="0658", GOTO="adbfast"
+#   Amazon Fire HD 10 2023 (tungsten)
+ATTR{idProduct}=="06f8", GOTO="adbfast"
+GOTO="android_usb_rules_end"
+LABEL="not_Amazon"
 
 # Archos
 ATTR{idVendor}!="0e79", GOTO="not_Archos"
 #   43
-ATTR{idProduct}=="1417", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="1417", GOTO="adbfast"
+#   79 Xenon
+ATTR{idProduct}=="303e", GOTO="adbfast"
 #   101
-ATTR{idProduct}=="1411", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="1411", GOTO="adbfast"
 #   101 xs
-ATTR{idProduct}=="1549", ENV{adb_adbfast}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="1549", GOTO="adbfast"
+GOTO="android_usb_rules_end"
 LABEL="not_Archos"
 
 # Ascom
 ATTR{idVendor}!="1768", GOTO="not_Ascom"
-ATTR{idProduct}=="0007", ENV{adb_adb}="yes"
-ATTR{idProduct}=="000e", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee7", ENV{adb_adb}="yes"
-ATTR{idProduct}=="0013", ENV{adb_adb}="yes"
-ATTR{idProduct}=="0011", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="0007", GOTO="adb"
+ATTR{idProduct}=="000e", GOTO="adb"
+ATTR{idProduct}=="4ee7", GOTO="adb"
+ATTR{idProduct}=="0013", GOTO="adb"
+ATTR{idProduct}=="0011", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Ascom"
 
 # ASUSTeK
 ATTR{idVendor}!="0b05", GOTO="not_Asus"
 #   False positive - accessory
 ATTR{idProduct}=="1???", GOTO="android_usb_rules_end"
-ENV{adb_user}="yes"
-#   Zenphone 2 (ZE500CL) (7770=adb 7773=mtp,adb 7777=ptp,adb   7775=rndis,adb,mass_storage 5F03=mtp,adb,pclink,mass_storage 5F07=ptp,adb,pclink 5F05=rndis,adb,pclink,mass_storage
-ATTR{idProduct}=="7770", SYMLINK+="android_adb"
-ATTR{idProduct}=="7773", SYMLINK+="android_adb"
-ATTR{idProduct}=="7777", SYMLINK+="android_adb"
-ATTR{idProduct}=="7775", SYMLINK+="android_adb"
-ATTR{idProduct}=="5F03", SYMLINK+="android_adb"
-ATTR{idProduct}=="5F07", SYMLINK+="android_adb"
-ATTR{idProduct}=="5F05", SYMLINK+="android_adb"
+#   Zenphone 2 (ZE500CL) (7770=adb 7773=mtp,adb 7775=rndis,adb,mass_storage 7777=ptp,adb 5F03=mtp,adb,pclink,mass_storage 5F05=rndis,adb,pclink,mass_storage 5F07=ptp,adb,pclink)
+#   Zenfone GO (ZB500KL) (7772=mtp 7773=mtp,adb 7774=rndis 7775=rndis,adb 7776=ptp 7777=ptp,adb)
+ATTR{idProduct}=="7770", GOTO="adb"
+ATTR{idProduct}=="7771", GOTO="adbfast"
+ATTR{idProduct}=="7773", GOTO="adbmtp"
+ATTR{idProduct}=="7775", ENV{adb_adbmass}="yes", GOTO="adbrndis"
+ATTR{idProduct}=="7777", GOTO="adbptp"
+ATTR{idProduct}=="5F03", GOTO="adbmtp"
+ATTR{idProduct}=="5F07", GOTO="adbptp"
+ATTR{idProduct}=="5F05", ENV{adb_adbmass}="yes", GOTO="adbrndis"
 #   Zenphone 4 (581f=mtp,adb 583f=rndis,adb)
-ATTR{idProduct}=="581f", SYMLINK+="android_adb"
-ATTR{idProduct}=="583f", SYMLINK+="android_adb"
-#   Zenphone 5 (4c90=normal,4c91=debug,4daf=Fastboot)
-ATTR{idProduct}=="4c91", SYMLINK+="android_adb"
-ATTR{idProduct}=="4daf", SYMLINK+="android_fastboot"
+ATTR{idProduct}=="581f", GOTO="adbmtp"
+ATTR{idProduct}=="583f", GOTO="adbrndis"
+#   TF300 (4c80=mtp 4c81=mtp,adb)
+#   TF700 (4c90=mtp 4c91=mtp,adb)
+#   Zenphone 5 (4c90=normal 4c91=debug 4daf=Fastboot 7780=mtp 7781=mtp,adb)
+#   TF701T (4ca0=mtp, 4ca1=mtp,adb)
+#   ME302KL (4cc0=mtp, 4cc1=mtp,adb)
+#   ME301T (4cd0=mtp, 4cd1=mtp,adb)
+#   Fonepad 6 (4ce0=mtp, 4ce1=mtp,adb)
+ATTR{idProduct}=="4c81", GOTO="adbmtp"
+ATTR{idProduct}=="4c91", GOTO="adbmtp"
+ATTR{idProduct}=="4ca1", GOTO="adbmtp"
+ATTR{idProduct}=="4cc1", GOTO="adbmtp"
+ATTR{idProduct}=="4cd1", GOTO="adbmtp"
+ATTR{idProduct}=="4ce1", GOTO="adbmtp"
+ATTR{idProduct}=="4daf", GOTO="adbfast"
+ATTR{idProduct}=="7781", GOTO="adbmtp"
+#   SL101 (4e00=mtp, 4e01=mtp,adb)
+#   TF101 (4e0f=mtp, 4e1f=mtp,adb)
+ATTR{idProduct}=="4e1f", GOTO="adbmtp"
 #   Tegra APX
-ATTR{idProduct}=="7030", SYMLINK+="android_adb"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="7030", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Asus"
-
-# Azpen Onda
-ATTR{idVendor}=="1f3a", ENV{adb_user}="yes"
 
 # BQ
 ATTR{idVendor}!="2a47", GOTO="not_BQ"
-#   Aquaris 4.5
-ATTR{idProduct}=="0c02", ENV{adb_adbfast}="yes"
-ATTR{idProduct}=="2008", ENV{adb_adbfast}="yes"
-GOTO="android_usb_rule_match"
+#   Aquaris 4.5, Krillin (0c02=mtp,adb 2008=mtp)
+ATTR{idProduct}=="0c02", GOTO="adbmtp"
+GOTO="android_usb_rules_end"
 LABEL="not_BQ"
 
 # Castles
 ATTR{idVendor}!="0ca6", GOTO="not_Castles"
 #   Saturn1000-E
-ATTR{idProduct}=="a051", ENV{adb_user}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="a051", GOTO="user"
+GOTO="android_usb_rules_end"
 LABEL="not_Castles"
 
 # Dell (Need product specific rules)
@@ -117,121 +161,161 @@ LABEL="not_Castles"
 # Essential
 ATTR{idVendor}!="2e17", GOTO="not_Essential"
 #   Essential PH-1
-ATTR{idProduct}=="c009", ENV{adb_adb}="yes"
-ATTR{idProduct}=="c03[02]", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="c009", GOTO="adb"
+ATTR{idProduct}=="c03[02]", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Essential"
 
 # Fairphone 1 (see Hisense 109b)
-# Fairphone 2 (f005=tether, f00e=rndis, 90de=charge, 90dc=charge,adb f000=MTP, 9039=MTP,adb, 904d=PTP, 904e=PTP,adb, 9015=storage,adb, 9024=rndis,adb) 90bb=qualcom midi+adb
+# Fairphone 2 (f000=mtp,mass f003=mtp f005=tether f00e=rndis 90de=charge 90dc=charge,adb 9015=storage,adb, 9024=rndis,adb, 9039=mtp,adb 904d=ptp 904e=ptp,adb) 90bb=qualcom midi+adb
 ATTR{idVendor}!="2ae5", GOTO="not_Fairphone2"
-ATTR{idProduct}=="9015", ENV{adb_adb}="yes"
-ATTR{idProduct}=="9039", ENV{adb_adb}="yes"
-ATTR{idProduct}=="904e", ENV{adb_adb}="yes"
-ATTR{idProduct}=="90dc", ENV{adb_adb}="yes"
-ATTR{idProduct}=="90bb", ENV{adb_adb}="yes", ENV{midi_user}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="9015", GOTO="adb"
+ATTR{idProduct}=="9024", GOTO="adbrndis"
+ATTR{idProduct}=="9039", GOTO="adbmtp"
+ATTR{idProduct}=="904e", GOTO="adbptp"
+ATTR{idProduct}=="90bb", GOTO="adbmidi"
+ATTR{idProduct}=="90dc", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Fairphone2"
 
 # Foxconn
 #   Commtiva Z71, Geeksphone One
-ATTR{idVendor}=="0489", ATTR{idProduct}=="c001", ENV{adb_adb}="yes"
+ATTR{idVendor}=="0489", ATTR{idProduct}=="c001", GOTO="adb"
 
-# Fujitsu/Fujitsu Toshiba
-ATTR{idVendor}=="04c5", ENV{adb_user}="yes"
+# Fujitsu/Fujitsu Toshiba (Need product specific rules)
+#ATTR{idVendor}=="04c5", GOTO="user"
 
 # Fuzhou Rockchip Electronics
 #   Mediacom Smartpad 715i
-ATTR{idVendor}=="2207", ATTR{idProduct}=="0000", ENV{adb_adb}="yes"
+ATTR{idVendor}!="2207", GOTO="not_Fuzhou"
+ATTR{idProduct}=="0000", GOTO="adb"
 #   Ubislate 7Ci
-ATTR{idVendor}=="2207", ATTR{idProduct}=="0010", ENV{adb_adb}="yes"
+ATTR{idProduct}=="0010", GOTO="adb"
+#   Anbernic RG353P - AOSP12beta#1 (0003=rndis 0006=adb,chg 0007=mtp 0008=ptp 0013=adb,rndis 0017=adb,mtp 0018=adb,ptp)
+ATTR{idProduct}=="0006", GOTO="adb"
+ATTR{idProduct}=="0013", GOTO="adbrndis"
+ATTR{idProduct}=="0017", GOTO="adbmtp"
+ATTR{idProduct}=="0018", GOTO="adbptp"
+GOTO="android_usb_rules_end"
+LABEL="not_Fuzhou"
 
-# Garmin-Asus
-ATTR{idVendor}=="091e", ENV{adb_user}="yes"
+# Garmin-Asus (Need product specific rules)
+#ATTR{idVendor}=="091e", GOTO="user"
 
 # Google
 ATTR{idVendor}!="18d1", GOTO="not_Google"
-#   Nexus, Pixel, Pixel XL, Pixel 2, Pixel 2XL (4ee1=mtp, 4ee2=mtp,adb 4ee3=rndis, 4ee4=rndis,adb 4ee5=ptp, 4ee6=ptp,adb 4ee7=adb 4ee8=midi, 4ee9=midi,adb 2d00=accessory 2d01=accessory,adb 2d03=audio_source,adb 2d05=accessory,audio_source,adb)
-#   See https://android.googlesource.com/device/google/wahoo/+/master/init.hardware.usb.rc
-#   OnePlus 6, 4ee1=charging, 4ee2=MTP+debug, 4ee6=PTP+debug, 4ee7=charging+debug
+#   Nexus, Pixel (/XL/2/2XL) (4ee1=mtp 4ee2=mtp,adb 4ee3=rndis 4ee4=rndis,adb 4ee5=ptp 4ee6=ptp,adb 4ee7=adb 4ee8=midi 4ee9=midi,adb 2d00=accessory 2d01=accessory,adb 2d03=audio,adb 2d05=accessory,audio,adb)
+#   See https://android.googlesource.com/device/google/wahoo/+/master/usb/UsbGadget.cpp
+#   OnePlus 6 (4ee1=charging 4ee2=mtp,adb 4ee6=ptp,adb 4ee7=charging,adb)
+#   Onda V972 (0001=mass_storage 0006=mtp 0007=ptp 0008=camera)
 #   Pico i.MX7 Dual Development Board 4ee7=debug
+#   PinePhone (v1.2) (4ee0=fast 4ee1=mtp 4ee2=mtp,adb 4ee3=rndis 4ee4=rndis,adb 4ee5=ptp 4ee6=ptp,adb 4ee7=adb)
 #   Yandex Phone 4ee7=debug
-ATTR{idProduct}=="4ee0", ENV{adb_adbfast}="yes"
-ATTR{idProduct}=="4ee2", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee4", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee6", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee7", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee9", ENV{adb_adb}="yes"
+#   Fairphone3 (4ee1=mtp)
+#   Motorola G3 (2d02=audio 2d03=audio,adb 4ee8=midi 4ee9=midi,adb)
+ATTR{idProduct}=="4ee0", GOTO="adbfast"
+ATTR{idProduct}=="4ee2", GOTO="adbmtp"
+ATTR{idProduct}=="4ee4", GOTO="adbrndis"
+ATTR{idProduct}=="4ee6", GOTO="adbptp"
+ATTR{idProduct}=="4ee7", GOTO="adb"
+ATTR{idProduct}=="4ee8", GOTO="midi"
+ATTR{idProduct}=="4ee9", GOTO="adbmidi"
 
-#   Pixel C Tablet
-ATTR{idProduct}=="5201", ENV{adb_fast}="yes"
-ATTR{idProduct}=="5203", ENV{adb_adb}="yes"
-ATTR{idProduct}=="5208", ENV{adb_adb}="yes"
+#   Tensor Pixel phones (Pixel 7/7 pro/6/6A/6 Pro) 4eeb=cdc-ncm; 4eec=cdc-ncm,adb
+ATTR{idProduct}=="4eec", GOTO="adbcdc"
+ATTR{idProduct}=="4ee0", GOTO="adbfast"
 
-ATTR{idProduct}=="2d00", ENV{adb_adb}="yes"
-ATTR{idProduct}=="2d01", ENV{adb_adb}="yes"
-ATTR{idProduct}=="2d03", ENV{adb_adb}="yes"
-ATTR{idProduct}=="2d05", ENV{adb_adb}="yes"
-#   Nexus 7
-ATTR{idProduct}=="4e42", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4e40", ENV{adb_adbfast}="yes"
-#   Nexus 5, Nexus 10
-ATTR{idProduct}=="4ee1", ENV{adb_adbfast}="yes"
-#   Nexus S (4e22=mass_storage,adb 4e24=rndis,adb)
+#   Tensor Pixel phones (Pixel 7/7 pro/6/6A/6 Pro) 4eed=uvc; 4eee=uvc,adb
+ATTR{idProduct}=="4eed", GOTO="uvc"
+ATTR{idProduct}=="4eee", GOTO="adbuvc"
+
+#   Pixel Watch 2 (4ee0=fastboot 4e11=adb)
+ATTR{idProduct}=="4e11", GOTO="adb"
+
+#   Pixel C Tablet (5202=mtp 5203=mtp,adb)
+ATTR{idProduct}=="5201", GOTO="adbfast"
+ATTR{idProduct}=="5203", GOTO="adbmtp"
+ATTR{idProduct}=="5208", GOTO="adb"
+
+#   Android Open Accessory device (2d00=accessory 2d01=accessory,adb 2d02=audio 2d03=audio,adb 2d04=accessory,audio 2d05=accessory,audio,adb)
+ATTR{idProduct}=="2d00", GOTO="adb"
+ATTR{idProduct}=="2d01", GOTO="adb"
+ATTR{idProduct}=="2d03", GOTO="adbaud"
+ATTR{idProduct}=="2d05", GOTO="adbaud"
+#   Nexus 7 (4e40=fastboot 4e41=mtp 4e42=mtp,adb 4e43=ptp) Nexus 7 2012 (4e44=ptp)
+ATTR{idProduct}=="4e40", GOTO="adbfast"
+ATTR{idProduct}=="4e42", GOTO="adbmtp"
+#   Nexus S (4e20=fastboot 4e21=? 4e22=mass_storage,adb 4e24=rndis,adb)
 #   See https://android.googlesource.com/device/samsung/crespo/+/android-4.1.2_r2.1/init.herring.usb.rc
-ATTR{idProduct}=="4e22", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4e24", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4e20", ENV{adb_adbfast}="yes"
-#   Galaxy Nexus, Galaxy Nexus (GSM)
-ATTR{idProduct}=="4e30", ENV{adb_adbfast}="yes"
-#   Nexus One (4e11=normal,4e12=debug,0fff=debug)
-ATTR{idProduct}=="4e12", ENV{adb_adb}="yes"
-ATTR{idProduct}=="0fff", ENV{adb_adbfast}="yes"
-#   Recovery adb entry for Nexus Family (orig d001, OP3 has 18d1:d002)
-ATTR{idProduct}=="d00?", ENV{adb_adb}="yes"
+ATTR{idProduct}=="4e20", GOTO="adbfast"
+ATTR{idProduct}=="4e22", GOTO="adbmass"
+ATTR{idProduct}=="4e24", GOTO="adbrndis"
+ATTR{idProduct}=="4e20", GOTO="adbfast"
+#   Galaxy Nexus, Galaxy Nexus (GSM) (4e30=fastboot)
+ATTR{idProduct}=="4e30", GOTO="adbfast"
+#   Nexus One (4e11=normal 4e12=mtp,adb 4e13=tether 0fff=debug)
+ATTR{idProduct}=="4e12", GOTO="adbmtp"
+ATTR{idProduct}=="0fff", GOTO="adbfast"
+#   Xiaomi MiPhone Mi1/Mi1S (9024=ndis,adb 9025=mass_storage,adb 9026=mass storage f00e=ndis)
+ATTR{idProduct}=="9024", GOTO="adb"
+ATTR{idProduct}=="9025", GOTO="adbmass"
 #   Generic and unspecified debug interface (test after d00?)
-ATTR{idProduct}=="d00d", ENV{adb_adbfast}="yes"
+#   examples: Xiaomi Mi/Redmi 2, Anbernic RG353P
+#   Xiaomi Mi2 (d00d=bootloader d002=charger)
+ATTR{idProduct}=="d00d", GOTO="adbfast"
+#   Nexus 4 (d001=fastboot d002=debug)
+ATTR{idProduct}=="d001", GOTO="adbfast"
+ATTR{idProduct}=="d002", GOTO="adb"
+#   LG G2x (d109=mtp d10a=mtp,adb)
+ATTR{idProduct}=="d10a", GOTO="adbmtp"
 
 # Other vendors that also used duplicated Google's idVendor code follows:
 # IDEA XDS-1078 (debug=2c11)
-ATTR{idProduct}=="2c11", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="2c11", GOTO="adb"
+# Hisense U8G Smart TV (MTK MT5895)
+ATTR{idProduct}=="0d02", GOTO="adbfast"
+GOTO="android_usb_rules_end"
 LABEL="not_Google"
 
-# Haier
-ATTR{idVendor}=="201e", ENV{adb_user}="yes"
+# Haier (Need product specific rules)
+#ATTR{idVendor}=="201e", GOTO="user"
 
-# Hisense (includes Fairphone 1)
-ATTR{idVendor}=="109b", ENV{adb_user}="yes"
+# Hisense (includes Fairphone 1) (Need product specific rules)
+#ATTR{idVendor}=="109b", GOTO="user"
 
 # Honeywell/Foxconn
 ATTR{idVendor}!="0c2e", GOTO="not_Honeywell"
 #   D70e
-ATTR{idProduct}=="0ba3", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="0ba3", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Honeywell"
 
 # HTC
 ATTR{idVendor}!="0bb4", GOTO="not_HTC"
-ENV{adb_user}="yes"
-#   fastboot mode enabled
-ATTR{idProduct}=="0fff", ENV{adb_adbfast}="yes", GOTO="android_usb_rule_match"
-#   ADP1, Dream, G1, HD2, Magic, Tatoo (0c01=mass_storage)
-ATTR{idProduct}=="0c02", ENV{adb_adbfast}="yes"
+#   Android phone (0fff=fastboot 0001=mass_storage)
+ATTR{idProduct}=="0001", GOTO="mass"
+ATTR{idProduct}=="0fff", GOTO="adbfast"
+#   ADP1, Dream, G1, HD2, Magic, Tatoo (0c01=mass_storage, 0c02=mass_storage,adb)
+#   Desire/desire HD/Hero (0ce5=debug 0fb4=rndis 0ff8=tether 0ff9=charge,mass_storage 0ffc=sync_manager 0ffe=modem)
+#   NOTE: Amazon Kindle 8 2016 (giza) (fastboot=0bb4:0c01 conflicts with mass storage=0c01)
+ATTR{idProduct}=="0c01", GOTO="mass"
+ATTR{idProduct}=="0c02", GOTO="adbmass"
+ATTR{idProduct}=="0ce5", GOTO="adb"
+ATTR{idProduct}=="0ff9", GOTO="mass"
 #   ChaCha
-ATTR{idProduct}=="0cb2", ENV{adb_adbfast}="yes"
-#   Desire (Bravo)
-ATTR{idProduct}=="0c87", SYMLINK+="android_adb"
-#   Desire HD
-ATTR{idProduct}=="0ca2", SYMLINK+="android_adb"
-#   Desire S (Saga)
+ATTR{idProduct}=="0cb2", GOTO="adbfast"
+#   Desire (Bravo) (0c87=debug 0c99=debug)
+ATTR{idProduct}=="0c87", GOTO="adb"
+ATTR{idProduct}=="0c99", GOTO="adb"
+#   Desire HD (0ca2=debug 0ff8=tether 0ff9=charge 0ffe=modem)
+ATTR{idProduct}=="0ca2", GOTO="adb"
+#   Desire S (Saga), Desire HD, Hero, Thunderbolt (0cab=syncmode 0ff9=charge)
 ATTR{idProduct}=="0cab", SYMLINK+="android_adb"
 #   Desire Z
-ATTR{idProduct}=="0c91", ENV{adb_adbfast}="yes"
-#   Evo Shift
+ATTR{idProduct}=="0c91", GOTO="adbfast"
+#   Evo Shift 4G (0c8d=debug 0ca5=?)
+ATTR{idProduct}=="0c8d", GOTO="adb"
 ATTR{idProduct}=="0ca5", SYMLINK+="android_adb"
-#   Hero H2000
-ATTR{idProduct}=="0001", ENV{adb_adbfast}="yes"
 #   Hero (GSM), Desire
 ATTR{idProduct}=="0c99", SYMLINK+="android_adb"
 #   Hero (CDMA)
@@ -244,11 +328,9 @@ ATTR{idProduct}=="0c8d", SYMLINK+="android_adb"
 ATTR{idProduct}=="0c96", SYMLINK+="android_adb"
 #   One (m7) && One (m8)
 ATTR{idProduct}=="0c93", SYMLINK+="android_adb"
-#   Sensation
-ATTR{idProduct}=="0f87", SYMLINK+="android_adb"
+#   Sensation, One (0f87=mtp,?,adb)
+ATTR{idProduct}=="0f87", GOTO="adbmtp"
 ATTR{idProduct}=="0ff0", SYMLINK+="android_fastboot"
-#   One V
-ATTR{idProduct}=="0ce5", SYMLINK+="android_adb"
 #   One X
 ATTR{idProduct}=="0cd6", SYMLINK+="android_adb"
 #   Slide
@@ -256,32 +338,57 @@ ATTR{idProduct}=="0e03", SYMLINK+="android_adb"
 #   Vision
 ATTR{idProduct}=="0c91", SYMLINK+="android_adb"
 #   Wildfire
-ATTR{idProduct}=="0c8b", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="0c8b", GOTO="adbfast"
 #   Wildfire S
-ATTR{idProduct}=="0c86", ENV{adb_adbfast}="yes"
-#   Zopo ZP900, Fairphone
-ATTR{idProduct}=="0c03", ENV{adb_adbfast}="yes"
-#   Zopo C2
-ATTR{idProduct}=="2008", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
+ATTR{idProduct}=="0c86", GOTO="adbfast"
+#   Zopo ZP900, Fairphone 1
+ATTR{idProduct}=="0c03", GOTO="adbfast"
+#   Zopo C2, Android phone via MTP [MT65xx] (2008=mtp)
+ATTR{idProduct}=="2008", GOTO="mtp"
+#   Android phone via PTP [Wiko Cink Peax 2] (200b=ptp)
+ATTR{idProduct}=="200b", GOTO="ptp"
+#   Desire 510 (05fd=mtp,adb)
+ATTR{idProduct}=="05fd", GOTO="adbmtp"
+#   Droid DNA (0dff=mtp,ums,adb 0ebd=mtp,ums)
+ATTR{idProduct}=="0dff", GOTO="adbmtp"
+ATTR{idProduct}=="0ebd", GOTO="mtp"
+#   Droid Incredible 4G LTE (0e31=mtp 0e32=mtp,adb)
+ATTR{idProduct}=="0e31", GOTO="mtp"
+ATTR{idProduct}=="0e32", GOTO="adbmtp"
+#   One (0dea=mtp,ums,adb 0f87=mtp,?,adb 0f5f=mtp,cdc,adb 0f60=mtp,cdc 0f63=mtp,adb 0f64=mtp)
+ATTR{idProduct}=="0dea", GOTO="adbmtp"
+ATTR{idProduct}=="0f87", GOTO="adbmtp"
+ATTR{idProduct}=="0f5f", ENV{adb_adbcdc}="yes", GOTO="adbmtp"
+ATTR{idProduct}=="0f60", ENV{adb_cdc}="yes", GOTO="mtp"
+ATTR{idProduct}=="0f63", GOTO="adbmtp"
+ATTR{idProduct}=="0f64", GOTO="mtp"
+#   One M8 Google Play Edition (060b=mtp,adb)
+ATTR{idProduct}=="060b", GOTO="adbmtp"
+#   One M8 (061a=mtp,adb 0f25=mtp 0fb4=mtp,ums,adb 0fb5=mtp,ums)
+ATTR{idProduct}=="061a", GOTO="adbmtp"
+ATTR{idProduct}=="0f25", GOTO="mtp"
+ATTR{idProduct}=="0fb4", GOTO="adbmtp"
+ATTR{idProduct}=="0fb5", GOTO="mtp"
+#   HP Touchpad (685c=mtp 6860=mtp,adb)
+ATTR{idProduct}=="6860", GOTO="adbmtp"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_HTC"
 
 # Huawei
 ATTR{idVendor}!="12d1", GOTO="not_Huawei"
-ENV{adb_user}="yes"
-#   IDEOS
-ATTR{idProduct}=="1038", ENV{adb_adbfast}="yes"
+#   IDEOS (1037=? 1038=debug 1039=tether)
+ATTR{idProduct}=="1038", GOTO="adbfast"
 #   U8850 Vision
-ATTR{idProduct}=="1021", ENV{adb_adbfast}="yes"
-#   HiKey adb
-ATTR{idProduct}=="1057", SYMLINK+="android_adb"
-#   HiKey usbnet
+ATTR{idProduct}=="1021", GOTO="adbfast"
+#   HiKey (1050=usbnet 1057=adb)
 ATTR{idProduct}=="1050", SYMLINK+="android_adb"
+ATTR{idProduct}=="1057", GOTO="adb"
 #   Honor 6
 ATTR{idProduct}=="103a", SYMLINK+="android_adb"
-ATTR{idProduct}=="1051", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
+ATTR{idProduct}=="1051", GOTO="mtp"
 #   MediaPad M2-A01L
-ATTR{idProduct}=="1052", SYMLINK+="android_adb"
+ATTR{idProduct}=="1052", GOTO="mtp"
 #   MediaPad T3
 ATTR{idProduct}=="107d", SYMLINK+="android_adb"
 #   P10 Lite
@@ -290,319 +397,430 @@ ATTR{idProduct}=="107e", SYMLINK+="android_adb"
 ATTR{idProduct}=="1c2c", SYMLINK+="android_adb"
 #   Mate 9
 ATTR{idProduct}=="107e", SYMLINK+="android_adb"
-GOTO="android_usb_rule_match"
+GOTO="android_usb_rules_end"
 LABEL="not_Huawei"
 
 # Intel
 ATTR{idVendor}!="8087", GOTO="not_Intel"
 #   Geeksphone Revolution
-ATTR{idProduct}=="0a16", ENV{adb_adb}="yes"
+ATTR{idProduct}=="0a16", GOTO="adb"
 #   Chuwi Hi 10 Pro (HQ64)
-ATTR{idProduct}=="2a65", ENV{adb_adb}="yes"
-ATTR{idProduct}=="07ef", ENV{adb_adb}="yes"
+ATTR{idProduct}=="2a65", GOTO="adb"
+ATTR{idProduct}=="07ef", GOTO="adb"
 #   Asus ZenFone 2 (ADB Sideload in TWRP Recovery)
-ATTR{idProduct}=="0a5d", ENV{adb_adb}="yes"
+ATTR{idProduct}=="0a5d", GOTO="adb"
+#   ASUS MeMo Pad 7 ME176C/CX (DNX/Rescue mode)
+ATTR{idProduct}=="0a65", GOTO="adbfast"
 #   Reference Boards using kernelflinger
 #   See https://github.com/intel/kernelflinger/blob/master/libefiusb/usb.c#L56
-ATTR{idProduct}=="09ef", ENV{adb_adbfast}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="09ef", GOTO="adbfast"
+GOTO="android_usb_rules_end"
 LABEL="not_Intel"
 
 # IUNI
 ATTR{idVendor}!="271d", GOTO="not_IUNI"
+#   Gionee (3f11=mass,adb)
+ATTR{idProduct}=="3f11", GOTO="adbmass"
 #   U3
-ATTR{idProduct}=="bf39", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="bf39", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_IUNI"
 
-# K-Touch
-ATTR{idVendor}=="24e3", ENV{adb_user}="yes"
+# K-Touch (Need product specific rules)
+#ATTR{idVendor}=="24e3", GOTO="user"
 
-# KT Tech
-ATTR{idVendor}=="2116", ENV{adb_user}="yes"
+# KT Tech (Need product specific rules)
+#ATTR{idVendor}=="2116", GOTO="user"
 
-# Kyocera
+# Kyocera (Need product specific rules)
 #ATTR{idVendor}=="0482", ENV{adb_user}="yes"
 
 # Lenovo
-ATTR{idVendor}=="17ef", ENV{adb_user}="yes"
+ATTR{idVendor}!="17ef", GOTO="not_Lenovo"
+#   Lenovo Tab K10
+ATTR{idProduct}=="201c", GOTO="adb"
+GOTO="android_usb_rules_end"
+LABEL="not_Lenovo"
 
 # LeTv (LeECo)
 ATTR{idVendor}!="2b0e", GOTO="not_letv"
-ENV{adb_user}="yes"
 #   LEX720 LeEco Pro3 6GB (610c=normal,610d=debug, 610b=camera)
-ATTR{idProduct}=="610d", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="610d", GOTO="adbfast"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_letv"
 
 # LG
 ATTR{idVendor}!="1004", GOTO="not_LG"
-ENV{adb_user}="yes"
-#   Ally, Vortex, P500, P500h (618f=mass_storage)
-ATTR{idProduct}=="618e", SYMLINK+="android_adb"
-#   G2 D802
+#   Ally, Vortex, P500, P500h (61c5=charge 618e=debug 618f=mass_storage)
+ATTR{idProduct}=="618e", GOTO="adb"
+ATTR{idProduct}=="618f", GOTO="mass"
+#   G2 D802 (61f1=LG software mode)
 ATTR{idProduct}=="61f1", SYMLINK+="android_adb"
 #   G2 D803
 ATTR{idProduct}=="618c", SYMLINK+="android_adb"
-#   G2 D803 rogers
+#   G2 D803 rogers (631f=charge)
 ATTR{idProduct}=="631f", SYMLINK+="android_adb"
-#   G2 mini D620r (PTP)
-ATTR{idProduct}=="631d", SYMLINK+="android_adb"
-#   G3 D855
-ATTR{idProduct}=="633e", SYMLINK+="android_adb"
-#   Optimus LTE
+#   G3 (VS985), Android Phone (627f=mtp)
+ATTR{idProduct}=="627f", GOTO="mtp"
+#   LM-X420xxx/G2/Optimus (6300=charge 631c=charge 631d=ptp 631e=ptp 633e=mtp 6344=tether 6348=midi 6356=CDrom)
+ATTR{idProduct}=="631c", GOTO="adb"
+ATTR{idProduct}=="631d", GOTO="ptp"
+ATTR{idProduct}=="631e", GOTO="ptp"
+ATTR{idProduct}=="633e", GOTO="mtp"
+ATTR{idProduct}=="6344", GOTO="rndis"
+ATTR{idProduct}=="6348", GOTO="midi"
+#   Optimus LTE (61f9=mtp 61fe=tether)
 ATTR{idProduct}=="6315", SYMLINK+="android_adb"
-ATTR{idProduct}=="61f9", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
-#   Optimus One
-ATTR{idProduct}=="61c5", SYMLINK+="android_adb"
+ATTR{idProduct}=="61f9", GOTO="mtp"
 #   Swift GT540
 ATTR{idProduct}=="61b4", SYMLINK+="android_adb"
 #   P500 CM10
 ATTR{idProduct}=="61a6", SYMLINK+="android_adb"
-#   4X HD P880
-ATTR{idProduct}=="61f9", SYMLINK+="android_adb"
-#   L90 D410
+#   L90 D410, Various (6300=charge)
 ATTR{idProduct}=="6300", SYMLINK+="android_adb"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_LG"
 
 # Meizu
 ATTR{idVendor}!="2a45", GOTO="not_Meizu"
+#   M1E
+ATTR{idProduct}=="0c01", GOTO="adb"
 #   MX6
-ATTR{idProduct}=="0c02", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="0c02", GOTO="adb"
+#   M6T (untested; See <https://github.com/M0Rf30/android-udev-rules/issues/262>
+ATTR{idProduct}=="201c", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Meizu"
 
 # Micromax
 ATTR{idVendor}!="2a96", GOTO="not_Micromax"
 #   P702
-ATTR{idProduct}=="201d", ENV{adb_adbfast}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="201d", GOTO="adbfast"
+GOTO="android_usb_rules_end"
 LABEL="not_Micromax"
 
 # Microsoft
 ATTR{idVendor}!="045e", GOTO="not_Microsoft"
-ENV{adb_user}="yes"
 #   Surface Duo
-ATTR{idProduct}=="0c26", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="0c26", GOTO="adbfast"
+#   False positive xbox controllers 028e, 02ea, 0719
+ATTR{idProduct}=="02??", GOTO="android_usb_rules_end"
+ATTR{idProduct}=="07??", GOTO="android_usb_rules_end"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Microsoft"
 
 # Motorola
 ATTR{idVendor}!="22b8", GOTO="not_Motorola"
-ENV{adb_user}="yes"
 #   CLIQ XT/Quench
 ATTR{idProduct}=="2d66", SYMLINK+="android_adb"
 #   Defy/MB525
 ATTR{idProduct}=="428c", SYMLINK+="android_adb"
 #   Droid
 ATTR{idProduct}=="41db", SYMLINK+="android_adb"
-#   Xoom ID 1
-ATTR{idProduct}=="70a8", ENV{adb_adbfast}="yes"
-#   Xoom ID 2
-ATTR{idProduct}=="70a9", ENV{adb_adbfast}="yes"
 #   Razr XT912
-ATTR{idProduct}=="4362", ENV{adb_adbfast}="yes"
-#   Moto XT1052
-ATTR{idProduct}=="2e83", ENV{adb_adbfast}="yes"
-#   Moto E/G
-ATTR{idProduct}=="2e76", ENV{adb_adbfast}="yes"
-#   Moto E/G (Dual SIM)
-ATTR{idProduct}=="2e80", ENV{adb_adbfast}="yes"
-#   Moto E/G (Global GSM)
-ATTR{idProduct}=="2e82", ENV{adb_adbfast}="yes"
-#   Moto x4
-ATTR{idProduct}=="2e81", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="4362", GOTO="adbfast"
 #   Droid Turbo 2
-ATTR{idProduct}=="2ea4", ENV{adb_adbfast}="yes", SYMLINK+="android%n"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="2ea4", GOTO="adbfast"
+#   Atrix/Razr HD (2e32=mtp 2e33=mtp,adb)
+#   Razr M (2e50=mtp 2e51=mtp,adb)
+#   Moto G3 (2e76=mtp,adb 2e81=charge,adb 2e82=mtp 2e83=ptp 2e84=ptp,adb 2e24=rndis 2e25=rndis,adb)
+#   Moto E/G dual sim (2e76=mtp,adb 2e80=fast 2e81=recovery 2e82=mtp 2e83=ptp 2e84=ptp,adb 2e24=rndis 2e25=rndis,adb)
+#   Moto Z3 Play, beckham, XT1929
+#     For details see: <https://github.com/M0Rf30/android-udev-rules/issues/264>
+#     18d1:4ee8=midi; 18d1:4ee9=midi+adb
+#     BP TOOLS: 2ee5=charging, mtp, ptp; 2ee6=charging+adb, mtp+adb, ptp+adb; 2ee7=rndis; 2ee8=rndis+adb; 18d1:4ee8=midi; 18d1:4ee9=midi+adb
+#     QCOM: 05c6:9091=charing+adb, mtp+adb, ptp+adb; 05c6:9092=charging, mtp, ptp; 18d1:4ee8=midi; 18d1:4ee9=midi+adb; 22b8:2e24=rndis; 22b8:2e25=rndis+adb
+ATTR{idProduct}=="2e24", GOTO="rndis"
+ATTR{idProduct}=="2e25", GOTO="adbrndis"
+ATTR{idProduct}=="2e33", GOTO="adbmtp"
+ATTR{idProduct}=="2e51", GOTO="adbmtp"
+ATTR{idProduct}=="2e76", GOTO="adbmtp"
+ATTR{idProduct}=="2e80", GOTO="adbfast"
+ATTR{idProduct}=="2e81", GOTO="adb"
+ATTR{idProduct}=="2e84", GOTO="adbptp"
+ATTR{idProduct}=="2eb7", GOTO="mass"
+#   Xoom (70a8=mtp 70a9=mtp,adb 70ae=rndis 70af=rndis,adb 70b0=acm 70b1=acm,adb 70b2=acm,rndis 70b3=acm,rndis,adb 70b4=ptp 70b5ptp,adb)
+ATTR{idProduct}=="70a9", GOTO="adbmtp"
+ATTR{idProduct}=="70ae", GOTO="rndis"
+ATTR{idProduct}=="70af", GOTO="adbrndis"
+ATTR{idProduct}=="70b1", GOTO="adbcdc"
+ATTR{idProduct}=="70b3", GOTO="adbrndis"
+ATTR{idProduct}=="70b5", GOTO="adbptp"
+#   XT890/907/Razr (710d=mtp 710e=mtp,adb 710f=mass)
+ATTR{idProduct}=="710e", GOTO="adbmtp"
+GOTO="android_usb_rules_end"
 LABEL="not_Motorola"
 
 # MTK (MediaTek Inc)
 ATTR{idVendor}!="0e8d", GOTO="not_MTK"
-ENV{adb_user}="yes"
-#   Umidigi F1
-ATTR{idProduct}=="201c", ENV{adb_adbfast}="yes"
-GOTO="android_usb_rule_match"
+#   Umidigi F1 (201c=adbfast)
+#   MT65xx/67xx (2000=cdc 2008=mtp 200a=mtp,cdc,adb 2012=mtp,cdc 201d=mtp,adb)
+#   Moto E22i (2005=rndis,adb 200c=ptp,adb 2048=midi,adb 201c=adb 201d=mtp,adb)
+ATTR{idProduct}=="2005", GOTO="adbrndis"
+ATTR{idProduct}=="200a", ENV{adb_adbcdc}="yes", GOTO="adbmtp"
+ATTR{idProduct}=="200c", GOTO="adbptp"
+ATTR{idProduct}=="2048", GOTO="adbmidi"
+ATTR{idProduct}=="201c", GOTO="adb"
+ATTR{idProduct}=="201d", GOTO="adbmtp"
+GOTO="android_usb_rules_end"
 LABEL="not_MTK"
 
-# NEC
-ATTR{idVendor}=="0409", ENV{adb_user}="yes"
+# NEC LifeTouch Note (0300=? 0301=debug)
+ATTR{idVendor}=="0409", ATTR{idProduct}=="0300", GOTO="user"
 
-# Nextbit
-ATTR{idVendor}=="2c3f", ENV{adb_user}="yes"
+# Nextbit (Need product specific rules)
+#ATTR{idVendor}=="2c3f", GOTO="user"
 
-# Nokia X
-ATTR{idVendor}=="0421", ENV{adb_user}="yes"
+# Nintendo
+ATTR{idVendor}!="057e", GOTO="not_Nintendo"
+#   Switch
+ATTR{idProduct}=="2000", GOTO="adb"
+GOTO="android_usb_rules_end"
+LABEL="not_Nintendo"
 
-# Nokia 3
-ATTR{idVendor}=="2e04", ENV{adb_user}="yes"
+# Nokia X (Need product specific rules)
+#ATTR{idVendor}=="0421", GOTO="user"
 
-# Nook (Barnes & Noble)
-ATTR{idVendor}=="2080", ENV{adb_user}="yes"
+# Nokia 3 (Need product specific rules)
+#ATTR{idVendor}=="2e04", GOTO="user"
+
+# Nook (Barnes & Noble) (Need product specific rules)
+#ATTR{idVendor}=="2080", GOTO="user"
 
 # Nvidia
 ATTR{idVendor}!="0955", GOTO="not_Nvidia"
-ENV{adb_user}="yes"
 #   Audi SDIS Rear Seat Entertainment Tablet
 #   Folio
 ATTR{idProduct}=="7000", SYMLINK+="android_fastboot"
-ATTR{idProduct}=="7100", ENV{adb_user}="yes"
-#   SHIELD Tablet (debug)
-ATTR{idProduct}=="cf05", ENV{adb_adb}="yes"
-ATTR{idProduct}=="cf09", ENV{adb_adb}="yes"
-#   Shield TV
+ATTR{idProduct}=="7100", GOTO="user"
+#   SHIELD Tablet (cf05=mtp,adb cf06= cf07=mtp cf08= cf09=)
+ATTR{idProduct}=="cf05", GOTO="adbmtp"
+ATTR{idProduct}=="cf09", GOTO="adb"
+#   Shield TV (b42a=mtp)
 ATTR{idProduct}=="b442", SYMLINK+="android_fastboot"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Nvidia"
 
 # Oculus
-ATTR{idVendor}=="2833", ENV{adb_user}="yes"
+ATTR{idVendor}!="2833", GOTO="not_Oculus"
+#   Oculus Go
+ATTR{idProduct}=="0083", GOTO="user"
+#   Oculus Quest
+ATTR{idProduct}=="0183", GOTO="user"
+#   Oculus Quest 2, Quest 3
+ATTR{idProduct}=="0186", GOTO="user"
+GOTO="android_usb_rules_end"
+LABEL="not_Oculus"
+
+# Pico XR
+ATTR{idVendor}!="2d40", GOTO="not_Pico"
+#   Pico 4
+ATTR{idProduct}=="00b7", GOTO="user"
+GOTO="android_usb_rules_end"
+LABEL="not_Pico"
 
 # OnePlus(Oreo)
 ATTR{idVendor}!="2a70", GOTO="not_OnePlus"
+#   Oneplus 3T/5T/6 (4ee7=charge,adb)
 #   OnePlus 6, 4ee1=charging, 4ee2=MTP+debug, 4ee6=PTP+debug, 4ee7=charging+debug
-ATTR{idProduct}=="4ee2", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee6", ENV{adb_adb}="yes"
-ATTR{idProduct}=="4ee7", ENV{adb_adb}="yes"
-#   OnePlus 3T with Oreo MIDI mode 90bb=adb+midi, 9011=MTP, 904e=PTP
-ATTR{idProduct}=="90bb", ENV{adb_adb}="yes"
-ATTR{idProduct}=="9011", SYMLINK+="android_adb"
-ATTR{idProduct}=="904e", SYMLINK+="android_adb"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="4ee2", GOTO="adbmtp"
+ATTR{idProduct}=="4ee6", GOTO="adbptp"
+ATTR{idProduct}=="4ee7", GOTO="adb"
+#   OnePlus 6T
+ATTR{idProduct}=="d001", GOTO="adb"
+#   OnePlus Nord N10 4G USB tethering mode
+ATTR{idProduct}=="9024", GOTO="adb"
+#   OnePlus 3T with Oreo MIDI mode 90bb=midi,adb 9011=mtp 904d=ptp 904e=ptp,adb
+#   OnePlus 7T (9012=mtp,adb)
+ATTR{idProduct}=="9011", GOTO="mtp"
+ATTR{idProduct}=="9012", GOTO="adbmtp"
+ATTR{idProduct}=="904d", GOTO="ptp"
+ATTR{idProduct}=="904e", GOTO="adbptp"
+ATTR{idProduct}=="90bb", GOTO="adbmidi"
+GOTO="android_usb_rules_end"
 LABEL="not_OnePlus"
 
 # Oppo
 ATTR{idVendor}!="22d9", GOTO="not_Oppo"
 #   Find 5 (2767=debug)
-ATTR{idProduct}=="2767", ENV{adb_adb}="yes"
+ATTR{idProduct}=="2767", GOTO="adb"
 #   Realme 8
-ATTR{idProduct}=="2769", ENV{adb_adb}="yes"
-ATTR{idProduct}=="2764", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
-#   A94 5G
-ATTR{idProduct}=="2769", ENV{adb_adb}="yes"
+ATTR{idProduct}=="2769", GOTO="adb"
+ATTR{idProduct}=="2764", GOTO="mtp"
 #   Oppo Watch, fastboot
-ATTR{idProduct}=="2024", ENV{adb_user}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="2024", GOTO="user"
+#   RMX3231 - Realme C11 20221, normal, rndis, mtp
+ATTR{idProduct}=="200e", GOTO="user"
+ATTR{idProduct}=="2028", GOTO="user"
+ATTR{idProduct}=="2026", GOTO="user"
+#   OnePlus 7a (2774=mass,adb)
+#   OnePlus 7T (2765=adb,mtp)
+#   OnePlus 8T (2771=adb,ptp 2772=adb,mtp)
+ATTR{idProduct}=="2765", GOTO="adbmtp"
+ATTR{idProduct}=="2771", GOTO="adbptp"
+ATTR{idProduct}=="2772", GOTO="adbmtp"
+ATTR{idProduct}=="2774", GOTO="adbmass"
+GOTO="android_usb_rules_end"
 LABEL="not_Oppo"
 
-# OTGV
-ATTR{idVendor}=="2257", ENV{adb_user}="yes"
+# OTGV (Need product specific rules)
+#ATTR{idVendor}=="2257", GOTO="user"
 
-# Pantech (SK Teletech Co, Ltd.)
-ATTR{idVendor}=="10a9", ENV{adb_user}="yes"
+# Pantech (SK Teletech Co, Ltd.) (Need product specific rules)
+#ATTR{idVendor}=="10a9", GOTO="user"
 
 # Parrot SA (Car HUD)
-ATTR{idVendor}=="19cf", ENV{adb_user}="yes"
+ATTR{idVendor}=="19cf", ATTR{idProduct}=="0001", GOTO="user"
 
-# Pegatron
-ATTR{idVendor}=="1d4d", ENV{adb_user}="yes"
+# Pegatron Chagall (5035=adb)
+ATTR{idVendor}=="1d4d", ATTR{idProduct}=="5035", GOTO="adb"
 
-# Philips (and NXP)
-ATTR{idVendor}=="0471", ENV{adb_user}="yes"
+# Philips (and NXP) (Need product specific rules)
+#ATTR{idVendor}=="0471", GOTO="user"
 
-# Pico
-ATTR{idVendor}=="2d40", ENV{adb_user}="yes"
+# Pico (Need product specific rules)
+#ATTR{idVendor}=="2d40", GOTO="user"
 
-# PMC-Sierra, (Panasonic Mobile communications, Matsushita)
-ATTR{idVendor}=="04da", ENV{adb_user}="yes"
+# PMC-Sierra, (Panasonic Mobile communications, Matsushita) (Need product specific rules)
+#ATTR{idVendor}=="04da", GOTO="user"
 
 # Point Mobile
 ATTR{idVendor}!="2a48", GOTO="not_Point_Mobile"
 #   PM90
-ATTR{idProduct}=="5101", ENV{adb_user}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="5101", GOTO="user"
+GOTO="android_usb_rules_end"
 LABEL="not_Point_Mobile"
+
+# Polar
+ATTR{idVendor}!="0da4", GOTO="not_Polar"
+ENV{adb_user}="yes"
+#   Polar M600 (0010=adb 000b=fastboot)
+ATTR{idProduct}=="0010", GOTO="adb"
+ATTR{idProduct}=="000b", GOTO="adbfast"
+GOTO="android_usb_rules_end"
+LABEL="not_Polar"
 
 # Qualcomm (Wearners also 05c6)
 ATTR{idVendor}!="05c6", GOTO="not_Qualcomm"
-ENV{adb_user}="yes"
 #   Geeksphone Zero
 ATTR{idProduct}=="9025", SYMLINK+="android_adb"
-#   OnePlus One
-ATTR{idProduct}=="676?", SYMLINK+="android_adb"
+#   OnePlus One (6765=mtp,adb 6764=mtp)
+ATTR{idProduct}=="6765", GOTO="adbmtp"
 #   OnePlus Two
 ATTR{idProduct}=="9011", SYMLINK+="android_adb"
 #   OnePlus 3
 ATTR{idProduct}=="900e", SYMLINK+="android_adb"
 #   OnePlus 3T
 ATTR{idProduct}=="676c", SYMLINK+="android_adb"
-#   Snapdragon, OnePlus 3T w/ Oreo MIDI mode (90bb=adb,midi, 9011=MTP, 904e=PTP)
-#   Xiaomi A1 (90bb=midi+adb)
-ATTR{idProduct}=="90bb", ENV{adb_adb}="yes"
+#   Snapdragon, OnePlus 3T w/ Oreo MIDI mode (9011=mtp 90bb=midi,adb 904e=ptp)
+#   Xiaomi A1 (90bb=midi,adb)
+ATTR{idProduct}=="90bb", GOTO="adbmidi"
+ATTR{idProduct}=="90dc", GOTO="adb"
 #   OnePlus 5 / 6 / 6T
 ATTR{idProduct}=="9011", SYMLINK+="android_adb"
 #   OnePlus 6 / Asia
 ATTR{idProduct}=="f003", SYMLINK+="android_adb"
 #   Yongnuo YN450m (identified in lsusb as Intex Aqua Fish & Jolla C Diagnostic Mode)
-ATTR{idProduct}=="9091", SYMLINK+="android_adb"
+ATTR{idProduct}=="9091", GOTO="adb"
+#   Wileyfox Swift 2 Plus
+ATTR{idProduct}=="0001", GOTO="user"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Qualcomm"
+
+# Quectel
+ATTR{idVendor}!="2c7c", GOTO="not_Quectel"
+#   EC25
+ATTR{idProduct}=="0125", GOTO="adb"
+GOTO="android_usb_rules_end"
+LABEL="not_Quectel"
 
 # Razer USA, Ltd.
 ATTR{idVendor}!="1532", GOTO="not_Razer"
 #   Razer Phone 2
-ATTR{idProduct}=="9050", ENV{adb_adbfast}="yes"
-ATTR{idProduct}=="9051", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="9050", GOTO="adbfast"
+ATTR{idProduct}=="9051", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Razer"
 
 # Research In Motion, Ltd.
 ATTR{idVendor}!="0fca", GOTO="not_RIM"
 #   BlackBerry DTEK60
-ATTR{idProduct}=="8042", ENV{adb_fastboot}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="8042", GOTO="adbfast"
+GOTO="android_usb_rules_end"
 LABEL="not_RIM"
 
 # Samsung
 ATTR{idVendor}!="04e8", GOTO="not_Samsung"
-#   False positive printer
-ATTR{idProduct}=="3???", GOTO="android_usb_rules_end"
-ENV{adb_user}="yes"
+#   False positive printer and other devices
+ATTR{idProduct}!="6???", GOTO="android_usb_rules_end"
 #   Galaxy i5700
-ATTR{idProduct}=="681c", ENV{adb_adbfast}="yes"
-#   Galaxy i5800 (681c=debug,6601=fastboot,68a0=mediaplayer)
+ATTR{idProduct}=="681c", GOTO="adbfast"
+#   Galaxy i5800 (681c=debug 6601=fastboot 68a0=mediaplayer)
 ATTR{idProduct}=="681c", SYMLINK+="android_adb"
 ATTR{idProduct}=="6601", SYMLINK+="android_fastboot"
 ATTR{idProduct}=="68a9", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
 #   Galaxy i7500
-ATTR{idProduct}=="6640", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="6640", GOTO="adbfast"
 #   Galaxy i9000 S, i9300 S3
 ATTR{idProduct}=="6601", SYMLINK+="android_adb"
 ATTR{idProduct}=="685d", MODE="0660"
 ATTR{idProduct}=="68c3", MODE="0660"
 #   Galaxy Ace (S5830) "Cooper"
-ATTR{idProduct}=="689e", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="689e", GOTO="adbfast"
 #   Galaxy Tab
-ATTR{idProduct}=="6877", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="6877", GOTO="adbfast"
 #   Galaxy Nexus (GSM) (6860=mtp,adb 6864=rndis,adb 6866=ptp,adb)
-ATTR{idProduct}=="6860", SYMLINK+="android_adb"
-ATTR{idProduct}=="6864", SYMLINK+="android_adb"
-ATTR{idProduct}=="6866", SYMLINK+="android_adb"
+#   Galaxy Core ([6860=mtp+6860=mtp,adb] 6863=tether 6864=tether,adb 6865=ptp 6866=ptp,adb)
+#   Galaxy A5   ([6860=mtp+6860=mtp,adb] 6863=rndis 6864=rndis,adb 6865=ptp 6866=ptp,adb 686c=midi 686c=midi,adb)
+ATTR{idProduct}=="6860", SYMLINK+="android_adb", GOTO="mtp"
+ATTR{idProduct}=="6864", GOTO="adbrndis"
+ATTR{idProduct}=="6866", GOTO="adbptp"
+ATTR{idProduct}=="686c", GOTO="adbmidi"
 #   Galaxy Core, Tab 10.1, i9100 S2, i9300 S3, N5100 Note (8.0), Galaxy S3 SHW-M440S 3G (Korea only)
-ATTR{idProduct}=="685e", ENV{adb_adbfast}="yes"
-#   Galaxy i9300 S3
-ATTR{idProduct}=="6866", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
-#   Galaxy S4 GT-I9500
-ATTR{idProduct}=="685d", SYMLINK+="android_adb"
+ATTR{idProduct}=="685e", GOTO="adbfast"
+#   Galaxy A5, S4 GT-I9500 (seems to be universally used for this purpose)
+ATTR{idProduct}=="685d", GOTO="odin"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Samsung"
 
-# Sharp
-ATTR{idVendor}=="04dd", ENV{adb_user}="yes"
+# Sharp (Need product specific rules)
+#ATTR{idVendor}=="04dd", GOTO="user"
+
+# SHIFT GmbH
+ATTR{idVendor}!="3360", GOTO="not_shift"
+#   SHIFT5me
+ATTR{idProduct}=="201c", GOTO="adb"
+GOTO="android_usb_rules_end"
+LABEL="not_shift"
 
 # SK Telesys
-ATTR{idVendor}=="1f53", ENV{adb_user}="yes"
+ATTR{idVendor}=="1f53", GOTO="user"
 
 # Sonim
-ATTR{idVendor}=="1d9c", ENV{adb_user}="yes"
+ATTR{idVendor}=="1d9c", GOTO="user"
 
 # Sony
-ATTR{idVendor}=="054c", ENV{adb_user}="yes"
+ATTR{idVendor}!="054c", GOTO="not_Sony"
+# (Need product specific rules)
+GOTO="android_usb_rules_end"
+#   False positives dualshock 0268,05c4,05c5, adapters 0ba0, bluetooth 09cc, 0ce6, VR 09af
+ATTR{idProduct}=="02??", GOTO="android_usb_rules_end"
+ATTR{idProduct}=="05??", GOTO="android_usb_rules_end"
+ATTR{idProduct}=="09??", GOTO="android_usb_rules_end"
+ATTR{idProduct}=="0b??", GOTO="android_usb_rules_end"
+ATTR{idProduct}=="0c??", GOTO="android_usb_rules_end"
+ENV{adb_user}="yes"
+GOTO="android_usb_rule_match"
+LABEL="not_Sony"
 
 # Sony Ericsson
 ATTR{idVendor}!="0fce", GOTO="not_Sony_Ericsson"
-ENV{adb_user}="yes"
 #   Xperia X10 mini (3137=mass_storage)
 ATTR{idProduct}=="2137", SYMLINK+="android_adb"
 #   Xperia X10 mini pro (3138=mass_storage)
@@ -612,212 +830,258 @@ ATTR{idProduct}=="2149", SYMLINK+="android_adb"
 #   Xperia X12 (e14f=mass_storage)
 ATTR{idProduct}=="614f", SYMLINK+="android_adb"
 #   Xperia Arc S
-ATTR{idProduct}=="414f", ENV{adb_adbfast}="yes"
-#   Xperia Neo V (6156=debug,0dde=fastboot)
+ATTR{idProduct}=="414f", GOTO="adbfast"
+#   Xperia Neo V (6156=debug 0dde=fastboot)
 ATTR{idProduct}=="6156", SYMLINK+="android_adb"
 ATTR{idProduct}=="0dde", SYMLINK+="android_fastboot"
 #   Xperia S
-ATTR{idProduct}=="5169", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="5169", GOTO="adbfast"
 #   Xperia SP
-ATTR{idProduct}=="6195", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="6195", GOTO="adbfast"
 #   Xperia L
-ATTR{idProduct}=="5192", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="5192", GOTO="adbfast"
 #   Xperia Mini Pro
-ATTR{idProduct}=="0166", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="0166", GOTO="adbfast"
 #   Xperia V
-ATTR{idProduct}=="0186", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="0186", GOTO="adbfast"
 #   Xperia Acro S
-ATTR{idProduct}=="5176", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="5176", GOTO="adbfast"
 #   Xperia Z1 Compact
-ATTR{idProduct}=="51a7", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="51a7", GOTO="adbfast"
 #   Xperia Z2
-ATTR{idProduct}=="51ba", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="51ba", GOTO="adbfast"
 #   Xperia Z3
-ATTR{idProduct}=="01af", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="01af", GOTO="adbfast"
 #   Xperia Z3 Compact
-ATTR{idProduct}=="01bb", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="01bb", GOTO="adbfast"
 #   Xperia Z3+ Dual
-ATTR{idProduct}=="51c9", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="51c9", GOTO="adbfast"
 #   Xperia XZ
-ATTR{idProduct}=="51e7", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="51e7", GOTO="adbfast"
 #   Xperia XZ1 Compact
-ATTR{idProduct}=="01f4", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="01f4", GOTO="adbfast"
 #   Xperia XZ2 Compact
-ATTR{idProduct}=="b00b", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="b00b", GOTO="adbfast"
 #   Xperia 5 II
-ATTR{idProduct}=="020d", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="020d", GOTO="adbfast"
 #   Xperia Z Ultra
-ATTR{idProduct}=="519c", ENV{adb_adbfast}="yes"
+ATTR{idProduct}=="519c", GOTO="adbfast"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Sony_Ericsson"
 
 # Spectralink
-ATTR{idVendor}=="1973", ENV{adb_user}="yes"
+ATTR{idVendor}=="1973", GOTO="user"
 
 # Spreadtrum
-ATTR{idVendor}=="1782", ENV{adb_user}="yes"
+ATTR{idVendor}!="1782", GOTO="not_Spreadtrum"
+#   (Unisoc) Various devices (4001=mtp 4002=mtp,adb 4003=mtp,adb)
+ATTR{idProduct}=="4002", GOTO="adbmtp"
+ATTR{idProduct}=="4003", GOTO="adbmtp"
+GOTO="android_usb_rules_end"
+LABEL="not_Spreadtrum"
 
 # T & A Mobile Phones
 ATTR{idVendor}!="1bbb", GOTO="not_T_A_Mobile"
-ENV{adb_user}="yes"
 #   Alcatel 1 2019 5033F
-ATTR{idProduct}=="0c01", ENV{adb_adb}="yes"
+ATTR{idProduct}=="0c01", GOTO="adb"
 #   Alcatel OT991D
-ATTR{idProduct}=="00f2", ENV{adb_adb}="yes"
+ATTR{idProduct}=="00f2", GOTO="adb"
 #   Alcatel OT6012A
-ATTR{idProduct}=="0167", ENV{adb_adb}="yes"
+ATTR{idProduct}=="0167", GOTO="adb"
+#   Alcatel 5024L
+ATTR{idProduct}=="4ee7", GOTO="adb"
+ENV{adb_user}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_T_A_Mobile"
 
-# Teleepoch
-ATTR{idVendor}=="2340", ENV{adb_user}="yes"
+# Teleepoch (Need product specific rules)
+#ATTR{idVendor}=="2340", GOTO="user"
 
 # Texas Instruments UsbBoot
-ATTR{idVendor}=="0451", ATTR{idProduct}=="d00f", ENV{adb_user}="yes"
-ATTR{idVendor}=="0451", ATTR{idProduct}=="d010", ENV{adb_user}="yes"
+ATTR{idVendor}=="0451", ATTR{idProduct}=="d00f", GOTO="user"
+ATTR{idVendor}=="0451", ATTR{idProduct}=="d010", GOTO="user"
 
-# Toshiba
-ATTR{idVendor}=="0930", ENV{adb_user}="yes"
+# Toshiba (Need product specific rules)
+#ATTR{idVendor}=="0930", GOTO="user"
 
 # Unitech Electronics
 ATTR{idVendor}!="2e8e", GOTO="not_Unitech_Electronics"
+#   EA630 (96e1=normal 96e7=debug)
+ATTR{idProduct}=="96e7", GOTO="adb"
 ENV{adb_user}="yes"
-#   EA630 (96e1=normal,96e7=debug)
-ATTR{idProduct}=="96e7", ENV{adb_adb}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Unitech_Electronics"
 
-# Wileyfox
-ATTR{idVendor}=="2970", ENV{adb_user}="yes"
+# Vivo (Need product specific rules)
+ATTR{idVendor}=="2d95", GOTO="user"
+
+# Wileyfox (Need product specific rules)
+#ATTR{idVendor}=="2970", GOTO="user"
 
 # XiaoMi
 ATTR{idVendor}!="2717", GOTO="not_XiaoMi"
-ENV{adb_user}="yes"
-#   Mi2A
-ATTR{idProduct}=="904e", SYMLINK+="android_adb"
-ATTR{idProduct}=="9039", SYMLINK+="android_adb"
 #   Mi3
-ATTR{idProduct}=="0368", SYMLINK+="android_adb"
+ATTR{idProduct}=="0368", GOTO="adbmtp"
 #   RedMi 1S WCDMA (MTP+Debug)
-ATTR{idProduct}=="1268", SYMLINK+="android_adb"
-#   RedMi / RedMi Note WCDMA (MTP+Debug)
-ATTR{idProduct}=="1248", SYMLINK+="android_adb"
-#   RedMi 1S / RedMi / RedMi Note WCDMA (PTP+Debug)
-ATTR{idProduct}=="1218", SYMLINK+="android_adb"
-#   RedMi 1S /RedMi / RedMi Note WCDMA (Usb+Debug)
-ATTR{idProduct}=="1228", SYMLINK+="android_adb"
-#   RedMi / RedMi Note 4G WCDMA (MTP+Debug)
-ATTR{idProduct}=="1368", SYMLINK+="android_adb"
-#   RedMi / RedMi Note 4G WCDMA (PTP+Debug)
-ATTR{idProduct}=="1318", SYMLINK+="android_adb"
-#   RedMi / RedMi Note 4G WCDMA (Usb+Debug)
-ATTR{idProduct}=="1328", SYMLINK+="android_adb"
-#   Mi Mix / A1 (ff88=rndis+adb, ff18=ptp+adb, ff48=mtp+adb, ff28=storage+adb)
-ATTR{idProduct}=="ff88", SYMLINK+="android_adb"
-ATTR{idProduct}=="ff18", SYMLINK+="android_adb"
-ATTR{idProduct}=="ff48", SYMLINK+="android_adb"
-ATTR{idProduct}=="ff28", SYMLINK+="android_adb"
-#   RedMi / RedMi Note 4G CDMA (Usb+Debug) / Mi4c / Mi5
-ATTR{idProduct}=="ff68", SYMLINK+="android_adb"
-#   RedMi 7
-ATTR{idProduct}=="ff40", SYMLINK+="android_adb"
-#   RedMi Note 8T
-ATTR{idProduct}=="ff08", SYMLINK+="android_adb"
-#   RedMi 8 Pro
-ATTR{idProduct}=="ff48", SYMLINK+="android_adb"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="1268", GOTO="adbmtp"
+#   RedMi 1S / RedMi / RedMi Note WCDMA (1210=ptp 1218=ptp,adb 1220=CDrom 1228=usb,adb 1240=mtp 1248=mtp,adb)
+ATTR{idProduct}=="1218", GOTO="adbptp"
+ATTR{idProduct}=="1228", GOTO="adb"
+ATTR{idProduct}=="1248", GOTO="adbmtp"
+#   RedMi / RedMi Note 4G WCDMA (1311=ptp,adb 1328=usb,adb 1368=mtp,adb)
+ATTR{idProduct}=="1318", GOTO="adbptp"
+ATTR{idProduct}=="1328", GOTO="adb"
+ATTR{idProduct}=="1368", GOTO="adbmtp"
+#   Mi2 (f003=mtp,mass_storage 9039=mtp,adb,mass_storage 904d=ptp 904e=ptp,adb f000=mass_storage 9015=mass_storage,adb f00e=ndis 9024=ndis,adb f00f=ndis 803e=ndis,adb)
+#   Mi2A / Mi2S (9039=mtp,adb, 904e=adb,ptp)
+ATTR{idProduct}=="9039", GOTO="adbmtp"
+ATTR{idProduct}=="904e", GOTO="adbptp"
+ATTR{idProduct}=="9015", GOTO="adbmass"
+ATTR{idProduct}=="9024", GOTO="adb"
+ATTR{idProduct}=="803e", GOTO="adb"
+#   Redmi Note 3 (ff08=adb)
+#   Mi/Redmi (ff10=ptp ff18=ptp,adb ff40=mtp ff48=mtp,adb ff80=rndis ff88=rndis,adb)
+#   Mi Mix / A1 (ff18=ptp,adb ff28=storage,adb ff48=mtp,adb ff88=rndis,adb)
+ATTR{idProduct}=="ff08", GOTO="adb"
+ATTR{idProduct}=="ff18", GOTO="adbptp"
+ATTR{idProduct}=="ff28", GOTO="adbmass"
+ATTR{idProduct}=="ff40", GOTO="mtp"
+ATTR{idProduct}=="ff48", GOTO="adbmtp"
+ATTR{idProduct}=="ff88", GOTO="adbrndis"
+#   RedMi / RedMi Note 4G CDMA (ff68=usb,adb) / Mi4c / Mi5
+ATTR{idProduct}=="ff68", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_XiaoMi"
 
 # Yota
 ATTR{idVendor}!="2916", GOTO="not_Yota"
+#   YotaPhone2 (f003=normal 9139=debug)
+ATTR{idProduct}=="9139", GOTO="adb"
 ENV{adb_user}="yes"
-#   YotaPhone2 (f003=normal,9139=debug)
-ATTR{idProduct}=="9139", ENV{adb_adb}="yes"
 GOTO="android_usb_rule_match"
 LABEL="not_Yota"
 
-# YU
-ATTR{idVendor}=="1ebf", ENV{adb_user}="yes"
+# YU (Need product specific rules)
+ATTR{idVendor}=="1ebf", GOTO="user"
 
 # Zebra
 ATTR{idVendor}!="05e0", GOTO="not_Zebra"
 #   TC55
-ATTR{idProduct}=="2101", ENV{adb_adb}="yes"
+ATTR{idProduct}=="2101", GOTO="adb"
 #   TC72
-ATTR{idProduct}=="2106", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="2106", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_Zebra"
 
 # ZTE
 ATTR{idVendor}!="19d2", GOTO="not_ZTE"
-#   ZTE Blade A5 2020
-#   mtp,adb
-ATTR{idProduct}=="0306", ENV{adb_adb}="yes"
-#   ptp,adb
-ATTR{idProduct}=="0310", ENV{adb_adb}="yes"
-#   cdrom,adb
-ATTR{idProduct}=="0501", ENV{adb_adb}="yes"
-#   charging,adb
-ATTR{idProduct}=="1352", ENV{adb_adb}="yes"
-#   rndis,adb
-ATTR{idProduct}=="1373", ENV{adb_adb}="yes"
-#   Blade (1353=normal,1351=debug)
-ATTR{idProduct}=="1351", ENV{adb_adb}="yes"
-#   Blade S (Crescent, Orange San Francisco 2) (1355=normal,1354=debug)
-ATTR{idProduct}=="1354", ENV{adb_adb}="yes"
+#   ZTE Blade A5 2020 (0306=mtp,adb 0310=ptp,adb 0501=cdrom,adb 1352=charging,adb 1373=rndis,adb)
+ATTR{idProduct}=="0306", GOTO="adbmtp"
+ATTR{idProduct}=="0310", GOTO="adbptp"
+ATTR{idProduct}=="0501", GOTO="adb"
+ATTR{idProduct}=="1352", GOTO="adb"
+ATTR{idProduct}=="1373", GOTO="adbrndis"
+#   Blade (1351=debug 1353=normal)
+ATTR{idProduct}=="1351", GOTO="adb"
+#   Blade S (Crescent, Orange San Francisco 2) (1354=debug 1355=normal)
+ATTR{idProduct}=="1354", GOTO="adb"
 #   P685M LTE modem
-ATTR{idProduct}=="1275", ENV{adb_user}="yes"
+ATTR{idProduct}=="1275", GOTO="user"
 #   MF286[A] internal LTE modem
-ATTR{idProduct}=="1432", ENV{adb_user}="yes"
+ATTR{idProduct}=="1432", GOTO="user"
 #   MF286D internal LTE modem
-ATTR{idProduct}=="1485", ENV{adb_user}="yes"
+ATTR{idProduct}=="1485", GOTO="user"
 #   MF286R internal LTE modem
-ATTR{idProduct}=="1489", ENV{adb_user}="yes"
+ATTR{idProduct}=="1489", GOTO="user"
 #   Nubia / RedMagic Series (NX***)
 #   See https://github.com/TadiT7/nubia_nx619j_dump/blob/NX619J-user-9-PKQ1.180929.001-eng.nubia.20181220.181559-release-keys/vendor/etc/init/hw/init.nubia.usb.rc
-#   ptp,adb
-ATTR{idProduct}=="ffd1", ENV{adb_adb}="yes"
-#   mtp,adb
-ATTR{idProduct}=="ffcf", ENV{adb_adb}="yes"
-#   mass_storage,adb
-ATTR{idProduct}=="ffcd", ENV{adb_adb}="yes"
-#   rndis,adb
-ATTR{idProduct}=="ffcb", ENV{adb_adb}="yes"
+#   (... ffc0=diag,mass_storage,adb ffc1=adb ffcb=rndis,adb ffcd=mass_storage,adb ffcf=mtp,adb ffd1=ptp,adb)
+ATTR{idProduct}=="ffc0", GOTO="adbmass"
+ATTR{idProduct}=="ffc1", GOTO="adb"
+ATTR{idProduct}=="ffcb", GOTO="adbrndis"
+ATTR{idProduct}=="ffcd", GOTO="adbmass"
+ATTR{idProduct}=="ffcf", GOTO="adbmtp"
+ATTR{idProduct}=="ffd1", GOTO="adbptp"
 #   modem,service,nema,adb
-ATTR{idProduct}=="ffc9", ENV{adb_adb}="yes"
+ATTR{idProduct}=="ffc9", GOTO="adb"
 #   modem,service,nema,mass_storage,adb
-ATTR{idProduct}=="ffc7", ENV{adb_adb}="yes"
+ATTR{idProduct}=="ffc7", GOTO="adb"
 #   diag,modem,mass_storage,adb
-ATTR{idProduct}=="ffb0", ENV{adb_adb}="yes"
+ATTR{idProduct}=="ffb0", GOTO="adb"
 #   diag,modem,service,mass_storage,adb
-ATTR{idProduct}=="ffb2", ENV{adb_adb}="yes"
-#   adb
-ATTR{idProduct}=="ffc1", ENV{adb_adb}="yes"
-#   diag,mass_storage,adb
-ATTR{idProduct}=="ffc0", ENV{adb_adb}="yes"
-GOTO="android_usb_rule_match"
+ATTR{idProduct}=="ffb2", GOTO="adb"
+GOTO="android_usb_rules_end"
 LABEL="not_ZTE"
 
-# ZUK
-ATTR{idVendor}=="2b4c", ENV{adb_user}="yes"
+# ZUK (Need product specific rules)
+#ATTR{idVendor}=="2b4c", GOTO="user"
 
 # Verifone
-ATTR{idVendor}=="11ca", ENV{adb_user}="yes"
+ATTR{idVendor}=="11ca", GOTO="user"
 
-# Skip other vendor tests
+# No android devices found
+GOTO="android_usb_rules_end"
+
+# ADB Debug User (default)
+LABEL="adb", ENV{adb_adb}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and Audio Source
+LABEL="adbaud", ENV{adb_adb}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and AT-commands CDC Serial
+LABEL="adbcdc", ENV{adb_adbcdc}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and USB Video Class
+LABEL="adbuvc", ENV{adb_adbuvc}="yes"
+LABEL="uvc", ENV{adb_uvc}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and Fastboot mode
+LABEL="adbfast", ENV{adb_adbfast}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and mass storage (note: generally android_ver<4.3; Moto Z3 Play when powered off)
+LABEL="adbmass", ENV{adb_adbmass}="yes"
+LABEL="mass", ENV{adb_mass}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and MIDI mode (also check to see /dev/midi%n)
+LABEL="adbmidi", ENV{adb_adbmidi}="yes"
+LABEL="midi", ENV{adb_user}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and MTP mode
+LABEL="adbmtp", ENV{adb_adbmtp}="yes"
+LABEL="mtp", ENV{adb_mtp}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and PTP mode
+LABEL="adbptp", ENV{adb_adbptp}="yes"
+LABEL="ptp", ENV{adb_ptp}="yes", GOTO="android_usb_rule_match"
+
+# ADB Debug and Tether mode
+LABEL="adbrndis", ENV{adb_adb}="yes"
+LABEL="rndis", ENV{adb_user}="yes", GOTO="android_usb_rule_match"
+
+# Odin (Samsung-specific flashing protocol, add user SYMLINK)
+LABEL="odin"
+
+# Add "android" SYMLINK
+LABEL="user", ENV{adb_user}="yes"
+
+# Symlink common code to reduce steps above
 LABEL="android_usb_rule_match"
-
-# Symlink shortcuts to reduce code in tests above
+ENV{adb_adbcdc}=="yes", ENV{adb_adb}="yes", SYMLINK+="android_cdc", SYMLINK+="android_cdc%n"
 ENV{adb_adbfast}=="yes", ENV{adb_adb}="yes", ENV{adb_fast}="yes"
+ENV{adb_adbmass}=="yes", ENV{adb_mass}="yes"
+ENV{adb_adbmtp}=="yes", ENV{adb_adb}="yes", ENV{adb_mtp}="yes"
+ENV{adb_adbptp}=="yes", ENV{adb_adb}="yes", ENV{adb_ptp}="yes"
+ENV{adb_adbmidi}=="yes", ENV{adb_adb}="yes", SYMLINK+="android_midi", SYMLINK+="android_midi0%n"
+ENV{adb_adbuvc}=="yes", ENV{adb_adb}="yes", ENV{adb_uvc}="yes"
 ENV{adb_adb}=="yes", ENV{adb_user}="yes", SYMLINK+="android_adb"
 ENV{adb_fast}=="yes", SYMLINK+="android_fastboot"
+ENV{adb_mass}=="yes", ENV{adb_mtp}="yes"
+ENV{adb_ptp}=="yes", ENV{adb_user}="yes", ATTR{bDeviceClass}=="00|02|06|ef|ff", ENV{adb_mtp}="yes"
+ENV{adb_mtp}=="yes", ENV{adb_user}="yes", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
 
 # Enable device as a user device if found (add an "android" SYMLINK)
 ENV{adb_user}=="yes", MODE="0660", GROUP="adbusers", TAG+="uaccess", SYMLINK+="android", SYMLINK+="android%n"
-
-#Suzy-Q
-SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", ATTR{idProduct}=="d002", MODE="0660", 
-GROUP="plugdev", SYMLINK+="android%n"
 
 # Devices listed here {begin...end} are connected by USB
 LABEL="android_usb_rules_end"
