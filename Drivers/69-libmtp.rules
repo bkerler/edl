@@ -1,0 +1,42 @@
+# UDEV-style hotplug map for libmtp
+# Put this file in /etc/udev/rules.d
+
+ACTION!="add", ACTION!="bind", GOTO="libmtp_rules_end"
+ENV{MAJOR}!="?*", GOTO="libmtp_rules_end"
+SUBSYSTEM=="usb", GOTO="libmtp_usb_rules"
+GOTO="libmtp_rules_end"
+
+LABEL="libmtp_usb_rules"
+
+# If we have a hwdb entry for this device, act immediately!
+ENV{ID_MTP_DEVICE}=="1", SYMLINK+="libmtp-%k", GOTO="libmtp_rules_end"
+
+# Fall back to probing.
+# Some sensitive devices we surely don't wanna probe
+# Color instruments
+ATTR{idVendor}=="0670", GOTO="libmtp_rules_end"
+ATTR{idVendor}=="0765", GOTO="libmtp_rules_end"
+ATTR{idVendor}=="085c", GOTO="libmtp_rules_end"
+ATTR{idVendor}=="0971", GOTO="libmtp_rules_end"
+# Canon scanners that look like MTP devices (PID 0x22nn)
+ATTR{idVendor}=="04a9", ATTR{idProduct}=="22*", GOTO="libmtp_rules_end"
+ATTR{idVendor}=="05c6", ATTR{idProduct}=="9008", GOTO="libmtp_rules_end"
+# Canon digital camera (EOS 3D) that looks like MTP device (PID 0x3113)
+ATTR{idVendor}=="04a9", ATTR{idProduct}=="3113", GOTO="libmtp_rules_end"
+# Sensitive Atheros devices that look like MTP devices
+ATTR{idVendor}=="0cf3", GOTO="libmtp_rules_end"
+# Sensitive Atmel JTAG programmers
+ATTR{idVendor}=="03eb", GOTO="libmtp_rules_end"
+# Sensitive Philips device
+ATTR{idVendor}=="0471", ATTR{idProduct}=="083f", GOTO="libmtp_rules_end"
+# DUALi NFC readers
+ATTR{idVendor}=="1db2", ATTR{idProduct}=="060*", GOTO="libmtp_rules_end"
+# HP printers
+ATTR{idVendor}=="03f0", ENV{ID_USB_INTERFACES}=="*:0701??:*|*:ffcc00:", GOTO="libmtp_rules_end"
+# Printers
+ENV{ID_USB_INTERFACES}=="*:0701??:*", GOTO="libmtp_rules_end"
+
+# Autoprobe vendor-specific, communication and PTP devices
+ENV{ID_MTP_DEVICE}!="1", ENV{MTP_NO_PROBE}!="1", ENV{COLOR_MEASUREMENT_DEVICE}!="1", ENV{ID_GPHOTO}!="1", ENV{libsane_matched}!="yes", ATTR{bDeviceClass}=="00|02|06|ef|ff", PROGRAM="/usr/lib/udev/mtp-probe /sys$env{DEVPATH} $attr{busnum} $attr{devnum}", RESULT=="1", SYMLINK+="libmtp-%k", ENV{ID_MTP_DEVICE}="1", ENV{ID_MEDIA_PLAYER}="1"
+
+LABEL="libmtp_rules_end"
