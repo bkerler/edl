@@ -734,9 +734,9 @@ class firehose_client(metaclass=LogBase):
                         for lun in fpartitions:
                             for partition in fpartitions[lun]:
                                 if self.cfg.MemoryName == "emmc":
-                                    self.error("\t" + partition.name)
+                                    self.error("\t" + partition)
                                 else:
-                                    self.error(lun + ":\t" + partition.name)
+                                    self.error(lun + ":\t" + partition)
             if bad:
                 return False
             else:
