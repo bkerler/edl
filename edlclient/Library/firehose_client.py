@@ -784,9 +784,12 @@ class firehose_client(metaclass=LogBase):
                             return False
                         self.printer(f"Writing {filename} to partition {str(partition.name)}.")
                         self.firehose.cmd_program(lun, partition.sector, filename)
-                else:
-                    self.printer("Couldn't write partition. Either wrong memorytype given or no gpt partition.")
-                    return False
+                    else:
+                        if partname[0:3] == "gpt" or partname[-3:] == "xml":
+                            self.printer(f"Can't find a partition named {partname} in the gpt, but continuing anyway.")
+                            continue
+                        self.error(f"Couldn't write partition {partname}. Either wrong memorytype given or no gpt partition.")
+                        return False
             return True
         elif cmd == "ws":
             if not self.check_param(["<start_sector>"]):
