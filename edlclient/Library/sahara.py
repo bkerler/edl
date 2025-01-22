@@ -219,7 +219,7 @@ class sahara(metaclass=LogBase):
                 self.hwid = self.cmdexec_get_msm_hwid()
                 self.pkhash = self.cmdexec_get_pkhash()
                 # if self.version>=2.4:
-                #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
+                # self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
                 if self.hwid is not None:
                     self.hwidstr = "{:016x}".format(self.hwid)
                     self.msm_id = int(self.hwidstr[2:8], 16)
