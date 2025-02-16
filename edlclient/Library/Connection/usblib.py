@@ -244,6 +244,8 @@ class usb_class(DeviceClass):
                 self.device.set_configuration()
                 self.configuration = self.device.get_active_configuration()
             if e.errno == 13:
+                self.error("Permission denied accessing {:04x}:{:04x}.".format(self.vid,self.pid))
+                self.info("Potential fix (update udev rules): sudo echo 'SUBSYSTEM==\"usb\",ATTRS{{idVendor}}==\"{:04x}\",ATTRS{{idProduct}}==\"{:04x}\",MODE=\"0666\"' >> /etc/udev/rules.d/99-edl.rules".format(self.vid,self.pid))
                 self.backend = usb.backend.libusb0.get_backend()
                 self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid, backend=self.backend)
         if self.configuration is None:
