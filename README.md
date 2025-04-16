@@ -77,7 +77,7 @@ sudo python3 setup.py install
 1.   Open PowerShell (Not CMD). To do that, right-click on the Windows start menu and select PowerShell or Terminal.
 2.   Copy and paste the code below and press enter
 ```
-curl.exe -OL https://raw.githubusercontent.com/LongQT-sea/edl/master/install_edl_win10_win11.ps1; ./install_edl_win10_win11.ps1
+./install_edl_win10_win11.ps1
 ```
 
 #### Method 2 - Manual
