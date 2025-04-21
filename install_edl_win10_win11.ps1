@@ -35,7 +35,7 @@ foreach ($package in $packages) {
 # Clone the edl repository
 echo "Cloning edl repository..."
 cd $env:ProgramFiles
-git clone --recurse-submodules https://github.com/bkerler/edl.git
+& "${env:ProgramFiles}\Git\cmd\git" clone --recurse-submodules https://github.com/bkerler/edl.git
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
@@ -57,7 +57,7 @@ if (-not ($currentPath -split ';' -contains $edlPath)) {
 echo ""
 echo "'edl', 'zadig' installed successfully. You can now open a new PowerShell or Terminal window to use these tools."
 echo ""
-echo "Don't forget to run 'Zadig' to install the WinUSB driver for QHSUSB_BULK devices."
+echo "Don't forget to run 'zadig' to install the WinUSB driver for QHSUSB_BULK devices."
 echo ""
 echo "Setup completed successfully. Press any key to continue"
 $null = $host.UI.RawUI.ReadKey()
