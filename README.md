@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2024
+(c) B. Kerler 2018-2025
 Licensed under GPLv3 license.
 
 # Be aware that if you use anything from this repository in any (including) compiled form, you need to opensource your code as well !
@@ -42,15 +42,24 @@ sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
 # Arch/Manjaro/etc
 sudo pacman -S android-tools python python-pip git xz
 sudo pacman -R modemmanager
+# Gentoo (run as root!)
+emerge -aq dev-util/android-tools dev-vcs/git dev-python/pip
 
+# For systemd distros
 sudo systemctl stop ModemManager
 sudo systemctl disable ModemManager
-sudo apt purge ModemManager
+# For OpenRC distros (run as root!)
+rc-update del modemmanager default boot sysinit
+rc-service modemmanager stop
 
-
-git clone https://github.com/bkerler/edl.git
+git clone https://github.com/bkerler/edl.git # do NOT use --recurse-submodules
 cd edl
 git submodule update --init --recursive
+
+# Autoinstall (run as root!)
+./autoinstall.sh
+
+# Manual install
 chmod +x ./install-linux-edl-drivers.sh
 bash ./install-linux-edl-drivers.sh
 python3 setup.py build
