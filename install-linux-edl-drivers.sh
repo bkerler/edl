@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env sh
 
-cd ./Drivers
+PATH_DRIVERS=$(dirname "${0}")/Drivers
 
-sudo cp ./50-android.rules /etc/udev/rules.d/50-android.rules
-sudo cp ./51-edl.rules /etc/udev/rules.d/51-edl.rules
-sudo cp ./69-libmtp.rules /etc/udev/rules.d/69-libmtp.rules
-sudo cp ./blacklist-qcserial.conf /etc/modprobe.d/blacklist-qcserial.conf
+[ "$(id -u)" != 0 ] && { printf "You must run this script as root!\n" && exit 1; }
+! [ -d "${PATH_DRIVERS}" ] && { printf "Missing \"Drivers\" directory!\n" && exit 1; }
 
-sudo udevadm control --reload-rules
-sudo udevadm trigger
+cp "${PATH_DRIVERS}"/*.rules /etc/udev/rules.d/
+cp "${PATH_DRIVERS}"/blacklist*.conf /etc/modprobe.d/
 
-echo "Now rebuild your initramfs and reboot."
+udevadm control --reload-rules
+udevadm trigger
+
+printf "Now rebuild your initramfs and reboot\n"

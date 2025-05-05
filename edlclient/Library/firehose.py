@@ -1675,8 +1675,12 @@ class firehose(metaclass=LogBase):
         if info:
             print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         while True:
-            tmp = self.cdc.read(timeout=None)
-            if b'<response' in tmp or b"ERROR" in tmp:
+            received_data = self.cdc.read(timeout=None)
+            tmp = received_data
+            while tmp[-7:] != b"</data>" and len(received_data) > 0:
+                received_data = self.cdc.read(timeout=None)
+                tmp += received_data
+            if b'<response' in tmp or b"ERROR" in tmp or len(received_data) == 0:
                 break
             rdata = self.xml.getlog(tmp)[0].replace("0x", "").replace(" ", "")
             tmp2 = b""
@@ -1698,7 +1702,9 @@ class firehose(metaclass=LogBase):
 
         if wf is not None:
             wf.close()
-            if b'<response' in tmp and b'ACK' in tmp:
+            if (b'<response' in tmp and b'ACK' in tmp) or len(received_data) == 0:
+                if len(received_data) == 0:
+                    self.info(f"Warning: {dataread} bytes received, but expecting {SizeInBytes}!")
                 if info:
                     self.info(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
                 return True
