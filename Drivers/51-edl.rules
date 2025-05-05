@@ -1,23 +1,23 @@
 
 # Qualcomm EDL
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9008", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9008", TAG+="uaccess"
 
 # Sony EDL
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="9dde", MODE="0666", GROUP="plugdev"
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="ade5", MODE="0666", GROUP="plugdev"
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="aded", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="9dde", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="ade5", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="aded", TAG+="uaccess"
 
 # Qualcomm Memory Debug
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9006", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9006", TAG+="uaccess"
 
 # Qualcomm Memory Debug
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="900E", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="900e", TAG+="uaccess"
 
 # LG Memory Debug
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1004", ATTRS{idProduct}=="61a1", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1004", ATTRS{idProduct}=="61a1", TAG+="uaccess"
 
 # Sierra Wireless
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9071", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9071", TAG+="uaccess"
 
 # ZTE
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0076", MODE="0666", GROUP="plugdev"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0076", TAG+="uaccess"
