@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2024 under GPLv3 license
+# (c) B.Kerler 2018-2025 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -149,41 +149,11 @@ from edlclient.Library.utils import is_windows
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2024.")
-
-
-def parse_cmd(rargs):
-    cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
-            "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
-            "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "getactiveslot",
-            "setactiveslot",
-            "send", "xml", "rawxml", "reset", "nop", "modules", "memorydump", "provision", "qfil"]
-    for cmd in cmds:
-        if rargs[cmd]:
-            return cmd
-    return ""
-
-
-def console_cmd(cmd):
-    read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, close_fds=True)
-    try:
-        output = read.stdout.read().decode('utf-8')
-    except:
-        output = read.stdout.read().decode("ISO-8859-1")
-    return output
-
-
-def parse_option(rargs):
-    options = {}
-    for arg in rargs:
-        if "--" in arg or "<" in arg:
-            options[arg] = rargs[arg]
-    return options
+print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2025.")
 
 
 class main(metaclass=LogBase):
-    def __init__(self):
+    def __init__(self, args, imported: str = ''):
         self.serial = None
         self.portname = None
         self.__logger = self.__logger
@@ -196,6 +166,45 @@ class main(metaclass=LogBase):
         self.vid = None
         self.pid = None
         self.serial_number = None
+        self.args = args
+        self.fh = None
+
+        if imported == '':
+            self.imported = True
+        else:
+            self.imported = False
+
+    def parse_cmd(self, rargs):
+        if self.imported:
+            return ""
+
+        cmds = ["server", "printgpt", "gpt", "r", "rl", "rf", "rs", "w", "wl", "wf", "ws", "e", "es", "ep", "footer",
+                "peek", "peekhex", "peekdword", "peekqword", "memtbl", "poke", "pokehex", "pokedword", "pokeqword",
+                "memcpy", "secureboot", "pbl", "qfp", "getstorageinfo", "setbootablestoragedrive", "getactiveslot",
+                "setactiveslot",
+                "send", "xml", "rawxml", "reset", "nop", "modules", "memorydump", "provision", "qfil"]
+        for cmd in cmds:
+            if rargs[cmd]:
+                return cmd
+        return ""
+
+
+    def console_cmd(self, cmd):
+        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, close_fds=True)
+        try:
+            output = read.stdout.read().decode('utf-8')
+        except:
+            output = read.stdout.read().decode("ISO-8859-1")
+        return output
+
+
+    def parse_option(self, rargs):
+        options = {}
+        for arg in rargs:
+            if "--" in arg or "<" in arg:
+                options[arg] = rargs[arg]
+        return options
 
     def doconnect(self, loop) -> dict:
         while not self.cdc.connected:
@@ -231,57 +240,62 @@ class main(metaclass=LogBase):
                     return resp
         return {"mode": "error"}
 
-    def exit(self):
-        self.cdc.close()
-        sys.exit()
+    def exit(self, status: int = 0, cdc_close: bool = True):
+        if cdc_close:
+            self.cdc.close()
+
+        if self.imported:
+            return status
+        else:
+            sys.exit(status)
 
     def run(self):
         if is_windows():
-            proper_driver = console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
+            proper_driver = self.console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
             if re.findall(r'QCUSB', str(proper_driver)):
                 self.warning(f'Please first install libusb_win32 driver from Zadig')
 
         loop = 0
-        vid = int(args["--vid"], 16)
-        pid = int(args["--pid"], 16)
+        vid = int(self.args["--vid"], 16)
+        pid = int(self.args["--pid"], 16)
         interface = -1
         if vid != -1 and pid != -1:
             portconfig = [[vid, pid, interface]]
         else:
             portconfig = default_ids
-        if args["--debugmode"]:
+        if self.args["--debugmode"]:
             logfilename = "log.txt"
             if os.path.exists(logfilename):
                 os.remove(logfilename)
-            fh = logging.FileHandler(logfilename)
-            self.__logger.addHandler(fh)
+            self.fh = logging.FileHandler(logfilename)
+            self.__logger.addHandler(self.fh)
             self.__logger.setLevel(logging.DEBUG)
         else:
             self.__logger.setLevel(logging.INFO)
 
-        if args["--serial"]:
+        if self.args["--serial"]:
             self.serial = True
         else:
             self.serial = False
-        if args["--portname"]:
-            self.portname = args["--portname"]
+        if self.args["--portname"]:
+            self.portname = self.args["--portname"]
             self.serial = True
         else:
             self.portname = ""
         if self.serial:
             self.cdc = serial_class(loglevel=self.__logger.level, portconfig=portconfig)
         else:
-            if args["--serial_number"]:
-                self.serial_number = args["--serial_number"]
+            if self.args["--serial_number"]:
+                self.serial_number = self.args["--serial_number"]
             self.cdc = usb_class(portconfig=portconfig, loglevel=self.__logger.level, serial_number=self.serial_number)
 
         self.sahara = sahara(self.cdc, loglevel=self.__logger.level)
 
-        if args["--loader"] == 'None':
+        if self.args["--loader"] == 'None':
             self.info("Trying with no loader given ...")
             self.sahara.programmer = ""
         else:
-            loader = args["--loader"]
+            loader = self.args["--loader"]
             self.info(f"Using loader {loader} ...")
             self.sahara.programmer = loader
 
@@ -299,14 +313,14 @@ class main(metaclass=LogBase):
                 if "data" in conninfo:
                     data = conninfo["data"]
                     if data.mode == sahara_mode_t.SAHARA_MODE_MEMORY_DEBUG:
-                        if args["memorydump"] or self.cdc.pid == 0x900E:
+                        if self.args["memorydump"] or self.cdc.pid == 0x900E:
                             time.sleep(0.5)
                             print("Device is in memory dump mode, dumping memory")
-                            if args["--partitions"]:
-                                self.sahara.debug_mode(args["--partitions"].split(","), version=version)
+                            if self.args["--partitions"]:
+                                self.sahara.debug_mode(self.args["--partitions"].split(","), version=version)
                             else:
                                 self.sahara.debug_mode(version=version)
-                            self.exit()
+                            return self.exit()
                         else:
                             print("Device is in streaming mode, uploading loader")
                             self.cdc.timeout = None
@@ -329,7 +343,7 @@ class main(metaclass=LogBase):
                                         time.sleep(0.3)
                                     else:
                                         print("Error, couldn't find suitable enprg/nprg loader :(")
-                                        self.exit()
+                                        return self.exit()
                     else:
                         sahara_info = self.sahara.cmd_info(version=version)
                         if sahara_info is not None:
@@ -342,13 +356,13 @@ class main(metaclass=LogBase):
                         else:
                             print("Error on sahara handshake, resetting.")
                             self.sahara.cmd_reset()
-                            sys.exit(1)
+                            return self.exit(1)
         else:
             if self.__logger.level != logging.DEBUG:
                 self.__logger.setLevel(logging.ERROR)
         if mode == "error":
             print("Connection detected, quiting.")
-            sys.exit(1)
+            return self.exit(1)
         elif mode == "firehose":
             if "enprg" in self.sahara.programmer.lower():
                 mode = "enandprg"
@@ -361,11 +375,11 @@ class main(metaclass=LogBase):
                     mode = "nandprg"
                 else:
                     print("No suitable loader found :(")
-                    self.exit()
+                    return self.exit()
         if mode != "firehose":
-            sc = streaming_client(args, self.cdc, self.sahara, self.__logger.level, print)
-            cmd = parse_cmd(args)
-            options = parse_option(args)
+            sc = streaming_client(self.args, self.cdc, self.sahara, self.__logger.level, print)
+            cmd = self.parse_cmd(self.args)
+            options = self.parse_option(self.args)
             if "load_" in mode:
                 options["<mode>"] = 1
             else:
@@ -373,21 +387,23 @@ class main(metaclass=LogBase):
             sc.handle_streaming(cmd, options)
         else:
             self.cdc.timeout = None
-            cmd = parse_cmd(args)
+            cmd = self.parse_cmd(self.args)
             if cmd == 'provision':
-                args["--memory"] = 'ufs'
-                args["--skipstorageinit"] = 1
-            fh = firehose_client(args, self.cdc, self.sahara, self.__logger.level, print)
-            options = parse_option(args)
-            if cmd != "":
+                self.args["--memory"] = 'ufs'
+                self.args["--skipstorageinit"] = 1
+            self.fh = firehose_client(self.args, self.cdc, self.sahara, self.__logger.level, print)
+            options = self.parse_option(self.args)
+            if cmd != "" or self.imported:
                 self.info("Trying to connect to firehose loader ...")
-                if fh.connect(sahara):
-                    if not fh.handle_firehose(cmd, options):
-                        sys.exit(1)
+                if self.fh.connect(sahara):
+                    if self.imported:
+                        return self.exit(cdc_close=False)
+                    elif not self.fh.handle_firehose(cmd, options):
+                        return self.exit(1)
                 else:
-                    sys.exit(1)
+                    return self.exit(1)
 
 
 if __name__ == '__main__':
-    base = main()
+    base = main(args, __name__)
     base.run()
