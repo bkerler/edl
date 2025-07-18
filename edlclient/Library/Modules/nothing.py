@@ -56,6 +56,9 @@ class nothing(metaclass=LogBase):
 
 
 if __name__ == "__main__":
+    # 20111 Nothing Phone 1
+    # 22111 Nothing Phone 2
+    # 23111 Nothing Phone 2a
     nt = nothing(fh=None, projid="22111", serial=1729931115)
     res=nt.generatetoken(token1="512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671")
     org=b"<?xml version=\"1.0\" encoding=\"UTF-8\" ?><data>\n    <ntprojectverify  token1=\"512034500a07154561661e0f371f4a712a0b76074605724c640e301d632b3671\" token2=\"1ecd222465436eb8acc0cfc41e90d1e677165c184ea7d9631615014dac88c669\" token3=\"16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150\"/>\n</data>\n"
