@@ -22,10 +22,12 @@ sys.path.insert(0, current_dir)
 try:
     from edlclient.Tools.qc_diag import qcdiag
 except ImportError as e:
-    print(current_dir)
-    from qc_diag import qcdiag
-
-    pass
+    script_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    sys.path.insert(0, script_path)
+    try:
+        from edlclient.Tools.qc_diag import qcdiag
+    except ImportError as e:
+        print("ImportError: %s" % e)
 
 try:
     from edlclient.Library.utils import LogBase
