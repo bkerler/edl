@@ -65,6 +65,7 @@ class nand_partition:
         self.parent = parent
         self.storage_info = {}
         self.totalsectors = None
+        self.largesector = False
 
     def parse(self, partdata):
         self.partentries = {}
@@ -773,6 +774,8 @@ class firehose(metaclass=LogBase):
                         if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
                             progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
                             self.nandpart.partitiontblsector = sector
+                            if sector == 0x400:
+                                self.nandpart.largesector = True
                             self.info(f"Found partition table at sector {sector} :)")
                             break
             if self.nandpart.partitiontblsector is not None:
