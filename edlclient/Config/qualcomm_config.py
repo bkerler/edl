@@ -59,7 +59,6 @@ msmids = {
     0x9780E1: "IPQ4018",
     0x9790E1: "IPQ4019",
     0x0160E1: "QCA4020",
-    0x8100E1: "APQ806x",
     0x9D00E1: "APQ8076",
     0x08A0E1: "APQ807x",
     0x9000E1: "APQ8084",
@@ -319,13 +318,15 @@ msmids = {
     0x80E0E1: "fsm9910",
     0x15A0E1: "qrb516",
     0x8000E1: "msm8226",
-    0x0D90E1: "qca6390",
     0x9D70E1: "msm8229",
     0x90E0E1: "msm8236",
     0x9660E1: "mdm9309",
     0x04E0E1: "apq8096au",
     0x9570E1: "msm8239", # Snapdragon 615
-    0x1990E1: "OlympicLE" # sdx62 lemur
+    0x1990E1: "OlympicLE", # sdx62 lemur
+    0x20F0E1: "unknown",
+    0x7070E1: "unknown",
+    0x0DA0E1: "sc8180xp"
 }
 
 sochw = {
@@ -375,6 +376,7 @@ sochw = {
     0x9004: "mannar,mannar_P",
     0x9006: "strait",
     0x9007: "divar"
+    # SDX75 SDX_PINNACLES
 }
 
 secgen = [
