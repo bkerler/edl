@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -110,7 +110,7 @@ class sid(Enum):
     '''
 
 
-class paramtools():
+class paramtools:
     paramitems = {
         sid.PARAM_SID_PRODUCT.value[0]: {
             0x18: ["8c", "project_name"],
@@ -316,9 +316,9 @@ class paramtools():
     def __init__(self, mode, serial):
         self.aes_iv = unhexlify("562E17996D093D28DDB3BA695A2E6F58")
         self.aes_key = unhexlify("3030304F6E65506C7573383138303030")
-        if mode==1:
-            derivedkey=bytes.fromhex("a9264fbf8a"+("%08x"%serial)+"6b4487ea")[:0x1A]
-            derivedkey=hashlib.sha256(derivedkey).digest()[:16]
+        if mode == 1:
+            derivedkey = bytes.fromhex("a9264fbf8a" + ("%08x" % serial) + "6b4487ea")[:0x1A]
+            derivedkey = hashlib.sha256(derivedkey).digest()[:16]
             self.aes_key = derivedkey
 
     def getparam(self, offset, sidindex):
@@ -376,7 +376,7 @@ class paramtools():
     def parse_encrypted(self, rdata, sid):
         data = rdata[(sid * 0x400):(sid * 0x400) + 0x1000]
         itemdata, hv, cv, updatecounter = self.decryptsid(data)
-        if itemdata != None:
+        if itemdata is not None:
             itemdata = bytearray(itemdata)
             print(
                 f"Offset {hex(sid * 0x400)}: hv {hex(hv)}, cv {hex(cv)}, increase_enc_update_counter {hex(updatecounter)}.")
@@ -421,7 +421,7 @@ class paramtools():
                 itemlength = 0x400
             itemdata = rdata[pos + 0x18:pos + 0x18 + itemlength]
             i = 0
-            while (i < len(itemdata) - 0x22):
+            while i < len(itemdata) - 0x22:
                 sidindex = (pos // 0x400) & 0x1FF
                 offset = i + 0x18
                 # if sidindex==0x334 and offset==0x80:
@@ -440,7 +440,7 @@ class paramtools():
                     length = self.parse_data(i, itemdata, offset, param, sidindex)
                     i += length
                     if length > 4:
-                        if (length % 4):
+                        if length % 4:
                             i += 4 - (length % 4)
 
     def parse_data(self, i, itemdata, offset, param, sidindex, encrypted=False):
@@ -468,10 +468,10 @@ class paramtools():
             name = name + " "
         if "PWD Hash" in name:
             items = content.split(" ")
-            pwdhash = items[0][1:9]+"00000000000000000000000000000000000000000000000000000000"
+            pwdhash = items[0][1:9] + "00000000000000000000000000000000000000000000000000000000"
             valid = "True" if items[1] != "-1" else "False"
             flag = items[2]
-            date = items[3] + " "+ items[4][:-1]
+            date = items[3] + " " + items[4][:-1]
             content = f"{date} ({valid},{flag}): {pwdhash}"
             ff = f"SID_Index {hex(sidindex)}, Offset {offsetstr}: {name}: {content}"
             if encrypted:
@@ -937,7 +937,7 @@ def main():
         filename = args["<filename>"]
         mode = args["--mode"]
         serial = args["--serial"]
-        param = paramtools(mode,serial)
+        param = paramtools(mode, serial)
         with open(filename, 'rb') as rf:
             data = rf.read()
             param.parse_decrypted_fields(data)
@@ -949,7 +949,7 @@ def main():
         filename = args["<filename>"]
         mode = args["--mode"]
         serial = args["--serial"]
-        param = paramtools(mode,serial)
+        param = paramtools(mode, serial)
         with open(filename, 'rb') as rf:
             data = rf.read()
             with open(filename + ".patched", 'wb') as wf:
@@ -966,7 +966,7 @@ def main():
         value = int(args["<value>"], 16)
         mode = args["--mode"]
         serial = args["--serial"]
-        param = paramtools(mode,serial)
+        param = paramtools(mode, serial)
         with open(filename, 'rb') as rf:
             data = rf.read()
             with open(filename + ".patched", 'wb') as wf:
@@ -975,7 +975,7 @@ def main():
         imei = args["<imei>"]
         mode = 0
         serial = None
-        param = paramtools(mode,serial)
+        param = paramtools(mode, serial)
         print("oneplus Factory qr code generator (c) B. Kerler 2019\nGPLv3 License\n----------------------")
         print("Code : *#*#5646#*#* , *#808#, *#36446337# = com.android.engineeringmode.manualtest.DecryptActivity")
         results = param.gencode([imei, "YOU_CAN_PASS_NOW"])

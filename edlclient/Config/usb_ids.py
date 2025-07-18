@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -10,6 +10,7 @@ default_ids = [
     [0x05c6, 0x9008, -1],
     [0x0fce, 0x9dde, -1],
     [0x0fce, 0xade5, -1],
+    [0x0fce, 0xaded, -1],
     [0x05c6, 0x900e, -1],
     [0x05c6, 0x9025, -1],
     [0x1199, 0x9062, -1],
@@ -27,6 +28,7 @@ default_diag_vid_pid = [
     [0x05C6, 0x9008, -1],  # QC EDL
     [0x0fce, 0x9dde, -1],  # SONY EDL
     [0x0fce, 0xade5, -1],  # SONY EDL
+    [0x0fce, 0xaded, -1],  # SONY EDL
     [0x05C6, 0x676C, 0],   # QC Handset
     [0x05c6, 0x901d, 0],   # QC Android "setprop sys.usb.config diag,adb"
     [0x19d2, 0x0016, -1],  # ZTE Diag

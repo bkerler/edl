@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
+import inspect
 import logging
-import sys
 import os
 import sys
-import inspect
 from queue import Queue
 from struct import unpack
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import LogBase, print_progress
 
-
-MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2 # 2 GBs
+MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2  # 2 GBs
 
 
 class QCSparse(metaclass=LogBase):
@@ -183,13 +182,13 @@ class QCSparse(metaclass=LogBase):
         if length is None:
             return self.unsparse()
         if (self.tmp_offset + length) <= len(self.tmpdata):
-            tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+            tdata = self.tmpdata[self.tmp_offset: self.tmp_offset + length]
             self.tmp_offset += length
             return tdata
         while (self.tmp_offset + length) > len(self.tmpdata):
             self.tmpdata.extend(self.unsparse())
             if (self.tmp_offset + length) <= len(self.tmpdata):
-                tdata = self.tmpdata[self.tmp_offset : self.tmp_offset + length]
+                tdata = self.tmpdata[self.tmp_offset: self.tmp_offset + length]
                 self.tmp_offset += length
                 return tdata
 

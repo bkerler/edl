@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -12,8 +12,10 @@ from io import BytesIO
 SAHARA_VERSION = 2
 SAHARA_MIN_VERSION = 1
 
+
 class DataError(Exception):
     pass
+
 
 class cmd_t:
     SAHARA_HELLO_REQ = 0x1
@@ -36,6 +38,7 @@ class cmd_t:
     SAHARA_64BIT_MEMORY_READ_DATA = 0x12
     SAHARA_RESET_STATE_MACHINE_ID = 0x13
 
+
 class cmd_t_version:
     SAHARA_HELLO_REQ = 0x1
     SAHARA_HELLO_RSP = 1
@@ -57,6 +60,7 @@ class cmd_t_version:
     SAHARA_64BIT_MEMORY_READ_DATA = 2
     SAHARA_RESET_STATE_MACHINE_ID = 2
 
+
 class exec_cmd_t:
     SAHARA_EXEC_CMD_NOP = 0x00
     SAHARA_EXEC_CMD_SERIAL_NUM_READ = 0x01
@@ -68,6 +72,7 @@ class exec_cmd_t:
     SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL = 0x07
     SAHARA_EXEC_CMD_GET_COMMAND_ID_LIST = 0x08
     SAHARA_EXEC_CMD_GET_TRAINING_DATA = 0x09
+
 
 class sahara_mode_t:
     SAHARA_MODE_IMAGE_TX_PENDING = 0x0
@@ -169,7 +174,7 @@ ErrorDesc = {
 class CommandHandler:
 
     def pkt_hello_req(self, data):
-        if len(data)<0xC * 0x4:
+        if len(data) < 0xC * 0x4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -190,7 +195,7 @@ class CommandHandler:
         return req
 
     def pkt_cmd_hdr(self, data):
-        if len(data)<2*4:
+        if len(data) < 2 * 4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -201,7 +206,7 @@ class CommandHandler:
         return req
 
     def pkt_read_data(self, data):
-        if len(data)<0x5 * 0x4:
+        if len(data) < 0x5 * 0x4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -215,7 +220,7 @@ class CommandHandler:
         return req
 
     def pkt_read_data_64(self, data):
-        if len(data)<0x8 + 0x3 * 0x8:
+        if len(data) < 0x8 + 0x3 * 0x8:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -229,7 +234,7 @@ class CommandHandler:
         return req
 
     def pkt_memory_debug(self, data):
-        if len(data)<0x8 + 0x2 * 0x4:
+        if len(data) < 0x8 + 0x2 * 0x4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -242,7 +247,7 @@ class CommandHandler:
         return req
 
     def pkt_memory_debug_64(self, data):
-        if len(data)<0x8 + 0x2 * 0x8:
+        if len(data) < 0x8 + 0x2 * 0x8:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -255,7 +260,7 @@ class CommandHandler:
         return req
 
     def pkt_execute_rsp_cmd(self, data):
-        if len(data)<0x4 * 0x4:
+        if len(data) < 0x4 * 0x4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -268,7 +273,7 @@ class CommandHandler:
         return req
 
     def pkt_image_end(self, data):
-        if len(data)<0x4 * 0x4:
+        if len(data) < 0x4 * 0x4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -281,7 +286,7 @@ class CommandHandler:
         return req
 
     def pkt_done(self, data):
-        if len(data)<0x3 * 4:
+        if len(data) < 0x3 * 4:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -293,7 +298,7 @@ class CommandHandler:
         return req
 
     def pkt_info(self, data):
-        if len(data)<0x3 * 4 + 0x20:
+        if len(data) < 0x3 * 4 + 0x20:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -306,7 +311,7 @@ class CommandHandler:
         return req
 
     def parttbl(self, data):
-        if len(data)<(0x3 * 4) + 20 + 20:
+        if len(data) < (0x3 * 4) + 20 + 20:
             raise DataError
         st = structhelper_io(BytesIO(data))
 
@@ -320,7 +325,7 @@ class CommandHandler:
         return req
 
     def parttbl_64bit(self, data):
-        if len(data)<(0x3 * 8) + 20 + 20:
+        if len(data) < (0x3 * 8) + 20 + 20:
             raise DataError
         st = structhelper_io(BytesIO(data))
 

@@ -1,5 +1,5 @@
 # Qualcomm Sahara / Firehose Attack Client / Diag Tools
-(c) B. Kerler 2018-2024
+(c) B. Kerler 2018-2025
 Licensed under GPLv3 license.
 
 # Be aware that if you use anything from this repository in any (including) compiled form, you need to opensource your code as well !
@@ -42,17 +42,26 @@ sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
 # Arch/Manjaro/etc
 sudo pacman -S android-tools python python-pip git xz
 sudo pacman -R modemmanager
+# Gentoo (run as root!)
+emerge -aq dev-util/android-tools dev-vcs/git dev-python/pip
 
+# For systemd distros
 sudo systemctl stop ModemManager
 sudo systemctl disable ModemManager
-sudo apt purge ModemManager
+# For OpenRC distros (run as root!)
+rc-update del modemmanager default boot sysinit
+rc-service modemmanager stop
 
-
-git clone https://github.com/bkerler/edl.git
+git clone https://github.com/bkerler/edl.git # do NOT use --recurse-submodules
 cd edl
 git submodule update --init --recursive
-sudo cp Drivers/51-edl.rules /etc/udev/rules.d
-sudo cp Drivers/50-android.rules /etc/udev/rules.d
+
+# Autoinstall (run as root!)
+./autoinstall.sh
+
+# Manual install
+chmod +x ./install-linux-edl-drivers.sh
+bash ./install-linux-edl-drivers.sh
 python3 setup.py build
 sudo python3 setup.py install
 ```
@@ -71,11 +80,20 @@ sudo python3 setup.py install
 ```
 
 ### Windows:
+
+#### Method 1 - Automatic with PowerShell (Windows 10 and later)
+
+1.   Open PowerShell (Not CMD). To do that, right-click on the Windows start menu and select PowerShell or Terminal.
+2.   Copy and paste the code below and press enter
+```
+curl.exe -O https://raw.githubusercontent.com/bkerler/edl/master/install_edl_win10_win11.ps1; .\install_edl_win10_win11.ps1
+```
+
+#### Method 2 - Manual
 #### Install python + git
 - Install python 3.9 and git
 - If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
 - WIN+R ```cmd```
-
 
 #### Get latest UsbDk 64-Bit
 - Install normal QC 9008 Serial Port driver (or use default Windows COM Port one, make sure no exclamation is seen)

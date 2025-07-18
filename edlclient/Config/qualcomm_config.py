@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
@@ -59,8 +59,6 @@ msmids = {
     0x9780E1: "IPQ4018",
     0x9790E1: "IPQ4019",
     0x0160E1: "QCA4020",
-    0x9680E1: "APQ8009", # Snapdragon 212
-    0x7060E1: "APQ8016",
     0x8100E1: "APQ806x",
     0x9D00E1: "APQ8076",
     0x08A0E1: "APQ807x",
@@ -70,11 +68,13 @@ msmids = {
     0x9410E1: "APQ8094",  # Snapdragon 810
     0x0940E1: "MSM8905",
     0x9600E1: "MSM8909",  # SnapDragon 210
-    0x0510E1: "MSM8909W",
-    0x0520E1: "APQ8009W",  # wear3100
+    0x9680E1: "APQ8009",
+    0x0510E1: "MSM8909w",
+    0x0520E1: "APQ8009w",
     0x0960E1: "SDX24",  # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit
     0x0970E1: "SDX24M",  # 0x60020100 soc_hw_version, 0x8fff7000 dbgpolicy 32Bit, 0x8FCFD000 sec.elf 64Bit
     0x7050E1: "MSM8916",  # SnapDragon 410
+    0x7060E1: "APQ8016",
     0x0560E1: "MSM8917",  # Snapdragon 425
     0x0860E1: "MSM8920",
     0x91B0E1: "MSM8929",  # SnapDragon 415
@@ -324,7 +324,7 @@ msmids = {
     0x9660E1: "mdm9309",
     0x04E0E1: "apq8096au",
     0x9570E1: "msm8239", # Snapdragon 615
-
+    0x1990E1: "OlympicLE" # sdx62 lemur
 }
 
 sochw = {
@@ -418,14 +418,15 @@ infotbl = {
 
     "IPQ4018": secgen[4],
     "IPQ4019": secgen[4],
-    "APQ8009": secgen[4],
-    "APQ8016": secgen[4],
     "APQ8036": secgen[4],
     "APQ8039": secgen[4],
     "MSM8905": secgen[4],
     "MSM8909": secgen[4],
-    "MSM8909W": secgen[4],
+    "APQ8009": secgen[4],
+    "MSM8909w": secgen[4],
+    "APQ8009w": secgen[4],
     "MSM8916": secgen[4],
+    "APQ8016": secgen[4],
     "MSM8929": secgen[4],
     "MSM8939": secgen[4],
     "MSM8952": secgen[4],
@@ -546,7 +547,7 @@ infotbl = {
     "SA8295P": secgen[8],
     "SA8540P": secgen[8],
     "strait": secgen[8],
-
+    "OlympicLE": secgen[8],
     # "MSM7227A": [[], [], []],
     # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
     # "MSM8212": [[], [], []],
@@ -592,14 +593,15 @@ class memory_type:
 
         "IPQ4018": emmc,
         "IPQ4019": emmc,
-        "APQ8009": emmc,
-        "APQ8016": emmc,
         "APQ8036": emmc,
         "APQ8039": emmc,
         "MSM8905": emmc,
         "MSM8909": emmc,
-        "MSM8909W": emmc,
+        "APQ8009": emmc,
+        "MSM8909w": emmc,
+        "APQ8009w": emmc,
         "MSM8916": emmc,
+        "APQ8016": emmc,
         "MSM8929": emmc,
         "MSM8939": emmc,
         "MSM8952": emmc,
@@ -710,6 +712,7 @@ class memory_type:
         "strait": ufs,
         "WCN7850": emmc,
         "WCN7851": emmc,
+        "OlympicLE": emmc,
         # "MSM7227A": [[], [], []],
         # "MSM8210": [[], [0xFC4B8000,0x6FFF], []],
         # "MSM8212": [[], [], []],
@@ -726,8 +729,6 @@ secureboottbl = {
     "QCA6390": 0x01e20010,
     "IPQ4018": 0x00058098,
     "IPQ4019": 0x00058098,
-    "APQ8009": 0x00058098,
-    "APQ8016": 0x00058098,
     "APQ8036": 0x00058098,
     "APQ8039": 0x00058098,
     "APQ8037": 0x000a01d0,
@@ -743,8 +744,11 @@ secureboottbl = {
     "MSM8610": 0xFC4B83E8,
     "MSM8905": 0x00058098,
     "MSM8909": 0x00058098,
-    "MSM8909W": 0x00058098,
+    "APQ8009": 0x00058098,
+    "MSM8909w": 0x00058098,
+    "APQ8009w": 0x00058098,
     "MSM8916": 0x00058098,
+    "APQ8016": 0x00058098,
     "MSM8917": 0x000A01D0,
     "MSM8920": 0x000A01D0,
     "MSM8929": 0x00058098,
@@ -852,7 +856,8 @@ secureboottbl = {
     "rennell": 0x000780498,
     "rennell_premier": 0x000780498,
     "rennell_V1.1": 0x000780498,
-    "sc7180": 0x000780498
+    "sc7180": 0x000780498,
+    # "OlympicLE": 0x01B40458
     # "MSM7227A":[[], [], []],
     # "MSM8210": [[], [], []],
     # "MSM8212":

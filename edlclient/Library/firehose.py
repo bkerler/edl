@@ -1,32 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
 import binascii
-import io
+import json
 import os.path
 import platform
-import time
-import json
-from struct import unpack
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
 
 from edlclient.Library.Modules.nothing import nothing
-from edlclient.Library.utils import *
-from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE, MAX_PRIORITY, PART_ATT_PRIORITY_BIT
-from edlclient.Library.gpt import PART_ATT_PRIORITY_VAL, PART_ATT_ACTIVE_VAL, PART_ATT_MAX_RETRY_COUNT_VAL, PART_ATT_SUCCESSFUL_VAL, PART_ATT_UNBOOTABLE_VAL
+from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Library.sparse import QCSparse
+from edlclient.Library.utils import *
 from edlclient.Library.utils import progress
-from queue import Queue
-from threading import Thread
 
-rq = Queue()
 
 def writedata(filename, rq):
     pos = 0
@@ -146,11 +139,10 @@ def writefile(wf, q, stop):
             break
 
 
-class asyncwriter():
+class asyncwriter:
     def __init__(self, wf):
         self.writequeue = Queue()
-        self.worker = Thread(target=writefile, args=(wf, self.writequeue, lambda: self.stopthreads,))
-        self.worker.setDaemon(True)
+        self.worker = Thread(target=writefile, args=(wf, self.writequeue, lambda: self.stopthreads,), daemon=True)
         self.stopthreads = False
         self.worker.start()
 
@@ -200,6 +192,7 @@ class firehose(metaclass=LogBase):
         self.luns = luns
         self.supported_functions = []
         self.lunsizes = {}
+        self.rq = Queue()
         self.info = self.__logger.info
         self.error = self.__logger.error
         self.debug = self.__logger.debug
@@ -216,9 +209,9 @@ class firehose(metaclass=LogBase):
     def detect_partition(self, arguments, partitionname, send_full=False):
         if arguments is None:
             arguments = {
-                "--gpt-num-part-entries"     : 0,
-                "--gpt-part-entry-size"      : 0,
-                "--gpt-part-entry-start-lba" : 0
+                "--gpt-num-part-entries": 0,
+                "--gpt-part-entry-size": 0,
+                "--gpt-part-entry-start-lba": 0
             }
         fpartitions = {}
         for lun in self.luns:
@@ -231,7 +224,8 @@ class firehose(metaclass=LogBase):
                 break
             else:
                 if partitionname in guid_gpt.partentries:
-                    return [True, lun, data, guid_gpt] if send_full else [True, lun, guid_gpt.partentries[partitionname]]
+                    return [True, lun, data, guid_gpt] if send_full else [True, lun,
+                                                                          guid_gpt.partentries[partitionname]]
             for part in guid_gpt.partentries:
                 fpartitions[lunname].append(part)
         return [False, fpartitions]
@@ -333,7 +327,7 @@ class firehose(metaclass=LogBase):
     def cmd_reset(self, mode="reset"):
         if mode is None:
             mode = "reset"
-        data = "<?xml version=\"1.0\" ?><data><power value=\"" + mode + "\"/></data>"
+        data = f'<?xml version="1.0" ?><data><power value="{mode}"/></data>'
         val = self.xmlsend(data)
         try:
             v = None
@@ -366,7 +360,7 @@ class firehose(metaclass=LogBase):
                 return val.error
 
     def cmd_nop(self):
-        data = "<?xml version=\"1.0\" ?><data><nop /></data>"
+        data = '<?xml version="1.0" ?><data><nop /></data>'
         resp = self.xmlsend(data, True)
         self.debug(resp.data.hex())
         info = b""
@@ -635,7 +629,6 @@ class firehose(metaclass=LogBase):
         return True
 
     def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
-        global rq
         self.lasterror = b""
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         if display:
@@ -661,7 +654,7 @@ class firehose(metaclass=LogBase):
             show_progress = progbar.show_progress
             usb_read = self.cdc.read
             progbar.show_progress(prefix="Read", pos=0, total=total, display=display)
-            worker = Thread(target=writedata, args=(filename, rq), daemon=True)
+            worker = Thread(target=writedata, args=(filename, self.rq), daemon=True)
             worker.start()
             while bytestoread > 0:
                 if self.cdc.is_serial:
@@ -671,10 +664,10 @@ class firehose(metaclass=LogBase):
                 size = min(maxsize, bytestoread)
                 data = usb_read(size)
                 if len(data) > 0:
-                    rq.put(data)
+                    self.rq.put(data)
                     bytestoread -= len(data)
                     show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
-            rq.put(None)
+            self.rq.put(None)
             worker.join(60)
             self.cdc.xmlread = True
             wd = self.wait_for_data()
@@ -682,7 +675,7 @@ class firehose(metaclass=LogBase):
             rsp = self.xml.getresponse(wd)
             if "value" in rsp:
                 if rsp["value"] != "ACK":
-                    if bytestoread!=0:
+                    if bytestoread != 0:
                         self.error(f"Error:")
                         for line in info:
                             self.error(line)
@@ -773,17 +766,15 @@ class firehose(metaclass=LogBase):
             self.info("Scanning for partition table ...")
             progbar = progress(1)
             if self.nandpart.partitiontblsector is None:
-                sector = 0x280
-                progbar.show_progress(prefix="Scanning", pos=sector, total=1024, display=True)
-                resp = self.cmd_read_buffer(0, sector, 1, False)
-                if resp.resp:
-                    if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
-                        progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
-                        self.nandpart.partitiontblsector = sector
-                        self.info(f"Found partition table at sector {sector} :)")
-                else:
-                    self.error("Error on reading partition table data")
-                    return None, None
+                for sector in [0x280,0x400]:
+                    progbar.show_progress(prefix="Scanning", pos=sector, total=1024, display=True)
+                    resp = self.cmd_read_buffer(0, sector, 1, False)
+                    if resp.resp:
+                        if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
+                            progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
+                            self.nandpart.partitiontblsector = sector
+                            self.info(f"Found partition table at sector {sector} :)")
+                            break
             if self.nandpart.partitiontblsector is not None:
                 resp = self.cmd_read_buffer(0, self.nandpart.partitiontblsector + 1, 2, False)
                 if resp.resp:
@@ -920,6 +911,7 @@ class firehose(metaclass=LogBase):
                     except Exception as err:  # pylint: disable=broad-except
                         self.modules = None
                     if self.modules.edlauth():
+                        self.info("EDL Authenticated successfully.")
                         rsp = self.xmlsend(connectcmd)
                         return rsp.resp
                     else:
@@ -1044,8 +1036,8 @@ class firehose(metaclass=LogBase):
             self.parse_storage()
             for function in self.supported_functions:
                 if function == "checkntfeature":
-                    if type(self.devicemodel)==list:
-                        self.devicemodel=self.devicemodel[0]
+                    if type(self.devicemodel) == list:
+                        self.devicemodel = self.devicemodel[0]
                     self.nothing = nothing(fh=self, projid=self.devicemodel, serial=self.serial,
                                            supported_functions=self.supported_functions,
                                            loglevel=self.loglevel)
@@ -1148,7 +1140,7 @@ class firehose(metaclass=LogBase):
                     try:
                         serial = line.split("0x")[1][:-1]
                         if ")" in serial:
-                            serial=serial[:serial.rfind(")")]
+                            serial = serial[:serial.rfind(")")]
                         self.serial = int(serial, 16)
                     except Exception as err:  # pylint: disable=broad-except
                         self.debug(str(err))
@@ -1182,8 +1174,8 @@ class firehose(metaclass=LogBase):
                     "serial": self.serial
                 }
                 if os.path.exists("edl_config.json"):
-                    data = json.loads(open("edl_config.json","rb").read().decode('utf-8'))
-                    if "serial" in data and data["serial"]!=state["serial"]:
+                    data = json.loads(open("edl_config.json", "rb").read().decode('utf-8'))
+                    if "serial" in data and data["serial"] != state["serial"]:
                         open("edl_config.json", "w").write(json.dumps(state))
                     else:
                         self.supported_functions = data["supported_functions"]
@@ -1246,7 +1238,7 @@ class firehose(metaclass=LogBase):
         if len(imei) != 16:
             self.info("IMEI must be 16 digits")
             return False
-        data = "<?xml version=\"1.0\" ?><data><writeIMEI len=\"16\"/></data>"
+        data = '<?xml version="1.0" ?><data><writeIMEI len="16"/></data>'
         val = self.xmlsend(data)
         if val.resp:
             self.info("writeIMEI succeeded.")
@@ -1256,7 +1248,7 @@ class firehose(metaclass=LogBase):
             return False
 
     def cmd_getstorageinfo(self):
-        data = "<?xml version=\"1.0\" ?><data><getstorageinfo physical_partition_number=\"0\"/></data>"
+        data = '<?xml version="1.0" ?><data><getstorageinfo physical_partition_number="0"/></data>'
         val = self.xmlsend(data)
         if val.data == '' and val.log == '' and val.resp:
             return None
@@ -1271,7 +1263,7 @@ class firehose(metaclass=LogBase):
                     if len(v) > 1:
                         res[v[0]] = v[1]
                     else:
-                        if "\"storage_info\"" in value:
+                        if '"storage_info"' in value:
                             try:
                                 info = value.replace("INFO:", "")
                                 si = json.loads(info)["storage_info"]
@@ -1318,26 +1310,29 @@ class firehose(metaclass=LogBase):
                 if is_boot:
                     #new_flags |= (PART_ATT_PRIORITY_VAL | PART_ATT_ACTIVE_VAL | PART_ATT_MAX_RETRY_COUNT_VAL)
                     #new_flags &= (~PART_ATT_SUCCESSFUL_VAL & ~PART_ATT_UNBOOTABLE_VAL)
-                    new_flags = 0x6f << (AB_FLAG_OFFSET*8)
+                    new_flags = 0x6f << (AB_FLAG_OFFSET * 8)
                 else:
-                    new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8)
+                    new_flags |= AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET * 8)
             else:
                 if is_boot:
                     #new_flags &= (~PART_ATT_PRIORITY_VAL & ~PART_ATT_ACTIVE_VAL)
                     #new_flags |= ((MAX_PRIORITY-1) << PART_ATT_PRIORITY_BIT)
-                    new_flags = 0x3a << (AB_FLAG_OFFSET*8)
+                    new_flags = 0x3a << (AB_FLAG_OFFSET * 8)
                 else:
-                    new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET*8))
+                    new_flags &= ~(AB_PARTITION_ATTR_SLOT_ACTIVE << (AB_FLAG_OFFSET * 8))
             return new_flags
 
-        def patch_helper(gpt_data_a, gpt_data_b, guid_gpt_a, guid_gpt_b, partition_a, partition_b, slot_a_status, slot_b_status, is_boot):
+        def patch_helper(gpt_data_a, gpt_data_b, guid_gpt_a, guid_gpt_b, partition_a, partition_b, slot_a_status,
+                         slot_b_status, is_boot):
             part_entry_size = guid_gpt_a.header.part_entry_size
 
             rf_a = BytesIO(gpt_data_a)
             rf_b = BytesIO(gpt_data_b)
 
-            entryoffset_a = partition_a.entryoffset - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
-            entryoffset_b = partition_b.entryoffset - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
+            entryoffset_a = partition_a.entryoffset - (
+                        (guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
+            entryoffset_b = partition_b.entryoffset - (
+                        (guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
             rf_a.seek(entryoffset_a)
             rf_b.seek(entryoffset_b)
 
@@ -1360,8 +1355,8 @@ class firehose(metaclass=LogBase):
             unpack_fmt = "<I" if size_each_patch == 4 else "<Q"
             write_size = len(patch_data)
             for i in range(0, write_size, size_each_patch):
-                pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset+size_each_patch])[0])
-                self.cmd_patch( lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, False)
+                pdata_subset = int(unpack(unpack_fmt, patch_data[offset:offset + size_each_patch])[0])
+                self.cmd_patch(lun, start_sector, byte_offset + offset, pdata_subset, size_each_patch, False)
                 offset += size_each_patch
             return True
 
@@ -1384,11 +1379,11 @@ class firehose(metaclass=LogBase):
 
             if gpt_data_a and gpt_data_b:
                 entryoffset_a = poffset_a - ((guid_gpt_a.header.part_entry_start_lba - 2) * guid_gpt_a.sectorsize)
-                gpt_data_a[entryoffset_a : entryoffset_a + len(pdata_a)] = pdata_a
+                gpt_data_a[entryoffset_a: entryoffset_a + len(pdata_a)] = pdata_a
                 new_gpt_data_a = guid_gpt_a.fix_gpt_crc(gpt_data_a)
 
                 entryoffset_b = poffset_b - ((guid_gpt_b.header.part_entry_start_lba - 2) * guid_gpt_b.sectorsize)
-                gpt_data_b[entryoffset_b : entryoffset_b + len(pdata_b)] = pdata_b
+                gpt_data_b[entryoffset_b: entryoffset_b + len(pdata_b)] = pdata_b
                 new_gpt_data_b = guid_gpt_b.fix_gpt_crc(gpt_data_b)
 
                 start_sector_patch_a = poffset_a // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -1397,8 +1392,8 @@ class firehose(metaclass=LogBase):
 
                 if lun_a != lun_b:
                     start_sector_hdr_a = guid_gpt_a.header.current_lba
-                    headeroffset_a = guid_gpt_a.sectorsize # gptData: mbr + gpt header + part array
-                    new_hdr_a = new_gpt_data_a[headeroffset_a : headeroffset_a+guid_gpt_a.header.header_size]
+                    headeroffset_a = guid_gpt_a.sectorsize  # gptData: mbr + gpt header + part array
+                    new_hdr_a = new_gpt_data_a[headeroffset_a: headeroffset_a + guid_gpt_a.header.header_size]
                     cmd_patch_multiple(lun_a, start_sector_hdr_a, 0, new_hdr_a)
 
                 start_sector_patch_b = poffset_b // self.cfg.SECTOR_SIZE_IN_BYTES
@@ -1407,7 +1402,7 @@ class firehose(metaclass=LogBase):
 
                 start_sector_hdr_b = guid_gpt_b.header.current_lba
                 headeroffset_b = guid_gpt_b.sectorsize
-                new_hdr_b = new_gpt_data_b[headeroffset_b : headeroffset_b+guid_gpt_b.header.header_size]
+                new_hdr_b = new_gpt_data_b[headeroffset_b: headeroffset_b + guid_gpt_b.header.header_size]
                 cmd_patch_multiple(lun_b, start_sector_hdr_b, 0, new_hdr_b)
                 return True
             return False
@@ -1416,16 +1411,17 @@ class firehose(metaclass=LogBase):
             headeroffset = guid_gpt.sectorsize
             prim_corrupted, backup_corrupted = False, False
 
-            prim_hdr = gpt_data[headeroffset : headeroffset + guid_gpt.header.header_size]
-            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset : headeroffset + guid_gpt.header.header_size]
-            prim_hdr_crc, test_hdr_crc = prim_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
-            prim_part_table_crc, test_part_table_crc = prim_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
+            prim_hdr = gpt_data[headeroffset: headeroffset + guid_gpt.header.header_size]
+            test_hdr = guid_gpt.fix_gpt_crc(gpt_data)[headeroffset: headeroffset + guid_gpt.header.header_size]
+            prim_hdr_crc, test_hdr_crc = prim_hdr[0x10: 0x10 + 4], test_hdr[0x10: 0x10 + 4]
+            prim_part_table_crc, test_part_table_crc = prim_hdr[0x58: 0x58 + 4], test_hdr[0x58: 0x58 + 4]
             prim_corrupted = prim_hdr_crc != test_hdr_crc or prim_part_table_crc != test_part_table_crc
 
-            backup_hdr = backup_gpt_data[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
-            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[headeroffset : headeroffset + backup_guid_gpt.header.header_size]
-            backup_hdr_crc, test_hdr_crc = backup_hdr[0x10 : 0x10 + 4], test_hdr[0x10 : 0x10 + 4]
-            backup_part_table_crc, test_part_table_crc = backup_hdr[0x58 : 0x58 + 4], test_hdr[0x58 : 0x58 + 4]
+            backup_hdr = backup_gpt_data[headeroffset: headeroffset + backup_guid_gpt.header.header_size]
+            test_hdr = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)[
+                       headeroffset: headeroffset + backup_guid_gpt.header.header_size]
+            backup_hdr_crc, test_hdr_crc = backup_hdr[0x10: 0x10 + 4], test_hdr[0x10: 0x10 + 4]
+            backup_part_table_crc, test_part_table_crc = backup_hdr[0x58: 0x58 + 4], test_hdr[0x58: 0x58 + 4]
             backup_corrupted = backup_hdr_crc != test_hdr_crc or backup_part_table_crc != test_part_table_crc
 
             prim_backup_consistent = prim_part_table_crc == backup_part_table_crc
@@ -1433,10 +1429,10 @@ class firehose(metaclass=LogBase):
                 if backup_corrupted:
                     self.error("both are gpt headers are corrupted, cannot recover")
                     return False, None, None
-                gpt_data[2*guid_gpt.sectorsize:] = backup_gpt_data[2*backup_guid_gpt.sectorsize:]
+                gpt_data[2 * guid_gpt.sectorsize:] = backup_gpt_data[2 * backup_guid_gpt.sectorsize:]
                 gpt_data = guid_gpt.fix_gpt_crc(gpt_data)
             elif backup_corrupted or not prim_backup_consistent:
-                backup_gpt_data[2*backup_guid_gpt.sectorsize:] = gpt_data[2*guid_gpt.sectorsize:]
+                backup_gpt_data[2 * backup_guid_gpt.sectorsize:] = gpt_data[2 * guid_gpt.sectorsize:]
                 backup_gpt_data = backup_guid_gpt.fix_gpt_crc(backup_gpt_data)
             return True, gpt_data, backup_gpt_data
 
@@ -1456,7 +1452,7 @@ class firehose(metaclass=LogBase):
                 fpartitions[lunname] = []
                 check_gpt_hdr = False
                 gpt_data_a, guid_gpt_a = self.get_gpt(lun_a, int(0), int(0), int(0))
-                backup_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0 , 0, guid_gpt_a.header.backup_lba)
+                backup_gpt_data_a, backup_guid_gpt_a = self.get_gpt(lun_a, 0, 0, 0, guid_gpt_a.header.backup_lba)
                 if guid_gpt_a is None:
                     break
                 else:
@@ -1464,7 +1460,8 @@ class firehose(metaclass=LogBase):
                         slot = partitionname_a.lower()[-2:]
                         partition_a = backup_guid_gpt_a.partentries[partitionname_a]
                         if slot == "_a":
-                            active_a = ((partition_a.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+                            active_a = ((partition_a.flags >> (
+                                        AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
                             if (active_a and slot_a_status) or (not active_a and slot_b_status):
                                 return True
 
@@ -1483,14 +1480,22 @@ class firehose(metaclass=LogBase):
                                     self.error(f"Cannot find partition {partitionname_b}")
                                     return False
                                 _, lun_b, gpt_data_b, guid_gpt_b = resp
-                                backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0 , 0, guid_gpt_b.header.backup_lba)
+                                backup_gpt_data_b, backup_guid_gpt_b = self.get_gpt(lun_b, 0, 0, 0,
+                                                                                    guid_gpt_b.header.backup_lba)
 
-                            if not check_gpt_hdr and partitionname_a[:3] != "xbl": # xbl partition don't need check consistency
-                                sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a, backup_guid_gpt_a, gpt_data_a, backup_gpt_data_a)
+                            if not check_gpt_hdr and partitionname_a[
+                                                     :3] != "xbl":  # xbl partition don't need check consistency
+                                sts, gpt_data_a, backup_gpt_data_a = ensure_gpt_hdr_consistency(guid_gpt_a,
+                                                                                                backup_guid_gpt_a,
+                                                                                                gpt_data_a,
+                                                                                                backup_gpt_data_a)
                                 if not sts:
                                     return False
                                 if lun_a != lun_b:
-                                    sts, gpt_data_b, backup_gpt_data_b = ensure_gpt_hdr_consistency(guid_gpt_b, backup_guid_gpt_b, gpt_data_b, backup_gpt_data_b)
+                                    sts, gpt_data_b, backup_gpt_data_b = ensure_gpt_hdr_consistency(guid_gpt_b,
+                                                                                                    backup_guid_gpt_b,
+                                                                                                    gpt_data_b,
+                                                                                                    backup_gpt_data_b)
                                     if not sts:
                                         return False
                                 check_gpt_hdr = True
@@ -1513,12 +1518,10 @@ class firehose(metaclass=LogBase):
             return False
         return True
 
-
-
     def cmd_test(self, cmd):
         token = "1234"
         pk = "1234"
-        data = "<?xml version=\"1.0\" ?>\n<data>\n<" + cmd + " token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
+        data = f'<?xml version="1.0" ?>\n<data>\n<{cmd} token="{token}" pk="{pk}" />\n</data>'
         val = self.xmlsend(data)
         if val.resp:
             if b"raw hex token" in val[2]:
@@ -1528,7 +1531,7 @@ class firehose(metaclass=LogBase):
         return False
 
     def cmd_getstorageinfo_string(self):
-        data = "<?xml version=\"1.0\" ?><data><getstorageinfo /></data>"
+        data = '<?xml version="1.0" ?><data><getstorageinfo /></data>'
         val = self.xmlsend(data)
         if val.resp:
             self.info(f"GetStorageInfo:\n--------------------\n")
@@ -1670,8 +1673,12 @@ class firehose(metaclass=LogBase):
         if info:
             print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         while True:
-            tmp = self.cdc.read(timeout=None)
-            if b'<response' in tmp or b"ERROR" in tmp:
+            received_data = self.cdc.read(timeout=None)
+            tmp = received_data
+            while tmp[-7:] != b"</data>" and len(received_data) > 0:
+                received_data = self.cdc.read(timeout=None)
+                tmp += received_data
+            if b'<response' in tmp or b"ERROR" in tmp or len(received_data) == 0:
                 break
             rdata = self.xml.getlog(tmp)[0].replace("0x", "").replace(" ", "")
             tmp2 = b""
@@ -1693,7 +1700,9 @@ class firehose(metaclass=LogBase):
 
         if wf is not None:
             wf.close()
-            if b'<response' in tmp and b'ACK' in tmp:
+            if (b'<response' in tmp and b'ACK' in tmp) or len(received_data) == 0:
+                if len(received_data) == 0:
+                    self.info(f"Warning: {dataread} bytes received, but expecting {SizeInBytes}!")
                 if info:
                     self.info(f"Bytes from {hex(address)}, bytes read {hex(dataread)}, written to {filename}.")
                 return True

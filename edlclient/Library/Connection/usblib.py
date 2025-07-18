@@ -1,30 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import io
-import logging
-
-import usb.core  # pyusb
-import usb.util
-import time
-import inspect
 import array
-import usb.backend.libusb0
-from enum import Enum
+import inspect
+import logging
 from binascii import hexlify
 from ctypes import c_void_p, c_int
+from enum import Enum
+
+import usb.backend.libusb0
+import usb.core  # pyusb
+import usb.util
+
 try:
     from edlclient.Library.utils import *
 except:
     from Library.utils import *
 if not is_windows():
     import usb.backend.libusb1
-from struct import pack, calcsize
-import traceback
+from struct import pack
+
 try:
     from edlclient.Library.Connection.devicehandler import DeviceClass
 except:
@@ -211,7 +210,7 @@ class usb_class(DeviceClass):
     def flush(self):
         return
 
-    def connect(self, EP_IN=-1, EP_OUT=-1, portname:str=""):
+    def connect(self, EP_IN=-1, EP_OUT=-1, portname: str = ""):
         if self.connected:
             self.close()
             self.connected = False
@@ -245,6 +244,8 @@ class usb_class(DeviceClass):
                 self.device.set_configuration()
                 self.configuration = self.device.get_active_configuration()
             if e.errno == 13:
+                self.error("Permission denied accessing {:04x}:{:04x}.".format(self.vid,self.pid))
+                self.info("Potential fix (update udev rules): sudo echo 'SUBSYSTEM==\"usb\",ATTRS{{idVendor}}==\"{:04x}\",ATTRS{{idProduct}}==\"{:04x}\",MODE=\"0666\"' >> /etc/udev/rules.d/99-edl.rules".format(self.vid,self.pid))
                 self.backend = usb.backend.libusb0.get_backend()
                 self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid, backend=self.backend)
         if self.configuration is None:
@@ -338,7 +339,7 @@ class usb_class(DeviceClass):
 
     def write(self, command, pktsize=None):
         if pktsize is None:
-            #pktsize = self.EP_OUT.wMaxPacketSize
+            # pktsize = self.EP_OUT.wMaxPacketSize
             pktsize = MAX_USB_BULK_BUFFER_SIZE
         if isinstance(command, str):
             command = bytes(command, 'utf-8')
@@ -389,7 +390,7 @@ class usb_class(DeviceClass):
         extend = res.extend
         while len(res) < resplen:
             try:
-                resplen=epr(buffer,timeout)
+                resplen = epr(buffer, timeout)
                 extend(buffer[:resplen])
                 if resplen == self.EP_IN.wMaxPacketSize:
                     break

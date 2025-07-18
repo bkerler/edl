@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import sys
+import codecs
+import copy
+import datetime as dt
 import logging
 import logging.config
-import codecs
-import struct
 import os
 import shutil
 import stat
-import colorama
-import copy
-import datetime as dt
+import struct
+import sys
 import time
 from io import BytesIO
-from struct import unpack, pack
+from struct import unpack
+
+import colorama
 
 try:
     from capstone import *
@@ -29,10 +30,12 @@ try:
 except ImportError:
     print("Keystone library is missing (optional).")
 
+
 def is_windows():
     if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
         return True
     return False
+
 
 class structhelper_io:
     pos = 0
@@ -83,6 +86,7 @@ class structhelper_io:
     def seek(self, pos):
         self.data.seek(pos)
 
+
 def find_binary(data, strf, pos=0):
     t = strf.split(b".")
     pre = 0
@@ -113,6 +117,7 @@ def find_binary(data, strf, pos=0):
             pre += 1
     return None
 
+
 class progress:
     def __init__(self, pagesize):
         self.progtime = 0
@@ -124,7 +129,7 @@ class progress:
     def calcProcessTime(self, starttime, cur_iter, max_iter):
         telapsed = time.time() - starttime
         if telapsed > 0 and cur_iter > 0:
-            testimated = (telapsed / cur_iter) * (max_iter)
+            testimated = (telapsed / cur_iter) * max_iter
             finishtime = starttime + testimated
             finishtime = dt.datetime.fromtimestamp(finishtime).strftime("%H:%M:%S")  # in time
             lefttime = testimated - telapsed  # in seconds
@@ -151,7 +156,7 @@ class progress:
                                        total // self.pagesize,
                                        0), bar_length=10)
 
-        if prog > self.prog or prog==100.0:
+        if prog > self.prog or prog == 100.0:
             if display:
                 t0 = time.time()
                 tdiff = t0 - self.progtime
@@ -187,6 +192,7 @@ class progress:
                 self.prog = prog
                 self.progpos = pos
                 self.progtime = t0
+
 
 class structhelper:
     pos = 0
@@ -247,6 +253,7 @@ class structhelper:
 
     def seek(self, pos):
         self.pos = pos
+
 
 def do_tcp_server(client, arguments, handler):
     def tcpprint(arg):
@@ -575,7 +582,7 @@ class patchtools:
             badchars = self.has_bad_uart_chars(data)
             if not badchars:
                 badchars = self.has_bad_uart_chars(data2)
-                if not (badchars):
+                if not badchars:
                     return div
             div += 4
 
@@ -685,7 +692,7 @@ class patchtools:
                                 continue
                             rt += 1
                             prep = data[rt:].find(t[i])
-                            if (prep != 0):
+                            if prep != 0:
                                 error = 1
                                 break
                             rt += len(t[i])
@@ -699,7 +706,7 @@ class patchtools:
         return None
 
 
-def read_object(data: object, definition: object) -> object:
+def read_object(data: object, definition: object) -> dict:
     """
     Unpacks a structure using the given data and definition.
     """

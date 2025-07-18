@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import os
-import sys
 import argparse
-import colorama
 import copy
 import logging
 import logging.config
-from enum import Enum
-from binascii import hexlify
-from struct import calcsize, unpack, pack
-from io import BytesIO
+import os
+import sys
 from binascii import crc32
+from binascii import hexlify
+from enum import Enum
+from struct import calcsize, unpack, pack
+
+import colorama
+
 
 class ColorFormatter(logging.Formatter):
     LOG_COLORS = {
@@ -193,7 +194,6 @@ AB_SLOT_INACTIVE_VAL = 0x0
 AB_SLOT_ACTIVE = 1
 AB_SLOT_INACTIVE = 0
 
-
 PART_ATT_PRIORITY_BIT = 48
 PART_ATT_ACTIVE_BIT = 50
 PART_ATT_MAX_RETRY_CNT_BIT = 51
@@ -204,7 +204,7 @@ PART_ATT_UNBOOTABLE_BIT = 55
 PART_ATT_PRIORITY_VAL = 0x3 << PART_ATT_PRIORITY_BIT
 PART_ATT_ACTIVE_VAL = 0x1 << PART_ATT_ACTIVE_BIT
 PART_ATT_MAX_RETRY_COUNT_VAL = 0x7 << PART_ATT_MAX_RETRY_CNT_BIT
-PART_ATT_SUCCESSFUL_VAL  = 0x1 << PART_ATT_SUCCESS_BIT
+PART_ATT_SUCCESSFUL_VAL = 0x1 << PART_ATT_SUCCESS_BIT
 PART_ATT_UNBOOTABLE_VAL = 0x1 << PART_ATT_UNBOOTABLE_BIT
 
 
@@ -349,7 +349,6 @@ class gpt(metaclass=LogBase):
     def parseheader(self, gptdata, sectorsize=512):
         return self.gpt_header(gptdata[sectorsize:sectorsize + 0x5C])
 
-
     def parse(self, gptdata, sectorsize=512):
         self.header = self.gpt_header(gptdata[sectorsize:sectorsize + 0x5C])
         self.sectorsize = sectorsize
@@ -361,7 +360,7 @@ class gpt(metaclass=LogBase):
         if self.part_entry_start_lba != 0:
             start = self.part_entry_start_lba
         else:
-            start = 2 * sectorsize # mbr + header + part_table
+            start = 2 * sectorsize  # mbr + header + part_table
 
         entrysize = self.header.part_entry_size
         self.partentries = {}
@@ -403,7 +402,7 @@ class gpt(metaclass=LogBase):
             pa.name = partentry.name.replace(b"\x00\x00", b"").decode('utf-16')
             if pa.type == "EFI_UNUSED":
                 continue
-            self.partentries[pa.name]=pa
+            self.partentries[pa.name] = pa
         self.totalsectors = self.header.first_usable_lba + self.header.last_usable_lba
         return True
 
@@ -414,7 +413,8 @@ class gpt(metaclass=LogBase):
         mstr = "\nGPT Table:\n-------------\n"
         for partitionname in self.partentries:
             partition = self.partentries[partitionname]
-            active = ((partition.flags >> (AB_FLAG_OFFSET*8))&0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
+            active = ((partition.flags >> (
+                        AB_FLAG_OFFSET * 8)) & 0xFF) & AB_PARTITION_ATTR_SLOT_ACTIVE == AB_PARTITION_ATTR_SLOT_ACTIVE
             mstr += ("{:20} Offset 0x{:016x}, Length 0x{:016x}, Flags 0x{:016x}, UUID {}, Type {}, Active {}\n".format(
                 partition.name + ":", partition.sector * self.sectorsize, partition.sectors * self.sectorsize,
                 partition.flags, partition.unique, partition.type, active))
@@ -565,12 +565,12 @@ if __name__ == "__main__":
         with open(args.image, "rb") as rf:
             size = min(32 * 4096, filesize)
             data = bytearray(rf.read(size))
-            pdata, poffset = gp.patch(data,partitition, active=active)
+            pdata, poffset = gp.patch(data, partitition, active=active)
             data[poffset:poffset + len(pdata)] = pdata
             wdata = gp.fix_gpt_crc(data)
             if data is not None:
                 wfilename = args.image + ".patched"
-                with open(wfilename,"wb") as wf:
+                with open(wfilename, "wb") as wf:
                     wf.write(wdata)
                 print(f"Successfully wrote patched gpt to {wfilename}")
             else:

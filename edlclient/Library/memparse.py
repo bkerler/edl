@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 
-import os
-import pt64
-import pt
 import argparse
+
+import pt
+import pt64
 
 
 def pt64_walk(data, ttbr, tnsz, levels=3):
@@ -50,7 +50,7 @@ def pt32_walk(data, ttbr, skip):
         i += 1
         if i <= skip:
             continue
-        if type(fl) == pt.pt_desc:
+        if isinstance(fl, pt.pt_desc):
             print("")
             print("Second level (va = %08x)" % va)
             print("---------------------------------------------")

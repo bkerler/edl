@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2023 under GPLv3 license
+# (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
+import argparse
+import hashlib
 import time
-from Exscript.protocols.telnetlib import Telnet
+
+import requests
 import serial
 import serial.tools.list_ports
-import argparse
-import requests
-import hashlib
+from Exscript.protocols.telnetlib import Telnet
 
 try:
     from edlclient.Tools.qc_diag import qcdiag
@@ -38,12 +39,13 @@ import logging.config
 import logging.handlers
 import colorama
 
-
 itoa64 = bytearray(b"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+
+
 def _crypt_to64(s, v, n):
-    out=bytearray()
+    out = bytearray()
     while --n >= 0:
-        out.append(itoa64[v&0x3f])
+        out.append(itoa64[v & 0x3f])
         v >>= 6
 
 
@@ -191,7 +193,8 @@ class connection:
                         mode = "AT"
                         break
                     elif device.pid == 0x1403:
-                        print(f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in Web mode")
+                        print(
+                            f"Detected a {atvendortable[device.vid][0]} device with pid {hex(device.pid)} in Web mode")
                         mode = "Web"
                         self.ZTE_Web()
                         break
@@ -358,7 +361,7 @@ class adbtools(metaclass=LogBase):
             if cn.connected:
                 while True:
                     resp2 = cn.serial.read(8)
-                    if len(resp2)>0:
+                    if len(resp2) > 0:
                         break
                 cn.serial.write(mode)
                 response = cn.serial.read(8)
@@ -378,36 +381,33 @@ class adbtools(metaclass=LogBase):
             res = False
             if "vendor" in info:
                 if info["vendor"] == "Sierra Wireless" or info["vendor"] == "Netgear":
-                    res=self.SierraWireless(cn, info, enable)
+                    res = self.SierraWireless(cn, info, enable)
                 elif info["vendor"] == "Quectel":
                     print("Sending at switch command")
-                    res=self.Quectel(cn, enable)
+                    res = self.Quectel(cn, enable)
                 elif info["vendor"] == "ZTE":
                     print("Sending switch command via diag")
-                    res=self.ZTE(cn, enable)
+                    res = self.ZTE(cn, enable)
                 elif info["vendor"] == "Simcom":
-                    res=self.Simcom(cn)
+                    res = self.Simcom(cn, enable)
                 elif info["vendor"] == "Fibocom":
-                    res=self.Fibocom(cn, enable)
+                    res = self.Fibocom(cn, enable)
                 elif info["vendor"] == "Alcatel":
-                    res=self.Alcatel(enable)
+                    res = self.Alcatel(enable)
                 elif info["vendor"] == "Samsung":
-                    res=self.Samsung(cn, enable)
-            if enable:
-                mode="enabled"
-            else:
-                mode="disabled"
+                    res = self.Samsung(cn, enable)
+            mode = "enabled" if enable else "disabled"
             if res:
-                print("ADB successfully "+mode)
+                print("ADB successfully " + mode)
             else:
-                print("ADB couldn't be "+mode)
+                print("ADB couldn't be " + mode)
             cn.close()
         else:
             print("No device detected")
 
     def SierraWireless(self, cn, info, enable):
         print("Sending at switch command")
-        kg = SierraKeygen(cn=cn,devicegeneration=None)
+        kg = SierraKeygen(cn=cn, devicegeneration=None)
         kg.detectdevicegeneration()
         if kg.openlock():
             if enable:
@@ -428,25 +428,25 @@ class adbtools(metaclass=LogBase):
                             print("Successfully enabled PID 68E2")
                             return True
 
-            index=-1
-            type=-1
-            bitmask=-1
-            resp=cn.send("AT!USBCOMP?")
-            if resp!=-1:
+            index = -1
+            type = -1
+            bitmask = -1
+            resp = cn.send("AT!USBCOMP?")
+            if resp != -1:
                 print(resp)
                 for val in resp:
                     if "Config Index" in val:
-                        index=val[val.find("Config Index: ")+14:]
+                        index = val[val.find("Config Index: ") + 14:]
                     elif "Config Type" in val:
-                        type=val[val.find("Config Type: ")+14:].replace(" (Generic)","")
+                        type = val[val.find("Config Type: ") + 14:].replace(" (Generic)", "")
                     elif "Interface bitmask" in val:
-                        bitmask=val[val.find("Interface bitmask: ")+19:]
+                        bitmask = val[val.find("Interface bitmask: ") + 19:]
                         if " " in bitmask:
-                            bitmask="0x"+bitmask.split(" ")[0]
-                if index!=-1 and type!=-1 and bitmask!=1:
-                    index=int(index)
-                    type=int(type)
-                    bitmask=int(bitmask,16)
+                            bitmask = "0x" + bitmask.split(" ")[0]
+                if index != -1 and type != -1 and bitmask != 1:
+                    index = int(index)
+                    type = int(type)
+                    bitmask = int(bitmask, 16)
                     # AT!USBCOMP=<Config Index>,<Config Type>,<Interface bitmask>
                     #  <Config Index>      - configuration index to which the composition applies, should be 1
                     #  <Config Type>       - 1:Generic, 2:USBIF-MBIM, 3:RNDIS
@@ -465,13 +465,13 @@ class adbtools(metaclass=LogBase):
                     #                        ECM      - 0x00080000,
                     #                        UBIST    - 0x00200000
                     #if enable:
-                    cmd=f"AT!USBCOMP={index},{type},%08X" % 0x0080010E
+                    cmd = f"AT!USBCOMP={index},{type},%08X" % 0x0080010E
                     #else:
                     #    cmd = f"AT!USBCOMP={index},{type},%08X" % 0x0000010D
-                    resp=cn.send(cmd)
-                    if resp!=-1:
-                        resp=cn.send("AT!RESET")
-                        if resp!=-1:
+                    resp = cn.send(cmd)
+                    if resp != -1:
+                        resp = cn.send("AT!RESET")
+                        if resp != -1:
                             return True
                     return False
                 return True
@@ -600,7 +600,7 @@ def main():
     else:
         enable = False
     ad.run(port=args.port, enable=enable)
-    #ad.meta(port=args.port)
+    # ad.meta(port=args.port)
 
 
 if __name__ == "__main__":
