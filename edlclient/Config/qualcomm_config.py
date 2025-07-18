@@ -83,6 +83,7 @@ msmids = {
     0x90C0E1: "APQ8036",
     0x0500E1: "APQ8037",
     0x90D0E1: "APQ8039",  # Snapdragon 615
+    0x9620E1: "MSM8208",  # SDM205
     0x06B0E1: "MSM8940",
     0x9720E1: "MSM8952",  # SnapDragon 652
     0x0460E1: "MSM8953",  # Snapdragon 636
