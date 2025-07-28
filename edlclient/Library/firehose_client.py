@@ -180,10 +180,10 @@ class firehose_client(metaclass=LogBase):
         return True
 
     def get_storage_info(self):
-        storageinfo = self.firehose.cmd_getstorageinfo()
-        for info in storageinfo:
-            if "storage_info" in info:
-                rs = info.replace("INFO: ", "")
+        storageinfo, res = self.firehose.cmd_getstorageinfo()
+        if isinstance(storageinfo, str):
+            if "storage_info" in storageinfo:
+                rs = storageinfo.replace("INFO: ", "")
                 field = json.loads(rs)
                 if "storage_info" in field:
                     info = field["storage_info"]

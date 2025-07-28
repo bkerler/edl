@@ -310,6 +310,8 @@ class firehose(metaclass=LogBase):
                     error = ""
                     if b"<log value" in rdata:
                         error = self.xml.getlog(rdata)
+                        for line in error:
+                            self.error(line)
                     return response(resp=False, error=error, data=resp)
             except Exception as err:
                 self.debug(str(err))
@@ -704,6 +706,8 @@ class firehose(metaclass=LogBase):
 
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         rsp = self.xmlsend(data, self.skipresponse)
+        if "value" in rsp.data and rsp.data["value"] == "NAK":
+            return rsp
         self.cdc.xmlread = False
         resData = bytearray()
         if not rsp.resp:
@@ -1028,9 +1032,15 @@ class firehose(metaclass=LogBase):
                             "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
                         self.cfg.MemoryName = "eMMC"
                         return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
+            if not rsp.resp:
+                for line in rsp.error:
+                    if "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
                             or "different from device sector size (512)" in line:
                         self.cfg.SECTOR_SIZE_IN_BYTES = 512
+                        return self.configure(0)
+                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 2048" in line \
+                            or "different from device sector size (2048)" in line:
+                        self.cfg.SECTOR_SIZE_IN_BYTES = 2048
                         return self.configure(0)
                     elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
                             or "different from device sector size (4096)" in line:
@@ -1213,10 +1223,10 @@ class firehose(metaclass=LogBase):
         return self.supported_functions
 
     def parse_storage(self):
-        storageinfo = self.cmd_getstorageinfo()
-        if storageinfo is None or storageinfo.resp and len(storageinfo.data) == 0:
+        storageinfo, res = self.cmd_getstorageinfo()
+        if res is None or res.resp and len(res.data) == 0:
             return False
-        info = storageinfo.data
+        info = res.data
         if "UFS Inquiry Command Output" in info:
             self.cfg.prod_name = info["UFS Inquiry Command Output"]
             self.info(info)
@@ -1289,12 +1299,13 @@ class firehose(metaclass=LogBase):
                                 self.cfg.MemoryName = si["mem_type"]
                             if "prod_name" in si:
                                 self.cfg.prod_name = si["prod_name"]
+                            return value, response(resp=val.resp, data=res)
                         else:
                             v = value.split(":")
                             if len(v) > 1:
                                 res[v[0]] = v[1].lstrip(" ")
-                return response(resp=val.resp, data=res)
-            return response(resp=val.resp, data=val.data)
+                return None, response(resp=val.resp, data=res)
+            return None, response(resp=val.resp, data=val.data)
         else:
             if val.error:
                 for v in val.error:
@@ -1303,7 +1314,7 @@ class firehose(metaclass=LogBase):
                         self.configure(0)
                         return self.cmd_getstorageinfo()
             self.warning("GetStorageInfo command isn't supported.")
-            return None
+            return None, None
 
     def cmd_setactiveslot(self, slot: str):
         # flags: 0x3a for inactive and 0x6f for active boot partition
