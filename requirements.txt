@@ -4,7 +4,6 @@ pyserial>=3.4
 docopt>=0.6.2
 pycryptodome
 pycryptodomex
-lxml>=4.6.1
 colorama
 capstone
 keystone-engine

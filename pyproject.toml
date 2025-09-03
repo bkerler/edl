@@ -4,7 +4,6 @@ requires = [
     "wheel",
     "pyusb",
     "pyserial",
-    "lxml",
     "docopt",
     "pycryptodome",
     "colorama",
