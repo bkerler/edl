@@ -928,6 +928,7 @@ class firehose_client(metaclass=LogBase):
             else:
                 return self.firehose.modules.run(command=mcommand, args=moptions)
         elif cmd == "qfil":
+            success = True
             self.info("[qfil] raw programming...")
             rawprogram = options["<rawprogram>"].split(",")
             imagedir = options["<imagedir>"]
@@ -943,6 +944,7 @@ class firehose_client(metaclass=LogBase):
                                 filename = os.path.join(imagedir, elem.get("filename"))
                                 if not os.path.isfile(filename):
                                     self.error("%s doesn't exist!" % filename)
+                                    success = False
                                     continue
                                 partition_number = int(elem.get("physical_partition_number"))
                                 num_disk_sectors = self.firehose.getlunsize(partition_number)
@@ -959,6 +961,7 @@ class firehose_client(metaclass=LogBase):
                                 self.firehose.cmd_program(int(partition_number), int(start_sector), filename)
                 else:
                     self.warning(f"File : {filename} not found.")
+                    success = False
             self.info("[qfil] raw programming ok.")
 
             self.info("[qfil] patching...")
@@ -984,6 +987,7 @@ class firehose_client(metaclass=LogBase):
                             self.firehose.xmlsend(CMD)
                 else:
                     self.warning(f"File : {filename} not found.")
+                    success = False
             self.info("[qfil] patching ok")
 
             bootable = self.find_bootable_partition(imagedir, rawprogram)
@@ -993,6 +997,8 @@ class firehose_client(metaclass=LogBase):
                 else:
                     self.info(
                         "[qfil] set partition({partition}) as bootable failed\n".format(partition=bootable))
+                    success = False
+            return success
 
         else:
             self.error("Unknown/Missing command, a command is required.")
