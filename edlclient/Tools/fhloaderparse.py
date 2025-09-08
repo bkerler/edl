@@ -283,7 +283,7 @@ def is_duplicate(loaderdb, sign_info):
     return False
 
 
-def main(argv):
+def main(argv=sys.argv):
     file_list = []
     path = ""
     if len(argv) < 3:
@@ -497,4 +497,5 @@ def main(argv):
     rt.close()
 
 
-main(sys.argv)
+if __name__ == "__main__":
+    main(sys.argv)

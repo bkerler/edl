@@ -149,9 +149,6 @@ from edlclient.Library.utils import is_windows
 
 args = docopt(__doc__, version='3')
 
-print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2025.")
-
-
 class main(metaclass=LogBase):
     def __init__(self, args, imported: str = ''):
         self.serial = None
@@ -403,11 +400,14 @@ class main(metaclass=LogBase):
                 else:
                     return self.exit(1)
 
-
-if __name__ == '__main__':
+def run():
+    print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2025.")
     base = main(args, __name__)
     try:
         base.run()
     except KeyboardInterrupt:
         print("\n[!] Exiting cleanly…")
         sys.exit(0)
+
+if __name__ == '__main__':
+    run()

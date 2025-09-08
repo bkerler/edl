@@ -90,7 +90,7 @@ C7 = 7 0		0	2	7		5 0
 C6 = 3 1		7	0	3		0 1
 C5 = 0 2		5	3	0		3 2
 C8 = 1 3		3	1	5		7 3
-C4 = 5 4		1	4	1		1 4					
+C4 = 5 4		1	4	1		1 4
 '''
 prodtable = {
     "MDM8200": dict(openlock=0, openmep=1, opencnd=0, clen=8, init=[1, 3, 5, 7, 0],
@@ -584,7 +584,7 @@ class SierraKeygen(metaclass=LogBase):
         return False
 
 
-def main(args):
+def main(args=sys.argv):
     version = "1.5"
     info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2021'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=info)
