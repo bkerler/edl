@@ -771,7 +771,7 @@ class firehose(metaclass=LogBase):
             self.info("Scanning for partition table ...")
             progbar = progress(1)
             if self.nandpart.partitiontblsector is None:
-                for sector in [0x280,0x400]:
+                for sector in [0x280,0x400,0x800]:
                     progbar.show_progress(prefix="Scanning", pos=sector, total=1024, display=True)
                     resp = self.cmd_read_buffer(0, sector, 1, False)
                     if resp.resp:
