@@ -778,7 +778,7 @@ class firehose(metaclass=LogBase):
                         if resp.data[0:8] in [b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd", b"\xAA\x73\xEE\x55\xDB\xBD\x5E\xE3"]:
                             progbar.show_progress(prefix="Scanning", pos=1024, total=1024, display=True)
                             self.nandpart.partitiontblsector = sector
-                            if sector == 0x400:
+                            if sector == 0x400 or sector == 0x800:
                                 self.nandpart.largesector = True
                             self.info(f"Found partition table at sector {sector} :)")
                             break
