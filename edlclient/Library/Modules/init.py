@@ -58,7 +58,7 @@ class modules(metaclass=LogBase):
     @cached_property
     def generic(self):
         try:
-            return generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=self.__logger.loglevel)
+            return generic(fh=self.fh, serial=self.serial, args=self.args, loglevel=self.__logger.level)
         except Exception as e:
             self.error(e)
             return None
@@ -66,7 +66,7 @@ class modules(metaclass=LogBase):
     @cached_property
     def ops(self):
         try:
-            return oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial, loglevel=self.__logger.loglevel,
+            return oneplus(fh=self.fh, projid=self.devicemodel, serial=self.serial, loglevel=self.__logger.level,
                            supported_functions=self.supported_functions, args=self.args)
         except Exception as e:
             self.error(e)
