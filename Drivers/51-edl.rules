@@ -4,6 +4,7 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9008", TAG+="uacc
 
 # Sony EDL
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="9dde", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="ade3", TAG+="uaccess"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="ade5", TAG+="uaccess"
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0fce", ATTRS{idProduct}=="aded", TAG+="uaccess"
 
