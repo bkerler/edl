@@ -59,6 +59,7 @@ class firehose_client(metaclass=LogBase):
         self.cfg.SkipWrite = arguments["--skipwrite"]
         self.cfg.MaxPayloadSizeToTargetInBytes = getint(arguments["--maxpayload"])
         self.cfg.SECTOR_SIZE_IN_BYTES = getint(arguments["--sectorsize"])
+        self.cfg.PAGES_PER_BLOCK = getint(arguments["--pagesperblock"])
         self.cfg.bit64 = sahara.bit64
         devicemodel = ""
         skipresponse = False
