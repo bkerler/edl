@@ -11,9 +11,58 @@ Licensed under GPLv3 license.
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
 
-## QC Sahara V3 additional information for newer QC devices
-- For newer qc phones, loader autodetection doesn't work anymore as the sahara loader doesn't offer a way to read the pkhash anymore
-- Thus, for Sahara V3, you need to give a valid loader via --loader option !
+## QC Sahara V3 Support (Fixed in this fork)
+
+This fork fixes the issue where Sahara V3 protocol cannot read chip information (MSM_ID, OEM_ID, MODEL_ID) on newer Qualcomm devices.
+
+### Problem
+As mentioned in the original README:
+> For newer QC phones, loader autodetection doesn't work anymore as the Sahara loader doesn't offer a way to read the pkhash anymore
+
+**Root Cause**: Sahara V3 devices no longer respond to `cmd=0x03` (OEM_PK_HASH_READ) and `cmd=0x02` (MSM_HW_ID_READ).
+
+### Solution
+Use `cmd=0x0A` (CHIP_ID_V3_READ) to read extended chip information for V3 devices.
+
+#### V3 Extended Info Data Structure
+| Offset | Size | Description |
+|--------|------|-------------|
+| 0-3 | 4 bytes | Chip Identifier V3 |
+| 36-39 | 4 bytes | MSM_ID |
+| 40-41 | 2 bytes | OEM_ID |
+| 42-43 | 2 bytes | MODEL_ID |
+| 44-45 | 2 bytes | Alternative OEM_ID (if offset 40 is 0) |
+
+### Changes
+- Added `SAHARA_EXEC_CMD_READ_CHIP_ID_V3` (0x0A) command constant in `sahara_defs.py`
+- Added `cmdexec_get_chip_id_v3()` method to read and parse V3 extended info
+- Modified `cmd_info()` to use V3 extended info when version >= 3
+- **Try to read PK_HASH on V3 devices** (may still work on some devices)
+- Enabled loader autodetection for V3 devices via HWID/MSM_ID/PKHash matching
+- Construct V1/V2 compatible HWID format for loader database lookup
+- Improved V3 output format for better readability
+
+#### V3 Output Example
+```
+Reading Chip Info : OK
+- Sahara version  : 3
+- Chip Serial Number : 4971f38f
+- Chip Identifier V3 : 5a040000
+- MSM HWID : 0x28c0e1 | model_id:0xa012 | oem_id:0051 OPPO
+- OEM PKHASH : 3cceb55b6d88a0bea0e24d9641500fa239738b42575031188d3aaf92349b3b14
+- HW_ID : 0028c0e10051a012
+```
+
+### Testing
+- Tested on OnePlus/OPPO devices with SM8350, SM8450, SM8550
+- Tested on Xiaomi devices (various Snapdragon platforms)
+- Backward compatible with V1/V2 devices
+
+### Files Changed
+- `edlclient/Library/sahara_defs.py` - Added V3 command constant
+- `edlclient/Library/sahara.py` - Added V3 chip info reading and improved output format
+
+> **Note**: If autodetection still fails, you can use `--loader` option to specify a loader manually.
   
 ### Use LiveDVD (everything ready to go, based on Ubuntu):
 User: user, Password:user (based on Ubuntu 22.04 LTS)
