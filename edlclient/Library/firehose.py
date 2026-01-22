@@ -1520,12 +1520,13 @@ class firehose(metaclass=LogBase):
                                             slot_a_status, slot_b_status,
                                             lun_a, lun_b)
 
-                            # TODO: this updates the backup gpt header, but is it needed, since it is updated when xbl loads
-                            #update_gpt_info(backup_guid_gpt_a, backup_guid_gpt_b,
-                            #                partitionname_a, partitionname_b,
-                            #                backup_gpt_data_a, backup_gpt_data_b,
-                            #                slot_a_status, slot_b_status,
-                            #                lun_a, lun_b)
+                            # update the backup gpt header as well, depending on the xbl implementation in case of
+                            # discording GPTs the backup may be used, thus negating the switch
+                            update_gpt_info(backup_guid_gpt_a, backup_guid_gpt_b,
+                                            partitionname_a, partitionname_b,
+                                            backup_gpt_data_a, backup_gpt_data_b,
+                                            slot_a_status, slot_b_status,
+                                            lun_a, lun_b)
 
         except Exception as err:
             self.error(str(err))
