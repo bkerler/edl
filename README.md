@@ -34,6 +34,18 @@ We use `cmd=0x0A` (CHIP_ID_V3_READ) to read extended chip information for V3 dev
 - Modified `cmd_info()` to use V3 extended info when version >= 3
 - **Try to read PK_HASH on V3 devices** (may still work on some devices)
 - Enabled loader autodetection for V3 devices by HWID/MSM_ID/PKHash matching
+- Improved V3 output format for better readability
+
+#### V3 Output Example
+```
+Reading Chip Info : OK
+- Sahara version  : 3
+- Chip Serial Number : 4971f38f
+- Chip Identifier V3 : 5a040000
+- MSM HWID : 0x28c0e1 | model_id:0xa012 | oem_id:0051 OPPO
+- OEM PKHASH : 3cceb55b6d88a0bea0e24d9641500fa239738b42575031188d3aaf92349b3b14
+- HW_ID : 0028c0e10051a012
+```
 
 #### Tested Devices
 - OnePlus/OPPO devices (SM8350, SM8450, SM8550)
