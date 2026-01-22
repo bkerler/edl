@@ -199,6 +199,44 @@ class sahara(metaclass=LogBase):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
         return int.from_bytes(res, 'little')
 
+    def cmdexec_get_chip_id_v3(self):
+        """
+        Read extended chip info for Sahara V3 devices.
+        V3 devices don't respond to cmd=0x02 (MSM_HW_ID_READ),
+        but support cmd=0x0A (CHIP_ID_V3_READ).
+        
+        V3 Extended Info structure:
+        - Offset 0-3:   Chip Identifier V3
+        - Offset 36-39: MSM_ID (4 bytes)
+        - Offset 40-41: OEM_ID (2 bytes)
+        - Offset 42-43: MODEL_ID (2 bytes)
+        - Offset 44-45: Alternative OEM_ID (if offset 40 is 0)
+        """
+        try:
+            res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_READ_CHIP_ID_V3)
+            if res is None or len(res) < 44:
+                return None
+            
+            from struct import unpack
+            msm_id = unpack('<I', res[36:40])[0]
+            oem_id = unpack('<H', res[40:42])[0]
+            model_id = unpack('<H', res[42:44])[0]
+            
+            # Check alternative OEM_ID location (offset 44)
+            if oem_id == 0 and len(res) >= 46:
+                alt_oem_id = unpack('<H', res[44:46])[0]
+                if 0 < alt_oem_id < 0x1000:
+                    oem_id = alt_oem_id
+            
+            return {
+                'msm_id': msm_id,
+                'oem_id': oem_id,
+                'model_id': model_id
+            }
+        except Exception as e:
+            self.debug(f"V3 chip ID read failed: {e}")
+            return None
+
     def cmdexec_switch_to_dmss_dload(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SWITCH_TO_DMSS_DLOAD)
         return res
@@ -308,11 +346,57 @@ class sahara(metaclass=LogBase):
                         self.error(f"Couldn't find a suitable loader :(")
                         return False
             else:
-                self.info(f"\nVersion {hex(version)}\n------------------------\n" +
-                          f"Serial:            0x{self.serials}\n")
+                # V3: Use cmd=0x0A to read extended chip info
+                v3_info = self.cmdexec_get_chip_id_v3()
+                if v3_info is not None:
+                    self.msm_id = v3_info['msm_id']
+                    self.oem_id = v3_info['oem_id']
+                    self.model_id = v3_info['model_id']
+                    self.msm_str = "{:08x}".format(self.msm_id)
+                    self.oem_str = "{:04x}".format(self.oem_id)
+                    model_str = "{:04x}".format(self.model_id)
+                    # Construct HWID (compatible with V1/V2 format)
+                    self.hwidstr = "00{:06x}{:04x}{:04x}".format(self.msm_id, self.oem_id, self.model_id)
+                    self.hwid = int(self.hwidstr, 16)
+                    self.model_id = model_str
+                    
+                    if self.msm_id in msmids:
+                        cpustr = f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
+                    else:
+                        cpustr = "Unknown CPU, please send log as issue to https://github.com/bkerler/edl\n"
+                    
+                    self.info(f"\nVersion {hex(version)} (V3 Extended Info)\n------------------------\n" +
+                              f"HWID:              0x{self.hwidstr} (MSM_ID:0x{self.msm_str}," +
+                              f"OEM_ID:0x{self.oem_str}," +
+                              f"MODEL_ID:0x{self.model_id})\n" +
+                              cpustr +
+                              f"Serial:            0x{self.serials}\n")
+                    
+                    # Try to find loader using V3 info
+                    if self.programmer == "":
+                        if self.hwidstr in self.loaderdb:
+                            mt = self.loaderdb[self.hwidstr]
+                            for loader in mt:
+                                self.programmer = mt[loader]
+                                self.info(f"Found loader: {self.programmer}")
+                                break
+                        else:
+                            # Try matching by MSM ID only
+                            msmid = self.hwidstr[:8]
+                            for hwidstr in self.loaderdb:
+                                if msmid == hwidstr[:8]:
+                                    for loader in self.loaderdb[hwidstr]:
+                                        self.programmer = self.loaderdb[hwidstr][loader]
+                                        self.info(f"Found possible loader by MSM_ID: {self.programmer}")
+                                        break
+                                    if self.programmer:
+                                        break
+                else:
+                    self.info(f"\nVersion {hex(version)}\n------------------------\n" +
+                              f"Serial:            0x{self.serials}\n")
+                
                 if self.programmer == "":
-                    self.error("No autodetection of loader possible with sahara version 3 and above :( Aborting.")
-                    return False
+                    self.warning("No autodetection of loader possible with sahara version 3, please use --loader option.")
             self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
             return True
 
