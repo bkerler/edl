@@ -32,7 +32,8 @@ We use `cmd=0x0A` (CHIP_ID_V3_READ) to read extended chip information for V3 dev
 - Added `SAHARA_EXEC_CMD_READ_CHIP_ID_V3` (0x0A) command
 - Added `cmdexec_get_chip_id_v3()` method to read and parse V3 extended info
 - Modified `cmd_info()` to use V3 extended info when version >= 3
-- Enabled loader autodetection for V3 devices by HWID/MSM_ID matching
+- **Try to read PK_HASH on V3 devices** (may still work on some devices)
+- Enabled loader autodetection for V3 devices by HWID/MSM_ID/PKHash matching
 
 #### Tested Devices
 - OnePlus/OPPO devices (SM8350, SM8450, SM8550)
