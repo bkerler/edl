@@ -11,9 +11,35 @@ Licensed under GPLv3 license.
 - Because attacking firehose is kewl
 - Because memory dumping helps to find issues :)
 
-## QC Sahara V3 additional information for newer QC devices
-- For newer qc phones, loader autodetection doesn't work anymore as the sahara loader doesn't offer a way to read the pkhash anymore
-- Thus, for Sahara V3, you need to give a valid loader via --loader option !
+## QC Sahara V3 Support (Fixed in this fork)
+
+This fork includes a fix for Sahara V3 protocol chip info reading. The original issue was:
+> For newer qc phones, loader autodetection doesn't work anymore as the sahara loader doesn't offer a way to read the pkhash anymore
+
+### Solution
+We use `cmd=0x0A` (CHIP_ID_V3_READ) to read extended chip information for V3 devices.
+
+#### V3 Extended Info Data Structure
+| Offset | Size | Description |
+|--------|------|-------------|
+| 0-3 | 4 bytes | Chip Identifier V3 |
+| 36-39 | 4 bytes | MSM_ID |
+| 40-41 | 2 bytes | OEM_ID |
+| 42-43 | 2 bytes | MODEL_ID |
+| 44-45 | 2 bytes | Alternative OEM_ID (if offset 40 is 0) |
+
+#### What's Fixed
+- Added `SAHARA_EXEC_CMD_READ_CHIP_ID_V3` (0x0A) command
+- Added `cmdexec_get_chip_id_v3()` method to read and parse V3 extended info
+- Modified `cmd_info()` to use V3 extended info when version >= 3
+- Enabled loader autodetection for V3 devices by HWID/MSM_ID matching
+
+#### Tested Devices
+- OnePlus/OPPO devices (SM8350, SM8450, SM8550)
+- Xiaomi devices (various Snapdragon platforms)
+- Other V3 devices
+
+> **Note**: If autodetection still fails, you can use `--loader` option to specify a loader manually.
   
 ### Use LiveDVD (everything ready to go, based on Ubuntu):
 User: user, Password:user (based on Ubuntu 22.04 LTS)
