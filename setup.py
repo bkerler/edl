@@ -7,7 +7,17 @@ setup(
     version='3.62',
     packages=find_packages(),
     long_description=open("README.md").read(),
-    scripts=['edl','edlclient/Tools/qc_diag.py','edlclient/Tools/sierrakeygen.py','edlclient/Tools/boottodwnload','edlclient/Tools/enableadb','edlclient/Tools/fhloaderparse','edlclient/Tools/beagle_to_loader'],
+    entry_points={
+        'console_scripts': [
+            'edl=edlclient.edl:run',
+            'qc_diag=edlclient.Tools.qc_diag:main',
+            'sierrakeygen=edlclient.Tools.sierrakeygen:main',
+            'boottodwnload=edlclient.Tools.boottodwnload:main',
+            'enableadb=edlclient.Tools.enableadb:main',
+            'fhloaderparse=edlclient.Tools.fhloaderparse:main',
+            'beagle_to_loader=edlclient.Tools.beagle_to_loader:main',
+        ],
+    },
     data_files = ['LICENSE','README.md'],
     long_description_content_type="text/markdown",
     url='https://github.com/bkerler/edl',
