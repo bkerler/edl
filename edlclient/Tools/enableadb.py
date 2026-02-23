@@ -6,6 +6,7 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import argparse
+import copy
 import hashlib
 import time
 import os

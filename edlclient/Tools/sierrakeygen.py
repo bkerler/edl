@@ -90,7 +90,7 @@ C7 = 7 0		0	2	7		5 0
 C6 = 3 1		7	0	3		0 1
 C5 = 0 2		5	3	0		3 2
 C8 = 1 3		3	1	5		7 3
-C4 = 5 4		1	4	1		1 4					
+C4 = 5 4		1	4	1		1 4
 '''
 prodtable = {
     "MDM8200": dict(openlock=0, openmep=1, opencnd=0, clen=8, init=[1, 3, 5, 7, 0],
@@ -234,7 +234,7 @@ class SierraGenerator:
         challenge = bytearray(unhexlify(challenge))
 
         self.devicegeneration = devicegeneration
-        if not devicegeneration in prodtable:
+        if devicegeneration not in prodtable:
             print("Sorry, " + devicegeneration + " not supported.")
             exit(0)
 
@@ -350,9 +350,10 @@ class SierraGenerator:
         self.tbl[uVar5] = self.tbl[uVar3]
         self.tbl[uVar3] = bVar1
         self.rtbl[ret] = challenge  # c
-        self.rtbl[ret2] = self.tbl[self.tbl[(self.tbl[(self.rtbl[e] + self.tbl[bVar1]) & 0xFF] + (
-                self.tbl[uVar5] & 0xFF) + (self.tbl[uVar2] & 0xFF) & 0xff) & 0xFF] & 0xFF] ^ self.tbl[
-                              ((self.tbl[uVar4] & 0xFF) + (bVar1 & 0xff)) & 0xFF] ^ challenge  # a
+        self.rtbl[ret2] = (self.tbl[self.tbl[(self.tbl[(self.rtbl[e] + self.tbl[bVar1]) & 0xFF] +
+                                              (self.tbl[uVar5] & 0xFF) + (self.tbl[uVar2] & 0xFF) & 0xff) & 0xFF] &
+                                    0xFF] ^
+                           self.tbl[((self.tbl[uVar4] & 0xFF) + (bVar1 & 0xff)) & 0xFF] ^ challenge)
         self.rtbl[e] = (self.rtbl[e] + self.tbl[bVar1]) & 0xFF
         return self.rtbl[ret2] & 0xFF  # a
 
@@ -369,9 +370,8 @@ class SierraGenerator:
         self.tbl[(v4 & 0xFF)] = self.tbl[(v5 & 0xFF)]
         self.tbl[(v5 & 0xFF)] = self.tbl[(v0 & 0xFF)]
         self.tbl[v0] = v1 & 0xFF
-        u = self.tbl[(self.tbl[(
-                self.tbl[((self.rtbl[a] + self.tbl[(v1 & 0xFF)]) & 0xFF)] + self.tbl[(v5 & 0xFF)] + self.tbl[
-            (v2 & 0xFF)] & 0xff)] & 0xFF)]
+        u = self.tbl[(self.tbl[(self.tbl[((self.rtbl[a] + self.tbl[(v1 & 0xFF)]) & 0xFF)] +
+                                self.tbl[(v5 & 0xFF)] + self.tbl[(v2 & 0xFF)] & 0xff)] & 0xFF)]
         v = self.tbl[((self.tbl[(v4 & 0xFF)] + v1) & 0xFF)]
         self.rtbl[ret] = u ^ v ^ challenge
         self.rtbl[a] = (self.tbl[(v1 & 0xFF)] + self.rtbl[a]) & 0xFF
@@ -493,6 +493,7 @@ class SierraKeygen(metaclass=LogBase):
                         revision = line.split(":")[1].strip()
                     if "Model" in line:
                         _model = line.split(":")[1].strip()
+                        print("Model: " + _model)
                 if revision != "":
                     if "9200" in revision:
                         devicegeneration = "MDM9200"  # AC762S NTG9200H2_03.05.14.12ap

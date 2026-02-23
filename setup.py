@@ -39,7 +39,6 @@ setup(
     'lxml',
     'pylzma',
     'pycryptodome',
-    'wheel',
     'Exscript',
     'requests',
     'passlib'

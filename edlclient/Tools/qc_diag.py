@@ -9,12 +9,14 @@ import inspect
 import argparse
 import json
 import logging
+import os
+import sys
 from xml.etree import ElementTree
 from enum import Enum
 
 from struct import unpack, pack
 from binascii import hexlify, unhexlify
-import os, sys
+
 
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
@@ -25,7 +27,7 @@ try:
     from Library.Connection.seriallib import serial_class
     from Library.hdlc import hdlc
     from Config.usb_ids import default_diag_vid_pid
-except:
+except Exception:
     from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
     from edlclient.Library.Connection.usblib import usb_class
     from edlclient.Library.Connection.seriallib import serial_class
@@ -339,13 +341,12 @@ class qcdiag(metaclass=LogBase):
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
-        import os, inspect
         current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
         try:
             parent_dir = os.path.dirname(os.path.dirname(current_dir))
             nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
             e = ElementTree.parse(nvxml).getroot()
-        except:
+        except Exception:
             current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
             nvxml = os.path.join(current_dir, "edlclient", "Config", "nvitems.xml")
             e = ElementTree.parse(nvxml).getroot()
@@ -402,6 +403,7 @@ class qcdiag(metaclass=LogBase):
         if self.cdc.connect(self.ep_in, self.ep_out, self.portname):
             self.hdlc = hdlc(self.cdc)
             data = self.hdlc.receive_reply(timeout=0)
+            _ = data
             return True
         return False
 
@@ -436,7 +438,7 @@ class qcdiag(metaclass=LogBase):
         self.disconnect()
 
     def send_sp(self, sp="FFFFFFFFFFFFFFFFFFFE"):
-        if type(sp) == str:
+        if isinstance(sp, str):
             sp = unhexlify(sp)
         else:
             sp = bytes(sp)
@@ -456,7 +458,7 @@ class qcdiag(metaclass=LogBase):
         return res
 
     def send_spc(self, spc="303030303030"):
-        if type(spc) == str:
+        if isinstance(spc, str):
             spc = unhexlify(spc)
         else:
             spc = bytes(spc)
@@ -1157,31 +1159,31 @@ class DiagTools(metaclass=LogBase):
         self.pid = None
         try:
             self.serial = args.serial
-        except:
+        except Exception:
             self.serial = False
         try:
             self.portname = args.portname
-        except:
+        except Exception:
             self.portname = ""
 
         if self.portname is not None and self.portname != "":
             self.serial = True
         try:
             self.vid = int(args.vid, 16)
-        except:
+        except Exception:
             pass
         try:
             self.pid = int(args.pid, 16)
-        except:
+        except Exception:
             pass
         try:
             self.interface = int(args.interface, 16)
-        except:
+        except Exception:
             pass
 
         try:
             self.debugmode = args.debugmode
-        except:
+        except Exception:
             self.debugmode = False
 
         if self.vid is not None:

@@ -21,7 +21,7 @@ sys.path.insert(0, current_dir)
 
 try:
     from edlclient.Tools.qc_diag import qcdiag
-except ImportError as e:
+except ImportError:
     script_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     sys.path.insert(0, script_path)
     try:
@@ -32,7 +32,10 @@ except ImportError as e:
 try:
     from edlclient.Library.utils import LogBase
 except ImportError as e:
-    from Library.utils import LogBase
+    try:
+        from Library.utils import LogBase
+    except ImportError as e:
+        print("ImportError: %s" % e)
 
 
 class vendor(Enum):
@@ -63,7 +66,7 @@ class connection(metaclass=LogBase):
                 try:
                     self.tn = Telnet("192.168.1.1", 5510)
                     self.connected = True
-                except:
+                except Exception:
                     self.connected = False
         if port != "":
             self.serial = serial.Serial(port=port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1)
@@ -85,7 +88,7 @@ class connection(metaclass=LogBase):
         r = requests.get(url, headers=headers)
         if b"FACTORY:ok" in r.content or b"success" in r.content:
             print(
-                f"Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
+                "Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
             return self.waitforusb(vendor.zte.value, 0x0016)
         return False
 
@@ -128,6 +131,7 @@ class connection(metaclass=LogBase):
                     diag = qcdiag(loglevel=self.__logger.level, portconfig=[[0x413c, 0x81d7, interface]])
                     if diag.connect():
                         data = diag.hdlc.receive_reply()
+                        _ = data
                         res = diag.send(b"\x4b\x65\x01\x00")
                         if res[0] == 0x4B:
                             print("Sending download mode succeeded")

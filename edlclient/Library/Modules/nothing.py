@@ -17,8 +17,10 @@ class nothing(metaclass=LogBase):
                  loglevel=logging.INFO):
         self.fh = fh
         self.projid = projid
-        # self.projid == "22111":
-        self.hashverify = "16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150"
+        if self.projid == "22111":
+            self.hashverify = "16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150"
+        else:
+            self.hashverify = "16386b4035411a770b12507b2e30297c0c5471230b213e6a1e1e701c6a425150"
         self.serial = serial
         self.supported_functions = supported_functions
         self.__logger.setLevel(loglevel)
@@ -29,7 +31,7 @@ class nothing(metaclass=LogBase):
 
     def generatetoken(self, token1: str = None):
         if token1 is None:
-            token1 = random.randbytes(32).hex()
+           token1 = random.randbytes(32).hex()
         authresp = token1 + self.projid + ("%x" % self.serial) + self.hashverify
         token2 = hashlib.sha256(bytes(authresp, 'utf-8')).hexdigest()[:64]
         token3 = self.hashverify

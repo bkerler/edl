@@ -105,7 +105,7 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
             if mem_section[signatureoffset] != 0x30:
                 print("Error on " + sign_info.filename + ", unknown signaturelength")
                 return None
-        except:
+        except Exception:
             return None
         if len(mem_section) < signatureoffset + 4:
             print("Signature error on " + sign_info.filename)
@@ -131,7 +131,7 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
             try:
                 text = mem_section[idx + 4:idx + 4 + length].decode().split(' ')
                 signature[text[2]] = text[1]
-            except:
+            except Exception:
                 text = ""
             idx += 1
         idx = mem_section.find('QC_IMAGE_VERSION_STRING='.encode(), 0)
@@ -162,7 +162,7 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
             sign_info.pk_hash = hashlib.sha384(
                 rootsignature3).hexdigest()
 
-    except:
+    except Exception:
         return None
     return sign_info
 
@@ -197,7 +197,7 @@ def extract_old_hdr(signatureoffset, sign_info, mem_section, code_size, signatur
             try:
                 text = mem_section[idx + 4:idx + 4 + length].decode().split(' ')
                 signature[text[2]] = text[1]
-            except:
+            except Exception:
                 text = ""
             idx += 1
         idx = mem_section.find('QC_IMAGE_VERSION_STRING='.encode(), 0)
@@ -260,7 +260,7 @@ def init_loader_db():
                         loaderdb[mhwid][pkhash] = file_name
                     else:
                         loaderdb[mhwid][pkhash].append(file_name)
-            except:
+            except Exception:
                 continue
     return loaderdb
 
@@ -453,21 +453,26 @@ def main(argv):
                                     auth = "_EDLAuth"
                                 if b"peek\x00" in data:
                                     auth += "_peek"
-                            fna = os.path.join(outputdir, (
-                                    hwid + "_" + loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower())
+                            fna = os.path.join(outputdir,
+                                               (hwid + "_" +
+                                                loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower())
                             if not os.path.exists(fna):
                                 copyfile(item.filename,
-                                         os.path.join(outputdir, hwid + "_" + (
-                                                 loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower()))
+                                         os.path.join(outputdir,
+                                                      hwid + "_" +
+                                                      (loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower()))
                             elif item.filesize > os.stat(fna).st_size:
-                                copyfile(item.filename, os.path.join(outputdir,
-                                                                     (hwid + "_" + loader_info.pk_hash[
-                                                                                   0:16] + "_FHPRG" + auth + ".bin").lower()))
+                                copyfile(item.filename, os.path.join(outputdir, (hwid +
+                                                                                 "_" +
+                                                                                 loader_info.pk_hash[0:16] +
+                                                                                 "_FHPRG" + auth + ".bin").lower()))
                     else:
                         print("Duplicate: " + info)
                         copyfile(item.filename, os.path.join(outputdir, "Duplicate",
-                                                             (loader_info.hw_id + "_" + loader_info.pk_hash[
-                                                                                        0:16] + "_FHPRG.bin").lower()))
+                                                             (loader_info.hw_id +
+                                                              "_" +
+                                                              loader_info.pk_hash[0:16] +
+                                                              "_FHPRG.bin").lower()))
                 else:
                     copyfile(item.filename, os.path.join(outputdir, "Unknown", os.path.basename(item.filename).lower()))
             else:
@@ -477,7 +482,7 @@ def main(argv):
                 print(item.filename + f" is duplicate of {hashes[item.hash]}. Skipping")
             try:
                 rt.write(info + "\n")
-            except:
+            except Exception:
                 continue
         else:
             print("Unknown :" + item.filename)
