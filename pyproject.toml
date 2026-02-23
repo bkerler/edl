@@ -1,15 +1,51 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
+[ build-system ]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[ project ]
+name = "edlclient"
+version = "3.62"
+description = "Qualcomm reverse engineering and flashing tools"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+authors = [
+    {name = "B. Kerler", email = "info@revskills.de"}
+]
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "colorama",
+    "docopt",
+    "usb",
     "pyusb",
     "pyserial",
     "lxml",
-    "docopt",
+    "pylzma",
     "pycryptodome",
-    "colorama",
     "Exscript",
     "requests",
-    "passlib"
+    "passlib",
 ]
-build-backend = "setuptools.build_meta"
+
+[ project.urls ]
+Homepage = "https://github.com/bkerler/edl"
+"Bug Tracker" = "https://github.com/bkerler/edl/issues"
+
+[ project.scripts ]
+edl = "edlclient.edl:run"
+qc_diag = "edlclient.Tools.qc_diag:main"
+sierrakeygen = "edlclient.Tools.sierrakeygen:main"
+boottodwnload = "edlclient.Tools.boottodwnload:main"
+enableadb = "edlclient.Tools.enableadb:main"
+fhloaderparse = "edlclient.Tools.fhloaderparse:main"
+beagle_to_loader = "edlclient.Tools.beagle_to_loader:main"
+
+[ tool.setuptools ]
+include-package-data = true
+zip-safe = false
+
+[ tool.setuptools.packages.find ]
