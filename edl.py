@@ -405,10 +405,15 @@ class main(metaclass=LogBase):
                     return self.exit(1)
 
 
-if __name__ == '__main__':
+def run():
+    """Script entry point."""
     base = main(args, __name__)
     try:
         base.run()
     except KeyboardInterrupt:
         print("\n[!] Exiting cleanly…")
         sys.exit(0)
+
+
+if __name__ == '__main__':
+    run()
