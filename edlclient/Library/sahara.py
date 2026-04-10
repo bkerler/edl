@@ -20,6 +20,7 @@ from edlclient.Config.qualcomm_config import msmids, root_cert_hash
 from edlclient.Library.loader_db import loader_utils
 from edlclient.Library.sahara_defs import ErrorDesc, cmd_t, exec_cmd_t, sahara_mode_t, status_t, \
     CommandHandler
+from edlclient.Library.xmlparser import xmlparser
 
 
 class sahara(metaclass=LogBase):
@@ -49,6 +50,7 @@ class sahara(metaclass=LogBase):
         self.bit64 = False
         self.pktsize = None
         self.ch = CommandHandler()
+        self.xml = xmlparser()
         self.loader_handler = loader_utils(loglevel=loglevel)
         self.loaderdb = self.loader_handler.init_loader_db()
 
@@ -631,83 +633,115 @@ class sahara(metaclass=LogBase):
     def upload_loader(self, version):
         if self.programmer == "":
             return ""
-        try:
-            self.info(f"Uploading loader {self.programmer} ...")
-            with open(self.programmer, "rb") as rf:
-                programmer = rf.read()
-        except Exception as e:  # pylint: disable=broad-except
-            self.error(str(e))
-            sys.exit()
+
+        is_xml_config = self.programmer.lower().endswith(".xml")
+        mappings = {}
+        
+        if is_xml_config:
+            self.info(f"Parsing Sahara XML config: {self.programmer}")
+            # call xmlparser.py to parse the qsahara_device_programmer.xml
+            mappings = self.xml.parse_sahara_config(self.programmer)
+            if not mappings:
+                self.error("Failed to parse programmer.xml or no images found.")
+                return ""
+        else:
+            try:
+                self.info(f"Uploading loader {self.programmer} ...")  # pylint: disable=broad-except
+                with open(self.programmer, "rb") as rf:
+                    single_programmer_data = rf.read()
+            except Exception as e:  # pylint: disable=broad-except
+                self.error(str(e))
+                sys.exit()
 
         if not self.cmd_hello(sahara_mode_t.SAHARA_MODE_IMAGE_TX_PENDING, version=version):
             return ""
 
         try:
-            datalen = len(programmer)
-            done = False
             loop = 0
-            while datalen >= 0 or done:
+            while True:
                 resp = self.get_rsp()
-                if "cmd" in resp:
-                    cmd = resp["cmd"]
-                else:
-                    cmd = None
-                if cmd == cmd_t.SAHARA_DONE_REQ:
-                    if self.cmd_done():
-                        return self.mode  # Do NOT remove
-                    else:
-                        self.error("Timeout while uploading loader. Wrong loader ?")
-                        return ""
-                elif cmd in [cmd_t.SAHARA_64BIT_MEMORY_READ_DATA, cmd_t.SAHARA_READ_DATA]:
+                if not resp: continue
+                
+                if "firehose" in resp: return "firehose"
+                
+                cmd = resp.get("cmd")
+
+                # handle multiple hello requests (some devices do this for multiple stages of loading)
+                if is_xml_config and cmd == cmd_t.SAHARA_HELLO_REQ:
+                    self.info("Device requested re-handshake (Next stage).")
+                    self.cmd_hello(sahara_mode_t.SAHARA_MODE_IMAGE_TX_PENDING, version=version)
+                    continue
+
+                if cmd in [cmd_t.SAHARA_64BIT_MEMORY_READ_DATA, cmd_t.SAHARA_READ_DATA]:
                     if cmd == cmd_t.SAHARA_64BIT_MEMORY_READ_DATA:
                         self.bit64 = True
-                        if loop == 0:
-                            self.info("64-Bit mode detected.")
-                    elif cmd == cmd_t.SAHARA_READ_DATA:
-                        self.bit64 = False
-                        if loop == 0:
-                            self.info("32-Bit mode detected.")
-                    pkt = resp["data"]
-                    self.id = pkt.image_id
-                    if self.id == 0x7:
-                        self.mode = "nandprg"
-                        if loop == 0:
-                            self.info("NAND mode detected, uploading...")
-                    elif self.id == 0xB:
-                        self.mode = "enandprg"
-                        if loop == 0:
-                            self.info("eNAND mode detected, uploading...")
-                    elif self.id >= 0xC:
-                        self.mode = "firehose"
-                        if loop == 0:
-                            self.info("Firehose mode detected, uploading...")
+                        if loop == 0: self.info("64-Bit mode detected.")
                     else:
-                        self.error(f"Unknown sahara id: {self.id}")
-                        return "error"
+                        self.bit64 = False
+                        if loop == 0: self.info("32-Bit mode detected.")
+                    
+                    pkt = resp["data"]
+                    requested_id = pkt.image_id
+                    
+                    if is_xml_config:
+                        if requested_id in mappings:
+                            file_path = mappings[requested_id]
+                            if requested_id == 0x7: self.mode = "nandprg"
+                            elif requested_id == 0xB: self.mode = "enandprg"
+                            elif requested_id >= 0xC: self.mode = "firehose"
+
+                            with open(file_path, "rb") as rf:
+                                rf.seek(pkt.data_offset)
+                                data_to_send = rf.read(pkt.data_len)
+                                if len(data_to_send) < pkt.data_len:
+                                    data_to_send += b"\xFF" * (pkt.data_len - len(data_to_send))
+                                self.cdc.write(data_to_send)
+                        else:
+                            self.error(f"Device requested unknown ID {requested_id} (not in XML)")
+                            return "error"
+                    else:
+                        self.id = requested_id
+                        if self.id == 0x7: self.mode = "nandprg"
+                        elif self.id == 0xB: self.mode = "enandprg"
+                        elif self.id >= 0xC: self.mode = "firehose"
+
+                        data_offset = pkt.data_offset
+                        data_len = pkt.data_len
+
+                        temp_prog = single_programmer_data
+                        if data_offset + data_len > len(temp_prog):
+                            padding = b"\xFF" * (data_offset + data_len - len(temp_prog))
+                            temp_prog += padding
+                        
+                        data_to_send = temp_prog[data_offset:data_offset + data_len]
+                        self.cdc.write(data_to_send)
+                    
                     loop += 1
-                    data_offset = pkt.data_offset
-                    data_len = pkt.data_len
-                    if data_offset + data_len > len(programmer):
-                        while len(programmer) < data_offset + data_len:
-                            programmer += b"\xFF"
-                    data_to_send = programmer[data_offset:data_offset + data_len]
-                    self.cdc.write(data_to_send)
-                    datalen -= data_len
+
                 elif cmd == cmd_t.SAHARA_END_TRANSFER:
                     pkt = resp["data"]
                     if pkt.image_tx_status == status_t.SAHARA_STATUS_SUCCESS:
                         if self.cmd_done():
-                            self.info("Loader successfully uploaded.")
+                            if not is_xml_config:
+                                self.info("Loader successfully uploaded.")
+                                return self.mode
+                            else:
+                                if requested_id in mappings:
+                                    fname = os.path.basename(mappings[requested_id])
+                                    self.info(f"Stage for ID {requested_id} ({fname}) done.")
+                                else:
+                                    self.info(f"Stage for ID {requested_id} done.")
                         else:
                             self.error("Error on uploading Loader.")
                             sys.exit(1)
-                        return self.mode
                     else:
                         self.error(self.get_error_desc(pkt.image_tx_status))
                         return "error"
-                else:
-                    self.error("Unknown response received on uploading loader.")
-                    sys.exit(1)
+                
+                elif is_xml_config and cmd in [cmd_t.SAHARA_CMD_READY, cmd_t.SAHARA_DONE_RSP]:
+                    self.info("All images from XML uploaded.")
+                    return self.mode if self.mode != "" else "firehose"
+
         except Exception as e:  # pylint: disable=broad-except
             self.error("Unexpected error on uploading, maybe signature of loader wasn't accepted ?\n" + str(e))
             return ""
