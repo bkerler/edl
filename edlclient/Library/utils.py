@@ -287,7 +287,7 @@ def do_tcp_server(client, arguments, handler):
                     for line in lines:
                         if ":" in line:
                             cmd = line.split(":")[0]
-                            marguments = line.split(":")[1]
+                            marguments = line.split(":", 1)[1]
                             try:
                                 opts = parse_args(cmd, marguments, arguments)
                             except:
