@@ -138,7 +138,7 @@ curl.exe -O https://raw.githubusercontent.com/bkerler/edl/master/install_edl_win
 
 #### Method 2 - Manual
 #### Install python + git
-- Install python 3.9 and git
+- Install Python 3.10 or newer and git
 - If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
 - WIN+R ```cmd```
 

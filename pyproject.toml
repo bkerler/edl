@@ -11,23 +11,23 @@ license = {file = "LICENSE"}
 authors = [
     {name = "B. Kerler", email = "info@revskills.de"}
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "colorama",
+    "colorama>=0.4.6",
     "docopt",
-    "usb",
-    "pyusb",
-    "pyserial",
-    "lxml",
+    "pyusb>=1.3.1",
+    "pyserial>=3.5",
+    "lxml>=6.0.2",
     "pylzma",
-    "pycryptodome",
-    "Exscript",
-    "requests",
+    "pycryptodome>=3.23.0",
+    "Exscript>=2.6.32",
+    "paramiko>=4.0.0,<5",
+    "requests>=2.34.2",
     "passlib",
 ]
 
