@@ -41,6 +41,7 @@ class DeviceClass(metaclass=LogBase):
         self.__logger.setLevel(loglevel)
         if loglevel == logging.DEBUG:
             logfilename = os.path.join("logs", "log.txt")
+            os.makedirs(os.path.dirname(logfilename), exist_ok=True)
             fh = logging.FileHandler(logfilename, encoding='utf-8')
             self.__logger.addHandler(fh)
 

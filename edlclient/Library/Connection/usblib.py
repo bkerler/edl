@@ -208,7 +208,23 @@ class usb_class(DeviceClass):
         self.debug("Linecoding set, {}b sent".format(wlen))
 
     def flush(self):
-        return
+        # Drain anything the device left in the bulk-in endpoint. A no-op flush
+        # let an unread reply survive into the next command, so every following
+        # transfer read the *previous* command's response (one-reply-behind
+        # desync) with no way to ever resynchronise.
+        if not self.connected or self.EP_IN is None:
+            return
+        discarded = 0
+        while discarded < MAX_USB_BULK_BUFFER_SIZE:
+            try:
+                rlen = self.EP_IN.read(self.buffer, 1)
+            except usb.core.USBError:
+                break
+            if not rlen:
+                break
+            discarded += rlen
+        if discarded:
+            self.debug(f"Flushed {discarded} stale bytes from the read buffer")
 
     def connect(self, EP_IN=-1, EP_OUT=-1, portname: str = ""):
         if self.connected:

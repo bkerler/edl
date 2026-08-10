@@ -155,7 +155,14 @@ class serial_class(DeviceClass):
         return self.usbread(length, timeout)
 
     def flush(self):
-        return self.device.flush()
+        # flush() only drains the *write* buffer. Callers use this to discard a
+        # stale reply before sending a new command, so the input buffer has to be
+        # reset as well, otherwise every later read is one reply behind.
+        self.device.flush()
+        pending = self.device.in_waiting
+        if pending:
+            self.debug(f"Flushed {pending} stale bytes from the read buffer")
+            self.device.reset_input_buffer()
 
     def usbread(self, resplen=None, timeout=0):
         if resplen is None:

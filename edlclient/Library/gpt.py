@@ -94,6 +94,7 @@ def logsetup(self, logger, loglevel):
     self.warning = logger.warning
     if loglevel == logging.DEBUG:
         logfilename = os.path.join("logs", "log.txt")
+        os.makedirs(os.path.dirname(logfilename), exist_ok=True)
         if os.path.exists(logfilename):
             try:
                 os.remove(logfilename)

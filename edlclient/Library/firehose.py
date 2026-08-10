@@ -272,7 +272,7 @@ class firehose(metaclass=LogBase):
             while b"<response value" not in rdata:
                 try:
                     tmp = self.cdc.read(timeout=None)
-                    if tmp == b"" in rdata:
+                    if tmp == b"":
                         counter += 1
                         time.sleep(0.05)
                         if counter > timeout:
@@ -281,6 +281,13 @@ class firehose(metaclass=LogBase):
                 except Exception as err:
                     self.error(err)
                     return response(resp=False, error=str(err))
+            if b"<response value" not in rdata:
+                # The loop above gave up. getstatus() reports an empty/unparsed
+                # reply as ACK, so without this a timed-out command looks like a
+                # successful one.
+                err = "Timed out waiting for a response from the device"
+                self.error(err)
+                return response(resp=False, error=err, data=rdata)
             try:
                 if b"raw hex token" in rdata:
                     rdata = rdata
@@ -295,6 +302,15 @@ class firehose(metaclass=LogBase):
                             else:
                                 error = self.xml.getlog(rdata)
                                 return response(resp=status, error=error, data=resp, log=error)
+                        else:
+                            # rawmode="true": the device is now waiting for the
+                            # payload. Return the parsed attributes so callers can
+                            # tell an ACK from a NAK; falling through to the generic
+                            # handler below used to work only by accident.
+                            if status:
+                                return response(resp=True, data=resp)
+                            error = self.xml.getlog(rdata)
+                            return response(resp=False, error=error, data=resp, log=error)
                     else:
                         if status:
                             if b"log value=" in rdata:
@@ -531,6 +547,10 @@ class firehose(metaclass=LogBase):
                 else:
                     self.error(f"Error:{rsp}")
                     return False
+            else:
+                self.error(f"Error: device rejected the program command for "
+                           f"{filename}: {rsp.error}")
+                return False
         return True
 
     def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
@@ -590,6 +610,7 @@ class firehose(metaclass=LogBase):
                 return False
         else:
             self.error(f"Error:{rsp.error}")
+            return False
         return True
 
     def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
@@ -712,7 +733,9 @@ class firehose(metaclass=LogBase):
                     return False
             else:
                 if display:
-                    self.error(f"Error:{rsp[2]}")
+                    error = info if info else ["Missing or unparseable response from the device"]
+                    for line in error:
+                        self.error(line)
                     return False
         return True
 
@@ -733,7 +756,7 @@ class firehose(metaclass=LogBase):
 
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         rsp = self.xmlsend(data, self.skipresponse)
-        if "value" in rsp.data and rsp.data["value"] == "NAK":
+        if isinstance(rsp.data, dict) and rsp.data.get("value") == "NAK":
             return rsp
         self.cdc.xmlread = False
         resData = bytearray()
@@ -766,25 +789,34 @@ class firehose(metaclass=LogBase):
                     if rsp["rawmode"] == "false":
                         return response(resp=True, data=resData)
             else:
-                if len(rsp) > 1:
-                    if b"Failed to open the UFS Device" in rsp[2]:
-                        self.error(f"Error:{rsp[2]}")
-                    self.lasterror = rsp[2]
-                return response(resp=False, data=resData, error=rsp[2])
-        if rsp["value"] != "ACK":
-            self.lasterror = rsp[2]
+                # rsp is the parsed attribute dict, so the old rsp[2] indexing
+                # always raised KeyError here and aborted the read instead of
+                # reporting it. The device log is the only error detail we have.
+                error = info if info else ["Missing or unparseable response from the device"]
+                for line in error:
+                    if "Failed to open the UFS Device" in line:
+                        self.error(f"Error:{line}")
+                self.lasterror = b"".join(bytes(line + "\n", "utf-8") for line in error)
+                return response(resp=False, data=resData, error=error)
         if display and prog != 100:
             progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
-        resp = rsp["value"] == "ACK"
-        return response(resp=resp, data=resData, error=rsp[2])  # Do not remove, needed for oneplus
+        resp = rsp.get("value") == "ACK"
+        error = [] if resp else (info if info else ["Unexpected response: " + str(rsp)])
+        if not resp:
+            self.lasterror = b"".join(bytes(line + "\n", "utf-8") for line in error)
+        return response(resp=resp, data=resData, error=error)  # Do not remove, needed for oneplus
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, start_sector=1):
         try:
             resp = self.cmd_read_buffer(lun, 0, 1, False)
         except Exception as err:
             self.debug(str(err))
+            oldskip = self.skipresponse
             self.skipresponse = True
-            resp = self.cmd_read_buffer(lun, 0, 1, False)
+            try:
+                resp = self.cmd_read_buffer(lun, 0, 1, False)
+            finally:
+                self.skipresponse = oldskip
 
         if not resp.resp:
             for line in resp.error:

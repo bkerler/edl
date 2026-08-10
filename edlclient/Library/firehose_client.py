@@ -951,6 +951,13 @@ class firehose_client(metaclass=LogBase):
                                 num_disk_sectors = self.firehose.getlunsize(partition_number)
                                 start_sector = elem.get("start_sector")
                                 if "NUM_DISK_SECTORS" in start_sector:
+                                    if num_disk_sectors <= 0:
+                                        self.error(f"Could not determine size of LUN "
+                                                   f"{partition_number} (getlunsize returned "
+                                                   f"{num_disk_sectors}). Refusing to write "
+                                                   f"{filename} at a bogus offset.")
+                                        success = False
+                                        continue
                                     start_sector = start_sector.replace("NUM_DISK_SECTORS", str(num_disk_sectors))
                                 if "-" in start_sector or "*" in start_sector or "/" in start_sector or \
                                         "+" in start_sector:
@@ -959,7 +966,12 @@ class firehose_client(metaclass=LogBase):
                                 self.info(f"[qfil] programming {filename} to partition({partition_number})" +
                                           f"@sector({start_sector})...")
 
-                                self.firehose.cmd_program(int(partition_number), int(start_sector), filename)
+                                if not self.firehose.cmd_program(int(partition_number),
+                                                                 int(start_sector), filename):
+                                    self.error(f"Failed to program {filename} to "
+                                               f"partition({partition_number})"
+                                               f"@sector({start_sector})")
+                                    success = False
                 else:
                     self.warning(f"File : {filename} not found.")
                     success = False
@@ -984,7 +996,6 @@ class firehose_client(metaclass=LogBase):
                             content = ElementTree.tostring(elem).decode("utf-8")
                             CMD = "<?xml version=\"1.0\" ?><data>\n {content} </data>".format(
                                 content=content)
-                            print(CMD)
                             self.firehose.xmlsend(CMD)
                 else:
                     self.warning(f"File : {filename} not found.")
