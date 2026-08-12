@@ -22,3 +22,7 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9071", TAG+="uacc
 
 # ZTE
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="0076", TAG+="uaccess"
+
+# SIMCOM
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e0e", ATTRS{idProduct}=="9001", TAG+="uaccess"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e0e", ATTRS{idProduct}=="9008", TAG+="uaccess"
