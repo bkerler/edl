@@ -97,7 +97,10 @@ class generic(metaclass=LogBase):
                         print(
                             f"Patched sector {str(rpartition.sector)}, offset {str(offset1)} with value {value}, " +
                             f"size in bytes {size_in_bytes}.")
-                        data = self.fh.cmd_read_buffer(lun, rpartition.sector, rpartition.sectors)
+                            
+                        response = self.fh.cmd_read_buffer(lun, rpartition.sector, rpartition.sectors)
+                        data = response.data if hasattr(response, 'data') else response
+                        
                         if (len(data) > 0x7FFE20) and data[0x7FFE00:0x7FFE10] == b"ANDROID-BOOT!\x00\x00\x00":
                             if self.fh.cmd_patch(lun, sector3, offset3, value, size_in_bytes, True):
                                 if self.fh.cmd_patch(lun, sector4, offset4, value, size_in_bytes, True):
