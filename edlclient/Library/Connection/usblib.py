@@ -15,13 +15,12 @@ from enum import Enum
 import usb.backend.libusb0
 import usb.core  # pyusb
 import usb.util
+import usb.backend.libusb1
 
 try:
     from edlclient.Library.utils import *
 except:
     from Library.utils import *
-if not is_windows():
-    import usb.backend.libusb1
 from struct import pack
 
 try:
@@ -78,7 +77,14 @@ class usb_class(DeviceClass):
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif is_windows():
-            self.backend = None
+            dll = os.path.join(
+                os.path.abspath(os.path.dirname(__file__)),
+                "..", "..", "Windows", "libusb-1.0.dll"
+            )
+
+            self.backend = usb.backend.libusb1.get_backend(
+                find_library=lambda x: dll
+            )
         if self.backend is not None:
             try:
                 self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
