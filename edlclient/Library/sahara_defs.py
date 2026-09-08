@@ -83,89 +83,89 @@ class sahara_mode_t:
 
 
 class status_t:
-    SAHARA_STATUS_SUCCESS = 0x00  # Invalid command received in current state
-    SAHARA_NAK_INVALID_CMD = 0x01  # Protocol mismatch between host and target
-    SAHARA_NAK_PROTOCOL_MISMATCH = 0x02  # Invalid target protocol version
-    SAHARA_NAK_INVALID_TARGET_PROTOCOL = 0x03  # Invalid host protocol version
-    SAHARA_NAK_INVALID_HOST_PROTOCOL = 0x04  # Invalid packet size received
-    SAHARA_NAK_INVALID_PACKET_SIZE = 0x05  # Unexpected image ID received
-    SAHARA_NAK_UNEXPECTED_IMAGE_ID = 0x06  # Invalid image header size received
-    SAHARA_NAK_INVALID_HEADER_SIZE = 0x07  # Invalid image data size received
-    SAHARA_NAK_INVALID_DATA_SIZE = 0x08  # Invalid image type received
-    SAHARA_NAK_INVALID_IMAGE_TYPE = 0x09  # Invalid tranmission length
-    SAHARA_NAK_INVALID_TX_LENGTH = 0x0A  # Invalid reception length
-    SAHARA_NAK_INVALID_RX_LENGTH = 0x0B  # General transmission or reception error
-    SAHARA_NAK_GENERAL_TX_RX_ERROR = 0x0C  # Error while transmitting READ_DATA packet
-    SAHARA_NAK_READ_DATA_ERROR = 0x0D  # Cannot receive specified number of program headers
-    SAHARA_NAK_UNSUPPORTED_NUM_PHDRS = 0x0E  # Invalid data length received for program headers
-    SAHARA_NAK_INVALID_PDHR_SIZE = 0x0F  # Multiple shared segments found in ELF image
-    SAHARA_NAK_MULTIPLE_SHARED_SEG = 0x10  # Uninitialized program header location
-    SAHARA_NAK_UNINIT_PHDR_LOC = 0x11  # Invalid destination address
-    SAHARA_NAK_INVALID_DEST_ADDR = 0x12  # Invalid data size received in image header
-    SAHARA_NAK_INVALID_IMG_HDR_DATA_SIZE = 0x13  # Invalid ELF header received
-    SAHARA_NAK_INVALID_ELF_HDR = 0x14  # Unknown host error received in HELLO_RESP
-    SAHARA_NAK_UNKNOWN_HOST_ERROR = 0x15  # Timeout while receiving data
-    SAHARA_NAK_TIMEOUT_RX = 0x16  # Timeout while transmitting data
-    SAHARA_NAK_TIMEOUT_TX = 0x17  # Invalid mode received from host
-    SAHARA_NAK_INVALID_HOST_MODE = 0x18  # Invalid memory read access
-    SAHARA_NAK_INVALID_MEMORY_READ = 0x19  # Host cannot handle read data size requested
-    SAHARA_NAK_INVALID_DATA_SIZE_REQUEST = 0x1A  # Memory debug not supported
-    SAHARA_NAK_MEMORY_DEBUG_NOT_SUPPORTED = 0x1B  # Invalid mode switch
-    SAHARA_NAK_INVALID_MODE_SWITCH = 0x1C  # Failed to execute command
-    SAHARA_NAK_CMD_EXEC_FAILURE = 0x1D  # Invalid parameter passed to command execution
-    SAHARA_NAK_EXEC_CMD_INVALID_PARAM = 0x1E  # Unsupported client command received
-    SAHARA_NAK_EXEC_CMD_UNSUPPORTED = 0x1F  # Invalid client command received for data response
-    SAHARA_NAK_EXEC_DATA_INVALID_CLIENT_CMD = 0x20  # Failed to authenticate hash table
-    SAHARA_NAK_HASH_TABLE_AUTH_FAILURE = 0x21  # Failed to verify hash for a given segment of ELF image
-    SAHARA_NAK_HASH_VERIFICATION_FAILURE = 0x22  # Failed to find hash table in ELF image
-    SAHARA_NAK_HASH_TABLE_NOT_FOUND = 0x23  # Target failed to initialize
-    SAHARA_NAK_TARGET_INIT_FAILURE = 0x24  # Failed to authenticate generic image
-    SAHARA_NAK_IMAGE_AUTH_FAILURE = 0x25  # Invalid ELF hash table size.  Too bit or small.
-    SAHARA_NAK_INVALID_IMG_HASH_TABLE_SIZE = 0x26
-    SAHARA_NAK_ENUMERATION_FAILURE = 0x27
-    SAHARA_NAK_HW_BULK_TRANSFER_ERROR = 0x28
+    SAHARA_STATUS_SUCCESS = 0x00  # Success
+    SAHARA_NAK_INVALID_CMD = 0x01  # Invalid command received in current state
+    SAHARA_NAK_PROTOCOL_MISMATCH = 0x02  # Protocol mismatch between host and target
+    SAHARA_NAK_INVALID_TARGET_PROTOCOL = 0x03  # Invalid target protocol version
+    SAHARA_NAK_INVALID_HOST_PROTOCOL = 0x04  # Invalid host protocol version
+    SAHARA_NAK_INVALID_PACKET_SIZE = 0x05  # Invalid packet size received
+    SAHARA_NAK_UNEXPECTED_IMAGE_ID = 0x06  # Unexpected image ID received
+    SAHARA_NAK_INVALID_HEADER_SIZE = 0x07  # Invalid image header size received
+    SAHARA_NAK_INVALID_DATA_SIZE = 0x08  # Invalid image data size received
+    SAHARA_NAK_INVALID_IMAGE_TYPE = 0x09  # Invalid image type received
+    SAHARA_NAK_INVALID_TX_LENGTH = 0x0A  # Invalid transmission length
+    SAHARA_NAK_INVALID_RX_LENGTH = 0x0B  # Invalid reception length
+    SAHARA_NAK_GENERAL_TX_RX_ERROR = 0x0C  # General transmission or reception error
+    SAHARA_NAK_READ_DATA_ERROR = 0x0D  # Error while transmitting READ_DATA packet
+    SAHARA_NAK_UNSUPPORTED_NUM_PHDRS = 0x0E  # Cannot receive specified number of program headers
+    SAHARA_NAK_INVALID_PDHR_SIZE = 0x0F  # Invalid data length received for program headers
+    SAHARA_NAK_MULTIPLE_SHARED_SEG = 0x10  # Multiple shared segments found in ELF image
+    SAHARA_NAK_UNINIT_PHDR_LOC = 0x11  # Uninitialized program header location
+    SAHARA_NAK_INVALID_DEST_ADDR = 0x12  # Invalid destination address
+    SAHARA_NAK_INVALID_IMG_HDR_DATA_SIZE = 0x13  # Invalid data size received in image header
+    SAHARA_NAK_INVALID_ELF_HDR = 0x14  # Invalid ELF header received
+    SAHARA_NAK_UNKNOWN_HOST_ERROR = 0x15  # Unknown host error received in HELLO_RESP
+    SAHARA_NAK_TIMEOUT_RX = 0x16  # Timeout while receiving data
+    SAHARA_NAK_TIMEOUT_TX = 0x17  # Timeout while transmitting data
+    SAHARA_NAK_INVALID_HOST_MODE = 0x18  # Invalid mode received from host
+    SAHARA_NAK_INVALID_MEMORY_READ = 0x19  # Invalid memory read access
+    SAHARA_NAK_INVALID_DATA_SIZE_REQUEST = 0x1A  # Host cannot handle read data size requested
+    SAHARA_NAK_MEMORY_DEBUG_NOT_SUPPORTED = 0x1B  # Memory debug not supported
+    SAHARA_NAK_INVALID_MODE_SWITCH = 0x1C  # Invalid mode switch
+    SAHARA_NAK_CMD_EXEC_FAILURE = 0x1D  # Failed to execute command
+    SAHARA_NAK_EXEC_CMD_INVALID_PARAM = 0x1E  # Invalid parameter passed to command execution
+    SAHARA_NAK_EXEC_CMD_UNSUPPORTED = 0x1F  # Unsupported client command received
+    SAHARA_NAK_EXEC_DATA_INVALID_CLIENT_CMD = 0x20  # Invalid client command received for data response
+    SAHARA_NAK_HASH_TABLE_AUTH_FAILURE = 0x21  # Failed to authenticate hash table
+    SAHARA_NAK_HASH_VERIFICATION_FAILURE = 0x22  # Failed to verify hash for a given segment of ELF image
+    SAHARA_NAK_HASH_TABLE_NOT_FOUND = 0x23  # Failed to find hash table in ELF image
+    SAHARA_NAK_TARGET_INIT_FAILURE = 0x24  # Target failed to initialize
+    SAHARA_NAK_IMAGE_AUTH_FAILURE = 0x25  # Failed to authenticate generic image
+    SAHARA_NAK_INVALID_IMG_HASH_TABLE_SIZE = 0x26  # Invalid IMG Hash Table Size.
+    SAHARA_NAK_ENUMERATION_FAILURE = 0x27 # Enumeration failed
+    SAHARA_NAK_HW_BULK_TRANSFER_ERROR = 0x28 # Hardware Bulk transfer error
     SAHARA_NAK_MAX_CODE = 0x7FFFFFFF  # To ensure 32-bits wide */
 
 
 ErrorDesc = {
-    0x00: "Invalid command received in current state",
-    0x01: "Protocol mismatch between host and target",
-    0x02: "Invalid target protocol version",
-    0x03: "Invalid host protocol version",
-    0x04: "Invalid packet size received",
-    0x05: "Unexpected image ID received",
-    0x06: "Invalid image header size received",
-    0x07: "Invalid image data size received",
-    0x08: "Invalid image type received",
-    0x09: "Invalid tranmission length",
-    0x0A: "Invalid reception length",
-    0x0B: "General transmission or reception error",
-    0x0C: "Error while transmitting READ_DATA packet",
-    0x0D: "Cannot receive specified number of program headers",
-    0x0E: "Invalid data length received for program headers",
-    0x0F: "Multiple shared segments found in ELF image",
-    0x10: "Uninitialized program header location",
-    0x11: "Invalid destination address",
-    0x12: "Invalid data size received in image header",
-    0x13: "Invalid ELF header received",
-    0x14: "Unknown host error received in HELLO_RESP",
-    0x15: "Timeout while receiving data",
-    0x16: "Timeout while transmitting data",
-    0x17: "Invalid mode received from host",
-    0x18: "Invalid memory read access",
-    0x19: "Host cannot handle read data size requested",
-    0x1A: "Memory debug not supported",
-    0x1B: "Invalid mode switch",
-    0x1C: "Failed to execute command",
-    0x1D: "Invalid parameter passed to command execution",
-    0x1E: "Unsupported client command received",
-    0x1F: "Invalid client command received for data response",
-    0x20: "Failed to authenticate hash table",
-    0x21: "Failed to verify hash for a given segment of ELF image",
-    0x22: "Failed to find hash table in ELF image",
-    0x23: "Target failed to initialize",
-    0x24: "Failed to authenticate generic image",
-    0x25: "Invalid ELF hash table size.  Too bit or small.",
+    0x00: "Success",
+    0x01: "Invalid command received in current state",
+    0x02: "Protocol mismatch between host and target",
+    0x03: "Invalid target protocol version",
+    0x04: "Invalid host protocol version",
+    0x05: "Invalid packet size received",
+    0x06: "Unexpected image ID received",
+    0x07: "Invalid image header size received",
+    0x08: "Invalid image data size received",
+    0x09: "Invalid image type received",
+    0x0A: "Invalid transmission length",
+    0x0B: "Invalid reception length",
+    0x0C: "General transmission or reception error",
+    0x0D: "Error while transmitting READ_DATA packet",
+    0x0E: "Cannot receive specified number of program headers",
+    0x0F: "Invalid data length received for program headers",
+    0x10: "Multiple shared segments found in ELF image",
+    0x11: "Uninitialized program header location",
+    0x12: "Invalid destination address",
+    0x13: "Invalid data size received in image header",
+    0x14: "Invalid ELF header received",
+    0x15: "Unknown host error received in HELLO_RESP",
+    0x16: "Timeout while receiving data",
+    0x17: "Timeout while transmitting data",
+    0x18: "Invalid mode received from host",
+    0x19: "Invalid memory read access",
+    0x1A: "Host cannot handle read data size requested",
+    0x1B: "Memory debug not supported",
+    0x1C: "Invalid mode switch",
+    0x1D: "Failed to execute command",
+    0x1E: "Invalid parameter passed to command execution",
+    0x1F: "Unsupported client command received",
+    0x20: "Invalid client command received for data response",
+    0x21: "Failed to authenticate hash table",
+    0x22: "Failed to verify hash for a given segment of ELF image",
+    0x23: "Failed to find hash table in ELF image",
+    0x24: "Target failed to initialize",
+    0x25: "Failed to authenticate generic image",
     0x26: "Invalid IMG Hash Table Size",
     0x27: "Enumeration failed",
     0x28: "Hardware Bulk transfer error"
