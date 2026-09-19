@@ -328,10 +328,10 @@ class main(metaclass=LogBase):
                             sahara_info = self.sahara.streaminginfo()
                             if sahara_info:
                                 sahara_connect = self.sahara.connect()
-                                if len(sahara_connect) == 3:
-                                    mode, cmd, resp = sahara_connect
+                                if isinstance(sahara_connect, dict):
+                                    mode = sahara_connect["mode"]
                                 else:
-                                    mode, resp = sahara_connect
+                                    mode = sahara_connect[0]
                                 if mode == "sahara":
                                     mode = self.sahara.upload_loader(version=version)
                                     if "enprg" in self.sahara.programmer.lower():
