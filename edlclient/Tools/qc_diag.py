@@ -85,8 +85,8 @@ nvitem_type = [
 ]
 
 subnvitem_type = [
-    ("item", "H"),
-    ("index", "H"),
+    ("item", "I"),
+    ("index", "I"),
     ("rawdata", "128s"),
     ("status", "H")
 ]
@@ -1250,12 +1250,11 @@ class DiagTools(metaclass=LogBase):
                 if args.nvitem is None or args.nvindex is None:
                     print("Usage: nvreadsub [nvitem] [nvindex]")
                     exit(1)
-                nv = args.nvreadsub.split(",")
                 if "0x" in args.nvitem:
                     nvitem = int(args.nvitem, 16)
                 else:
                     nvitem = int(args.nvitem)
-                if "0x" in nv[1]:
+                if "0x" in args.nvindex:
                     nvindex = int(args.nvindex, 16)
                 else:
                     nvindex = int(args.nvindex)
