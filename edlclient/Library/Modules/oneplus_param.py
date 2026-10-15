@@ -378,8 +378,7 @@ class paramtools:
         itemdata, hv, cv, updatecounter = self.decryptsid(data)
         if itemdata is not None:
             itemdata = bytearray(itemdata)
-            print(
-                f"Offset {hex(sid * 0x400)}: hv {hex(hv)}, cv {hex(cv)}, increase_enc_update_counter {hex(updatecounter)}.")
+            print(f"Offset {hex(sid * 0x400)}: hv {hex(hv)}, cv {hex(cv)}, increase_enc_update_counter {hex(updatecounter)}.")
             i = 0
             while i < len(itemdata):
                 offset = i + 0x80
@@ -484,29 +483,35 @@ class paramtools:
         return length
 
     def setparamvalue(self, data, sid, offset, value):
+        data = bytearray(data)
+
         if sid > 0x100:
             rdata = data[sid * 0x400:(sid * 0x400) + 0x1000]
             itemdata, hv, cv, updatecounter = self.decryptsid(rdata)
-            if itemdata is not None:
-                itemdata = bytearray(itemdata)
-                if isinstance(value, int):
-                    itemdata[offset - 0x80:(offset + 4) - 0x80] = pack("<I", value)
-                elif isinstance(value, bytearray):
-                    itemdata[offset - 0x80:(offset + len(value)) - 0x80] = value
-                # itemdata[0x84-0x80:(0x84+4)-0x80]=pack("<I",0xB7) #devkmsg_enable
-                mdata = self.encryptsid(itemdata, hv, cv, updatecounter)
-            data = bytearray(data)
-            data[sid * 0x400:(sid * 0x400) + 0x1000] = mdata
-            # data[(sid+0x200) * 0x400:((sid+0x200) * 0x400) + 0x1000] = mdata
-        else:
-            rdata = data[sid * 0x400:(sid * 0x400) + 0x1000]
-            data = bytearray(data)
-            rdata = bytearray(rdata)
+            if itemdata is None:
+                raise ValueError(f"Cannot modify SID {sid:#x}: decryption or integrity validation failed")
+
+            itemdata = bytearray(itemdata)
             if isinstance(value, int):
-                rdata[offset:offset + 4] = pack("<I", value)
+                itemdata[offset - 0x80:(offset + 4) - 0x80] = pack("<I", value)
             elif isinstance(value, bytearray):
-                rdata[offset:(offset + len(value))] = value
-            data[sid * 0x400:(sid * 0x400) + 0x1000] = rdata
+                itemdata[offset - 0x80:(offset + len(value)) - 0x80] = value
+            else:
+                raise TypeError("Unsupported value type")
+
+            mdata = self.encryptsid(itemdata, hv, cv, updatecounter)
+            data[sid * 0x400:(sid * 0x400) + 0x1000] = mdata
+            return data
+
+        rdata = bytearray(data[sid * 0x400:(sid * 0x400) + 0x1000])
+        if isinstance(value, int):
+            rdata[offset:offset + 4] = pack("<I", value)
+        elif isinstance(value, bytearray):
+            rdata[offset:(offset + len(value))] = value
+        else:
+            raise TypeError("Unsupported value type")
+
+        data[sid * 0x400:(sid * 0x400) + 0x1000] = rdata
         return data
 
     def gencode(self, inparray):
@@ -969,8 +974,10 @@ def main():
         param = paramtools(mode, serial)
         with open(filename, 'rb') as rf:
             data = rf.read()
+            # Validate before creating or truncating the output file. (Openning file in wb mode trunicates it immediately, before wf.write() evaluates its argument.
+            patched = param.setparamvalue(data, sid, offset, value)
             with open(filename + ".patched", 'wb') as wf:
-                wf.write(param.setparamvalue(data, sid, offset, value))
+                wf.write(patched)
     elif args["gencode"]:
         imei = args["<imei>"]
         mode = 0
