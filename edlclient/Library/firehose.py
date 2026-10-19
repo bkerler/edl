@@ -10,6 +10,7 @@ import binascii
 import json
 import os.path
 import platform
+import struct
 from binascii import hexlify
 from queue import Queue
 from threading import Thread
@@ -176,6 +177,12 @@ class firehose(metaclass=LogBase):
         prod_name = "Unknown"
         maxlun = 99
 
+        # OPPO/OnePlus VIP ("verified image protection"), see firehose.vip_handshake
+        VIP = False
+        VIPDigest = None  # signed digest table (Digest.elf / Digest.mbn)
+        VIPSign = None    # signature sent after <verify EnableVip="1"/>
+        VIPLabel = None   # partition label used to authorise reads/writes
+
     def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
         self.lasterror = b""
@@ -199,6 +206,11 @@ class firehose(metaclass=LogBase):
         self.error = self.__logger.error
         self.debug = self.__logger.debug
         self.warning = self.__logger.warning
+        # OPPO/OnePlus VIP state, see firehose.vip_handshake
+        self.vip_done = False    # target announced VIP, handshake was attempted
+        self.vip_ok = True       # handshake result, False blocks configure()
+        self.vip_log_data = b""  # what the target logged during the handshake
+        self.vip_table = {}      # parsed digest table, name -> entry
 
         self.__logger.setLevel(loglevel)
         if loglevel == logging.DEBUG:
@@ -470,7 +482,7 @@ class firehose(metaclass=LogBase):
             return f" PAGES_PER_BLOCK=\"{self.cfg.PAGES_PER_BLOCK}\""
         return ""
 
-    def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
+    def cmd_program(self, physical_partition_number, start_sector, filename, display=True, label=None):
         total = os.stat(filename).st_size
         sparse = QCSparse(filename, self.loglevel)
         sparseformat = False
@@ -493,6 +505,7 @@ class firehose(metaclass=LogBase):
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\""
+            data += self.vip_label_attribute(label)
             data += self.nand_pages_attr() + " "
             if self.modules is not None:
                 data += self.modules.addprogram()
@@ -533,7 +546,7 @@ class firehose(metaclass=LogBase):
                     return False
         return True
 
-    def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True):
+    def cmd_program_buffer(self, physical_partition_number, start_sector, wfdata, display=True, label=None):
         bytestowrite = len(wfdata)
         total = bytestowrite
         # Make sure we fill data up to the sector size
@@ -549,6 +562,7 @@ class firehose(metaclass=LogBase):
                f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\""
+        data += self.vip_label_attribute(label)
         data += self.nand_pages_attr() + " "
         if self.modules is not None:
             data += self.modules.addprogram()
@@ -592,7 +606,7 @@ class firehose(metaclass=LogBase):
             self.error(f"Error:{rsp.error}")
         return True
 
-    def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+    def cmd_erase(self, physical_partition_number, start_sector, num_partition_sectors, display=True, label=None):
         if display:
             self.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
                       f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
@@ -603,6 +617,7 @@ class firehose(metaclass=LogBase):
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                    f" physical_partition_number=\"{physical_partition_number}\"" + \
                    f" start_sector=\"{start_sector}\""
+            data += self.vip_label_attribute(label)
             data += self.nand_pages_attr() + " "
             if self.modules is not None:
                 data += self.modules.addprogram()
@@ -618,6 +633,7 @@ class firehose(metaclass=LogBase):
                f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\""
+        data += self.vip_label_attribute(label)
         data += self.nand_pages_attr() + " "
         if self.modules is not None:
             data += self.modules.addprogram()
@@ -656,7 +672,8 @@ class firehose(metaclass=LogBase):
             return False
         return True
 
-    def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True):
+    def cmd_read(self, physical_partition_number, start_sector, num_partition_sectors, filename, display=True,
+                   label=None):
         self.lasterror = b""
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         if display:
@@ -668,6 +685,7 @@ class firehose(metaclass=LogBase):
                f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\""
+        data += self.vip_label_attribute(label)
         data += self.nand_pages_attr() + "/>\n</data>"
 
         rsp = self.xmlsend(data, self.skipresponse)
@@ -716,7 +734,8 @@ class firehose(metaclass=LogBase):
                     return False
         return True
 
-    def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True):
+    def cmd_read_buffer(self, physical_partition_number, start_sector, num_partition_sectors, display=True,
+                        label=None):
         self.lasterror = b""
         prog = 0
         if display:
@@ -729,14 +748,16 @@ class firehose(metaclass=LogBase):
                f" num_partition_sectors=\"{num_partition_sectors}\"" + \
                f" physical_partition_number=\"{physical_partition_number}\"" + \
                f" start_sector=\"{start_sector}\""
+        data += self.vip_label_attribute(label)
         data += self.nand_pages_attr() + "/>\n</data>"
 
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         rsp = self.xmlsend(data, self.skipresponse)
-        if "value" in rsp.data and rsp.data["value"] == "NAK":
+        if isinstance(rsp.data, dict) and rsp.data.get("value", "") == "NAK":
             return rsp
         self.cdc.xmlread = False
         resData = bytearray()
+        emptysends = 0
         if not rsp.resp:
             if display:
                 self.error(rsp.error)
@@ -749,6 +770,13 @@ class firehose(metaclass=LogBase):
             while bytestoread > 0:
                 tmp = self.cdc.read(min(self.cdc.maxsize, bytestoread))
                 size = len(tmp)
+                if size == 0:
+                    emptysends += 1
+                    if emptysends > 20:
+                        self.error("Target stopped sending data, aborting read")
+                        break
+                    continue
+                emptysends = 0
                 bytestoread -= size
                 resData.extend(tmp)
                 progbar.show_progress(prefix="Read", pos=total - bytestoread, total=total, display=display)
@@ -766,13 +794,14 @@ class firehose(metaclass=LogBase):
                     if rsp["rawmode"] == "false":
                         return response(resp=True, data=resData)
             else:
-                if len(rsp) > 1:
-                    if b"Failed to open the UFS Device" in rsp[2]:
-                        self.error(f"Error:{rsp[2]}")
-                    self.lasterror = rsp[2]
-                return response(resp=False, data=resData, error=rsp[2])
+                # `rsp` is a parsed dict here (xmlparser.getresponse), not the legacy
+                # tuple, so index it by key. VIP enabled targets answer an unlabelled
+                # read with an error dict rather than a NAK, which used to blow up
+                # with KeyError: 2 and mask the real error text.
+                self.lasterror = info
+                return response(resp=False, data=resData, error=info)
         if rsp["value"] != "ACK":
-            self.lasterror = rsp[2]
+            self.lasterror = info
         if display and prog != 100:
             progbar.show_progress(prefix="Read", pos=total, total=total, display=display)
         resp = rsp["value"] == "ACK"
@@ -780,11 +809,11 @@ class firehose(metaclass=LogBase):
 
     def get_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, start_sector=1):
         try:
-            resp = self.cmd_read_buffer(lun, 0, 1, False)
+            resp = self.cmd_read_buffer(lun, 0, 1, False, label=self.vip_gpt_label())
         except Exception as err:
             self.debug(str(err))
             self.skipresponse = True
-            resp = self.cmd_read_buffer(lun, 0, 1, False)
+            resp = self.cmd_read_buffer(lun, 0, 1, False, label=self.vip_gpt_label())
 
         if not resp.resp:
             for line in resp.error:
@@ -792,7 +821,7 @@ class firehose(metaclass=LogBase):
             return None, None
         data = resp.data
         magic = unpack("<I", data[0:4])[0]
-        data += self.cmd_read_buffer(lun, start_sector, 1, False).data
+        data += self.cmd_read_buffer(lun, start_sector, 1, False, label=self.vip_gpt_label()).data
         if magic == 0x844bdcd1:
             self.info("Nand storage detected.")
             self.info("Scanning for partition table ...")
@@ -838,7 +867,8 @@ class firehose(metaclass=LogBase):
                         return None, None
                     if sectors > 64:
                         sectors = 64
-                    data += self.cmd_read_buffer(lun, header.part_entry_start_lba, sectors, False).data
+                    data += self.cmd_read_buffer(lun, header.part_entry_start_lba, sectors, False,
+                                              label=self.vip_gpt_label()).data
                     if data == b"":
                         return None, None
                     guid_gpt.parse(data, self.cfg.SECTOR_SIZE_IN_BYTES)
@@ -888,6 +918,9 @@ class firehose(metaclass=LogBase):
         return luns
 
     def configure(self, lvl):
+        if self.vip and not self.vip_ok:
+            self.error("VIP authentication failed, refusing to configure the target")
+            return False
         if self.cfg.SECTOR_SIZE_IN_BYTES == 0:
             if self.cfg.MemoryName.lower() == "emmc":
                 self.cfg.SECTOR_SIZE_IN_BYTES = 512
@@ -1042,40 +1075,43 @@ class firehose(metaclass=LogBase):
             self.info(f"TargetName={self.cfg.TargetName}")
             self.info(f"MemoryName={self.cfg.MemoryName}")
             self.info(f"Version={self.cfg.Version}")
-            self.info("Trying to read first storage sector...")
-            rsp = self.cmd_read_buffer(0, 1, 1, False)
-            self.info("Running configure...")
-            if not rsp.resp and self.args["--memory"] is None:
-                for line in rsp.error:
-                    if "Failed to set the IO options" in line:
-                        self.warning(
-                            "Memory type eMMC doesn't seem to match (Failed to init). Trying to use NAND instead.")
-                        self.cfg.MemoryName = "nand"
-                        return self.configure(0)
-                    elif "Failed to open the SDCC Device" in line:
-                        self.warning(
-                            "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
-                        self.cfg.MemoryName = "UFS"
-                        return self.configure(0)
-                    elif "Failed to initialize (open whole lun) UFS Device slot" in line:
-                        self.warning(
-                            "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
-                        self.cfg.MemoryName = "eMMC"
-                        return self.configure(0)
-            if not rsp.resp:
-                for line in rsp.error:
-                    if "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
-                            or "different from device sector size (512)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 512
-                        return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 2048" in line \
-                            or "different from device sector size (2048)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 2048
-                        return self.configure(0)
-                    elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
-                            or "different from device sector size (4096)" in line:
-                        self.cfg.SECTOR_SIZE_IN_BYTES = 4096
-                        return self.configure(0)
+            if self.args.get("--skipinitialread"):
+                self.info("Skipping initial storage read (--skipinitialread)")
+            else:
+                self.info("Trying to read first storage sector...")
+                rsp = self.cmd_read_buffer(0, 1, 1, False, label=self.vip_gpt_label())
+                self.info("Running configure...")
+                if not rsp.resp and self.args["--memory"] is None:
+                    for line in rsp.error:
+                        if "Failed to set the IO options" in line:
+                            self.warning(
+                                "Memory type eMMC doesn't seem to match (Failed to init). Trying to use NAND instead.")
+                            self.cfg.MemoryName = "nand"
+                            return self.configure(0)
+                        elif "Failed to open the SDCC Device" in line:
+                            self.warning(
+                                "Memory type eMMC doesn't seem to match (Failed to init). Trying to use UFS instead.")
+                            self.cfg.MemoryName = "UFS"
+                            return self.configure(0)
+                        elif "Failed to initialize (open whole lun) UFS Device slot" in line:
+                            self.warning(
+                                "Memory type UFS doesn't seem to match (Failed to init). Trying to use eMMC instead.")
+                            self.cfg.MemoryName = "eMMC"
+                            return self.configure(0)
+                if not rsp.resp:
+                    for line in rsp.error:
+                        if "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 512" in line \
+                                or "different from device sector size (512)" in line:
+                            self.cfg.SECTOR_SIZE_IN_BYTES = 512
+                            return self.configure(0)
+                        elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=4096 must be equal to disk sector size 2048" in line \
+                                or "different from device sector size (2048)" in line:
+                            self.cfg.SECTOR_SIZE_IN_BYTES = 2048
+                            return self.configure(0)
+                        elif "Attribute \'SECTOR_SIZE_IN_BYTES\'=512 must be equal to disk sector size 4096" in line \
+                                or "different from device sector size (4096)" in line:
+                            self.cfg.SECTOR_SIZE_IN_BYTES = 4096
+                            return self.configure(0)
             self.parse_storage()
             for function in self.supported_functions:
                 if function == "checkntfeature":
@@ -1148,6 +1184,257 @@ class firehose(metaclass=LogBase):
                                         'ufs', 'emmc', 'power', 'benchmark', 'read', 'getstorageinfo',
                                         'getcrc16digest', 'getsha256digest', 'erase', 'peek', 'poke', 'nop', 'xml']
 
+    # ------------------------------------------------------------------
+    # OPPO/OnePlus VIP (verified image protection)
+    #
+    # OPPO/OnePlus/Realme programmers refuse every storage command until the
+    # host has handed them the signed digest table. The target announces this
+    # right after its boot banner with
+    #     VIP is enabled, receiving the partition info of size <n>
+    # and then waits for the table. The vendor tool continues with:
+    #
+    #   1. send the digest table (Digest.elf/.mbn) as a raw, non XML packet
+    #   2. send <?xml ...><verify value="ping" EnableVip="1"/></data>
+    #   3. send the signature (Sign.bin, 256 bytes padded to 4096) as a raw packet
+    #
+    # After step 3 the target answers with "verify passed." and normal firehose
+    # commands start working. Reads and writes additionally have to carry a
+    # label attribute naming a partition of the digest table, so that the target
+    # can authorise the access.
+    # ------------------------------------------------------------------
+
+    # The digest tables name the primary GPT of a lun this way.
+    VIP_GPT_LABEL = "PrimaryGPT"
+
+    @property
+    def vip(self):
+        """True if the target has to be treated as VIP protected."""
+        return bool(getattr(self.cfg, "VIP", False) or getattr(self.cfg, "VIPDigest", None) or
+                    getattr(self.cfg, "VIPSign", None))
+
+    # Log lines a VIP target announces itself with.
+    VIP_PROMPTS = ("receiving the partition info",
+                   "receiving the signed table",
+                   "receiving the sign table")
+
+    # Log lines that mean the target rejected one of the handshake steps.
+    VIP_ERRORS = ("authentication of signed hash failed",
+                  "vip img authentication failed",
+                  "verify failed",
+                  "not support command: verify",
+                  "invalid magic",
+                  "invalid code size",
+                  "failed to read xml command")
+
+    def vip_label_attribute(self, label=None):
+        """The label attribute a VIP target needs to authorise an access.
+
+        Returns an empty string on non VIP targets and when no label is known,
+        so the attribute stays out of the XML. The explicit label wins over
+        --vip-label.
+        """
+        if not self.vip:
+            return ""
+        label = label or getattr(self.cfg, "VIPLabel", None)
+        return "" if label is None else f" label=\"{label}\""
+
+    def vip_gpt_label(self):
+        """The label used to authorise reading a GPT, which no partition owns."""
+        if not self.vip:
+            return None
+        return self.VIP_GPT_LABEL
+
+    @classmethod
+    def _vip_prompt_seen(cls, data):
+        text = data.decode("utf-8", "replace").lower()
+        return any(prompt in text for prompt in cls.VIP_PROMPTS)
+
+    def parse_vip_table(self):
+        """Parse the signed digest table (SVIP) that is handed to the target.
+
+        The table is the authoritative partition map of a VIP target: every
+        entry carries the partition name, its start sector, its size and the
+        permission flags the target enforces. Entries are per lun, but since
+        names repeat across luns the table is keyed by name only. Parsing is
+        best effort, it is not needed for the handshake itself.
+        """
+        self.vip_table = {}
+        if not self.cfg.VIPDigest or not os.path.exists(self.cfg.VIPDigest):
+            return self.vip_table
+        try:
+            with open(self.cfg.VIPDigest, "rb") as rf:
+                data = rf.read()
+            # The SVIP header sits right behind the ELF header/program headers.
+            hdr = 0xe8
+            magic, _version, entries_off, num, _tblsize, entsize = struct.unpack_from("<IIIIII", data, hdr)
+            if magic != 0x7CEF0312:
+                self.warning(f"VIP: digest table magic {magic:#x} unknown, skipping parse")
+                return self.vip_table
+            base = hdr + entries_off
+            for i in range(num):
+                off = base + i * entsize
+                name = data[off:off + 32].split(b"\0")[0].decode("utf-8", "replace")
+                # The target logs the same tuple as w:/r:/e:/c:/s: permissions.
+                perms = struct.unpack_from("<IIIII", data, off + 64)
+                start, sectors = struct.unpack_from("<QQ", data, off + 84)
+                self.vip_table.setdefault(name, {
+                    "name": name, "perms": perms, "start": start, "sectors": sectors,
+                })
+            self.info(f"VIP: {len(self.vip_table)} partitions in the digest table")
+        except Exception as err:  # pylint: disable=broad-except
+            self.warning(f"VIP: couldn't parse the digest table: {err}")
+        return self.vip_table
+
+    def _vip_read(self):
+        try:
+            return self.cdc.read(self.cdc.maxsize, timeout=10)
+        except Exception as err:  # pylint: disable=broad-except
+            self.debug(str(err))
+            return b""
+
+    def _vip_drain(self, markers=(), timeout=5.0, settle=0.2):
+        """Read log/response data until a marker is seen (plus settle time) or timeout."""
+        buf = bytearray()
+        deadline = time.time() + timeout
+        matched_at = None
+        while time.time() < deadline:
+            chunk = self._vip_read()
+            if chunk:
+                buf += chunk
+                if matched_at is None and markers:
+                    text = buf.decode("utf-8", "replace").lower()
+                    if any(m.lower() in text for m in markers):
+                        matched_at = time.time()
+                if matched_at is not None and (time.time() - matched_at) >= settle:
+                    break
+            else:
+                if matched_at is not None and (time.time() - matched_at) >= settle:
+                    break
+                time.sleep(0.02)
+        return bytes(buf)
+
+    def _vip_show(self, data):
+        if not data:
+            return
+        try:
+            for line in self.xml.getlog(data):
+                self.info(f"VIP: {line}")
+        except Exception as err:  # pylint: disable=broad-except
+            self.debug(str(err))
+        if b"<response" in data:
+            try:
+                resp = self.xml.getresponse(data)
+                if resp:
+                    self.debug(f"VIP response: {resp}")
+            except Exception as err:  # pylint: disable=broad-except
+                self.debug(str(err))
+
+    def _vip_text(self, data):
+        return data.decode("utf-8", "replace").lower()
+
+    def _vip_response_ok(self, data, what):
+        """True unless the target answered with a NAK."""
+        if b"<response" not in data:
+            return True
+        try:
+            resp = self.xml.getresponse(data)
+        except Exception as err:  # pylint: disable=broad-except
+            self.debug(str(err))
+            return True
+        value = str(resp.get("value", "")).upper() if resp else ""
+        if value in ("NAK", "FAILED", "0"):
+            self.debug(f"VIP: {what} answered with {value}")
+            return False
+        return True
+
+    @classmethod
+    def _vip_has_error(cls, text):
+        return any(err in text for err in cls.VIP_ERRORS)
+
+    def _vip_send_file(self, path, description):
+        if not path or not os.path.exists(path):
+            self.error(f"VIP: {description} file not found: {path}")
+            return False
+        with open(path, "rb") as rf:
+            data = rf.read()
+        if not data:
+            self.error(f"VIP: {description} file is empty: {path}")
+            return False
+        self.info(f"VIP: sending {description} ({len(data)} bytes) from {path}")
+        try:
+            if not self.cdc.write(data):
+                self.error(f"VIP: failed to send {description}")
+                return False
+        except Exception as err:  # pylint: disable=broad-except
+            self.error(f"VIP: failed to send {description}: {err}")
+            return False
+        return True
+
+    def _vip_fail(self, logs, message):
+        self.error(f"VIP: {message}")
+        self.vip_log_data = bytes(logs)
+        return False
+
+    def vip_handshake(self):
+        """Run the OPPO/OnePlus VIP digest and signature handshake.
+
+        Sends the digest table, then the EnableVip verify command and the
+        signature, and collects everything the target logs into vip_log_data so
+        the caller can feed it through the regular log parser. Returns True if
+        the target accepted the handshake.
+        """
+        logs = bytearray()
+        self.info("VIP: target requested the authenticated digest table")
+        self.parse_vip_table()
+        if not self._vip_send_file(self.cfg.VIPDigest, "digest table"):
+            return self._vip_fail(logs, "digest table could not be sent")
+
+        data = self._vip_drain(markers=("<response",), timeout=6.0, settle=0.3)
+        logs += data
+        self._vip_show(data)
+        if self._vip_has_error(self._vip_text(data)) or not self._vip_response_ok(data, "digest table"):
+            return self._vip_fail(logs, "digest table was rejected by the target")
+        if b"<response" not in data:
+            self.warning("VIP: no response for the digest table, continuing anyway")
+
+        if self.cfg.VIPSign:
+            cmd = '<?xml version="1.0" ?><data><verify value="ping" EnableVip="1"/></data>'
+            self.info("VIP: sending <verify EnableVip=\"1\"/>")
+            try:
+                self.cdc.write(cmd)
+            except Exception as err:  # pylint: disable=broad-except
+                return self._vip_fail(logs, f"could not send the verify command: {err}")
+
+            data = self._vip_drain(markers=("<response",), timeout=6.0, settle=0.2)
+            logs += data
+            self._vip_show(data)
+            if self._vip_has_error(self._vip_text(data)) or not self._vip_response_ok(data, "verify command"):
+                return self._vip_fail(logs, "verify command was rejected by the target")
+
+            if not self._vip_send_file(self.cfg.VIPSign, "signature"):
+                return self._vip_fail(logs, "signature could not be sent")
+
+            data = self._vip_drain(markers=("verify passed", "verify failed", "<response"),
+                                   timeout=8.0, settle=1.0)
+            logs += data
+            self._vip_show(data)
+            text = self._vip_text(data)
+            if not self._vip_response_ok(data, "signature"):
+                return self._vip_fail(logs, "signature was rejected by the target")
+            if "verify passed" not in text:
+                if self._vip_has_error(text) or "verify failed" in text:
+                    return self._vip_fail(logs, "signature was rejected by the target")
+                self.warning("VIP: no explicit verification result, continuing anyway")
+
+        # Give the target a moment to print what follows the handshake, usually
+        # the list of supported functions.
+        data = self._vip_drain(markers=(), timeout=2.0, settle=1.5)
+        logs += data
+        self._vip_show(data)
+        self.vip_log_data = bytes(logs)
+        self.info("VIP: authentication completed")
+        return True
+
     def connect(self):
         v = b'-1'
         if platform.system() == 'Windows':
@@ -1159,17 +1446,32 @@ class firehose(metaclass=LogBase):
         else:
             self.cdc.timeout = 50
         info = []
+        raw = bytearray()
         while v != b'':
             try:
                 v = self.cdc.read(timeout=None)
-                if (b"response" in v and b"</data>" in v) or v == b'':
+                if not v:
                     break
+                raw += v
                 data = self.xml.getlog(v)
                 if len(data) > 0:
-                    info.append(data[0])
-                if not info:
+                    info.extend(data)
+                if not self.vip_done and self._vip_prompt_seen(raw):
+                    self.vip_done = True
+                    if self.vip:
+                        if not self.vip_handshake():
+                            self.vip_ok = False
+                        else:
+                            info.extend(self.xml.getlog(self.vip_log_data))
+                    else:
+                        self.warning("Target is VIP enabled and will reject storage commands.")
+                        self.warning("Pass the signed digest table with --vip-digest and "
+                                     "the signature with --vip-sign.")
+                    break
+                if b"response" in v and b"</data>" in v:
                     break
             except Exception as err:  # pylint: disable=broad-except
+                self.debug(str(err))
                 pass
 
         if info == [] or (len(info) > 0 and 'ERROR' in info[0]):

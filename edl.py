@@ -122,6 +122,11 @@ Options:
     --skip=partnames                   Skip reading partition with names "partname1,partname2,etc."
     --genxml                           Generate rawprogram[lun].xml
     --devicemodel=value                Set device model
+    --vip                              Enable the OPPO/OnePlus VIP handshake
+    --vip-digest=filename              Signed digest table (Digest.elf / Digest.mbn) for VIP targets
+    --vip-sign=filename                Signature (Sign.bin) sent after the EnableVip verify step
+    --vip-label=label                  Partition label used to authorise reads/writes on VIP targets
+    --skipinitialread                  Skip the first storage sector read done by configure
     --portname=portname                Set serial port name (/dev/ttyUSB0 for Linux/MAC; \\\\.\\COM1 for Windows)
     --serial                           Use serial port (port autodetection)
     --slot                             Set active slot for setactiveslot [a or b]
@@ -148,7 +153,45 @@ from edlclient.Library.streaming_client import streaming_client
 from edlclient.Library.utils import LogBase
 from edlclient.Library.utils import is_windows
 
-args = docopt(__doc__, version='3')
+
+# Options that apply to every command but are not part of the per command usage
+# patterns below. docopt only accepts options which occur in the usage pattern of
+# the command that is invoked, so these are pulled out of argv here and merged
+# into the parsed arguments, instead of being repeated in every usage line.
+GLOBAL_OPTIONS = {
+    "--vip": False,              # enable the OPPO/OnePlus VIP handshake
+    "--vip-digest": None,        # signed digest table (Digest.elf / Digest.mbn)
+    "--vip-sign": None,          # signature (Sign.bin)
+    "--vip-label": None,         # partition label used to authorise reads and writes
+    "--skipinitialread": False,  # do not probe the storage in configure()
+}
+
+
+def extract_global_options(argv, defaults):
+    """Split argv into docopt arguments and the GLOBAL_OPTIONS values."""
+    values = dict(defaults)
+    filtered = [argv[0]]
+    index = 1
+    while index < len(argv):
+        arg = argv[index]
+        name = arg.split("=", 1)[0]
+        if name not in defaults:
+            filtered.append(arg)
+        elif arg == name:
+            if isinstance(defaults[name], bool):
+                values[name] = True
+            elif index + 1 < len(argv):
+                index += 1
+                values[name] = argv[index]
+        else:
+            values[name] = arg.split("=", 1)[1]
+        index += 1
+    return filtered, values
+
+
+_args, _extra_args = extract_global_options(sys.argv, GLOBAL_OPTIONS)
+args = docopt(__doc__, argv=_args[1:], version='3')
+args.update(_extra_args)
 
 print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2025.")
 

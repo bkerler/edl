@@ -245,6 +245,34 @@ to get back the 0x9008 mode :
 - ```edl e misc --memory=ufs --lun=0``` -> to erase the partition misc on lun 0
 - ```edl gpt . --genxml --memory=ufs``` -> dump gpt_main[lun].bin/gpt_backup[lun].bin and write rawprogram[lun].xml to current directory (".")
 
+### For OPPO/OnePlus devices with VIP (verified image protection)
+
+Newer OPPO/OnePlus/Realme devices (SM8650 and up) run a "VIP" protected programmer. It ignores
+every read, write and erase until the host has handed it the signed digest table that ships with
+the firmware, and it then wants a label naming a partition of that table on every access. Without
+it the log stops at:
+
+```
+firehose - INFO: VIP is enabled, receiving the partition info of size 36864
+firehose - [LIB]: ERROR: label cannot be null
+```
+
+Take the digest table (```Digest.elf```, sometimes ```Digest.mbn```) and the signature (```Sign.bin```,
+256 bytes padded to 4096) from the OPPO/OnePlus firmware and pass them:
+
+- ```edl printgpt --memory=ufs --lun=0 --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --skipinitialread``` -> to print the gpt of a VIP protected device
+- ```edl r abl_b abl_b.img --memory=ufs --lun=4 --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --skipinitialread``` -> to dump a partition, the label is taken from the partition name
+- ```edl rl dumps --memory=ufs --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --skipinitialread``` -> to dump all partitions, one label per partition
+- ```edl w abl_b abl_b.img --memory=ufs --lun=4 --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --skipinitialread``` -> to write a partition
+- ```edl wl dumps --memory=ufs --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --skipinitialread``` -> to write a whole dump directory
+- ```edl rs 517223 256 abl_b.img --memory=ufs --lun=4 --vip --vip-digest=Digest.elf --vip-sign=Sign.bin --vip-label=abl_b``` -> to read raw sectors. There is no partition name to fall back on here, so the label has to be given with ```--vip-label```
+
+Notes:
+
+- ```--vip-sign``` is optional: without it the handshake stops after the digest table, which is all that some programmers ask for.
+- ```--skipinitialread``` skips the probe read of ```configure()```, recommended on VIP targets: a refused probe leaves a response behind that spoils the next read.
+- The digest table is the access list of the target. Partitions that are not in it, or that are listed with ```r:0```, answer ```ERROR: not get permission```/```not allowed on external network```. The target prints the entry it matched, e.g. ```INFO: entry:misc, w:1, r:0, e:1, c:0, s:0, start:0x2008, num:0x100```.
+
 ### QFIL emulation (credits to LyuOnLine):
 
 - For flashing full image:
@@ -313,13 +341,13 @@ For Oneplus 6T, enter *#801#* on dialpad, set Engineer Mode and Serial to on and
 ## Issues
 
 - Secure loader with SDM660 on Xiaomi not yet supported (EDL authentification)
-- VIP Programming not supported (Contributions are welcome !)
 - EFS directory write and file read has to be added (Contributions are welcome !)
 
 
 ## Tested with
 
 - Oneplus 3T/5/6T/7T/8/8t/9/Nord CE/N10/N100 (Read-Only), BQ X, BQ X5, BQ X2, Gigaset ME Pure, ZTE MF210, ZTE MF920V, Sierra Wireless EM7455, Netgear MR1100-10EUS, Netgear MR5100
+- Oneplus 12 (CPH2581, SM8650, UFS) via VIP digest table: printgpt, partition read and partition write
 - SIMCOM SIM8905E
 
 Published under GPLv3 license

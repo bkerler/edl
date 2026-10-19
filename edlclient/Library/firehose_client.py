@@ -34,6 +34,12 @@ except ImportError as e:
     pass
 
 
+def getoptarg(arguments, name):
+    """Return an optional argument value, treating empty and "None" as unset."""
+    value = arguments.get(name)
+    return None if value in (None, "", "None") else value
+
+
 class firehose_client(metaclass=LogBase):
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
@@ -60,6 +66,15 @@ class firehose_client(metaclass=LogBase):
         self.cfg.MaxPayloadSizeToTargetInBytes = getint(arguments["--maxpayload"])
         self.cfg.SECTOR_SIZE_IN_BYTES = getint(arguments["--sectorsize"])
         self.cfg.PAGES_PER_BLOCK = getint(arguments["--pagesperblock"])
+        # OPPO/OnePlus VIP support
+        self.cfg.VIP = bool(arguments.get("--vip", False))
+        self.cfg.VIPDigest = getoptarg(arguments, "--vip-digest")
+        self.cfg.VIPSign = getoptarg(arguments, "--vip-sign")
+        self.cfg.VIPLabel = getoptarg(arguments, "--vip-label")
+        if self.cfg.VIPDigest or self.cfg.VIPSign:
+            self.cfg.VIP = True
+        if self.cfg.VIP and not self.cfg.VIPDigest:
+            self.warning("VIP enabled but no --vip-digest given, the target will reject access")
         self.cfg.bit64 = sahara.bit64
         devicemodel = ""
         skipresponse = False
@@ -248,7 +263,8 @@ class firehose_client(metaclass=LogBase):
                     luns = self.getluns(options)
                     for lun in luns:
                         partfilename = filenames[i] + ".lun%d" % lun
-                        if self.firehose.cmd_read(lun, 0, 32, partfilename):
+                        if self.firehose.cmd_read(lun, 0, 32, partfilename,
+                                                  label=self.firehose.vip_gpt_label()):
                             self.printer(
                                 f"Dumped sector {str(0)} with sector count {str(32)} " +
                                 f"as {partfilename}.")
@@ -259,7 +275,8 @@ class firehose_client(metaclass=LogBase):
                 if res[0]:
                     lun = res[1]
                     rpartition = res[2]
-                    if self.firehose.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename):
+                    if self.firehose.cmd_read(lun, rpartition.sector, rpartition.sectors, partfilename,
+                                              label=rpartition.name):
                         self.printer(
                             f"Dumped sector {str(rpartition.sector)} with sector count {str(rpartition.sectors)} " +
                             f"as {partfilename}.")
@@ -326,7 +343,8 @@ class firehose_client(metaclass=LogBase):
                     self.info(
                         f"Dumping partition {str(partition.name)} with sector count {str(partition.sectors)} " +
                         f"as {filename}.")
-                    if self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename):
+                    if self.firehose.cmd_read(lun, partition.sector, partition.sectors, filename,
+                                              label=partition.name):
                         self.info(f"Dumped partition {str(partition.name)} with sector count " +
                                   f"{str(partition.sectors)} as {filename}.")
             return True
@@ -697,6 +715,7 @@ class firehose_client(metaclass=LogBase):
             bad = False
             for partitionname in partitions:
                 startsector = 0
+                label = None
                 filename = filenames[i]
                 i += 1
                 if not os.path.exists(filename):
@@ -706,6 +725,7 @@ class firehose_client(metaclass=LogBase):
                 if partitionname.lower() == "gpt":
                     sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
                     res = [True, lun, sectors]
+                    label = self.firehose.vip_gpt_label()
                 else:
                     res = self.firehose.detect_partition(options, partitionname)
                 if res[0]:
@@ -721,9 +741,10 @@ class firehose_client(metaclass=LogBase):
                             bad = True
                             continue
                         startsector = partition.sector
+                        label = partition.name
                     if self.firehose.modules is not None:
                         self.firehose.modules.writeprepare()
-                    if self.firehose.cmd_program(lun, startsector, filename):
+                    if self.firehose.cmd_program(lun, startsector, filename, label=label):
                         self.printer(f"Wrote {filename} to sector {str(startsector)}.")
                     else:
                         self.printer(f"Error writing {filename} to sector {str(startsector)}.")
@@ -784,7 +805,7 @@ class firehose_client(metaclass=LogBase):
                                        f"only has {partition.sectors}.")
                             return False
                         self.printer(f"Writing {filename} to partition {str(partition.name)}.")
-                        self.firehose.cmd_program(lun, partition.sector, filename)
+                        self.firehose.cmd_program(lun, partition.sector, filename, label=partition.name)
                     else:
                         if partname[0:3] == "gpt" or partname[-3:] == "xml":
                             self.printer(f"Can't find a partition named {partname} in the gpt, but continuing anyway.")
@@ -849,7 +870,7 @@ class firehose_client(metaclass=LogBase):
                 for partitionname in partitions:
                     if partitionname in guid_gpt.partentries:
                         partition = guid_gpt.partentries[partitionname]
-                        self.firehose.cmd_erase(lun, partition.sector, partition.sectors)
+                        self.firehose.cmd_erase(lun, partition.sector, partition.sectors, label=partition.name)
                         self.printer(
                             f"Erased {partitionname} starting at sector {str(partition.sector)} " +
                             f"with sector count {str(partition.sectors)}.")
@@ -874,7 +895,7 @@ class firehose_client(metaclass=LogBase):
                     self.firehose.modules.writeprepare()
                 if partitionname in guid_gpt.partentries:
                     partition = guid_gpt.partentries[partitionname]
-                    self.firehose.cmd_erase(lun, partition.sector, sectors)
+                    self.firehose.cmd_erase(lun, partition.sector, sectors, label=partition.name)
                     self.printer(
                         f"Erased {partitionname} starting at sector {str(partition.sector)} " +
                         f"with sector count {str(sectors)}.")
