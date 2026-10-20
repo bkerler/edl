@@ -487,6 +487,8 @@ class paramtools:
         if sid > 0x100:
             rdata = data[sid * 0x400:(sid * 0x400) + 0x1000]
             itemdata, hv, cv, updatecounter = self.decryptsid(rdata)
+            if itemdata is None:
+                raise ValueError(f"Cannot modify SID {sid:#x}: decryption or integrity validation failed")
             if itemdata is not None:
                 itemdata = bytearray(itemdata)
                 if isinstance(value, int):
@@ -969,8 +971,10 @@ def main():
         param = paramtools(mode, serial)
         with open(filename, 'rb') as rf:
             data = rf.read()
+            # Validate before creating or truncating the output file.
+            patched = param.setparamvalue(data, sid, offset, value)
             with open(filename + ".patched", 'wb') as wf:
-                wf.write(param.setparamvalue(data, sid, offset, value))
+                wf.write(patched)
     elif args["gencode"]:
         imei = args["<imei>"]
         mode = 0
