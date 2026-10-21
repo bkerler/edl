@@ -48,30 +48,51 @@ class DependencyTests(unittest.TestCase):
         scripts = root / ("Scripts" if os.name == "nt" else "bin")
         return scripts / ("python.exe" if os.name == "nt" else "python")
 
+    def check_script(self, python, code):
+        # A successful exit alone cannot detect sys.exit(0) during an import.
+        output = run(str(python), "-c", code + '\nprint("dependency-check-complete")',
+                     cwd=self.work)
+        self.assertEqual(output, "dependency-check-complete\n")
+
     def test_default_dependency_install(self):
         for wheel in self.wheels:
             with self.subTest(wheel=wheel.parent.name):
                 python = self.environment(wheel.parent.name + "-installed")
                 run(str(python), "-m", "pip", "install", str(wheel), cwd=self.work)
                 run(str(python), "-m", "pip", "check", cwd=self.work)
-                run(str(python), "-c", "\n".join((
+                self.check_script(python, "\n".join((
                     "import importlib.util, pathlib, sys",
                     "for name in ('capstone', 'keystone', 'qrcode'):",
                     "    assert importlib.util.find_spec(name) is None, name",
                     "from edlclient.Library import cryptutils",
                     "from edlclient.Library.Modules import oneplus, oneplus_param",
+                    "from edlclient.Library.utils import patchtools",
                     "module = pathlib.Path(cryptutils.__file__).resolve()",
                     "assert pathlib.Path(sys.prefix).resolve() in module.parents, module",
-                )), cwd=self.work)
+                    "assert 'capstone' not in sys.modules and 'keystone' not in sys.modules",
+                    "tools = patchtools()",
+                    "for method, args in ((tools.assembler, ('nop',)),",
+                    "                     (tools.disasm, (bytes.fromhex('1f2003d5'), 0x1000))):",
+                    "    try:",
+                    "        method(*args)",
+                    "    except ImportError as exc:",
+                    "        assert 'edlclient[asm]' in str(exc), str(exc)",
+                    "    else:",
+                    "        raise AssertionError('Missing optional dependency was not reported')",
+                )))
 
     def test_optional_dependency_install(self):
         for extra, missing, check in (
             ("asm", "qrcode", "\n".join((
-                "from edlclient.Library import asmtools",
-                "code = bytes(asmtools.asm('nop', 'arm', 'arm', False))",
-                "disassembler = asmtools.Cs(asmtools.CS_ARCH_ARM, asmtools.CS_MODE_ARM)",
+                "from capstone import Cs, CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN",
+                "from edlclient.Library.utils import patchtools",
+                "code = bytes.fromhex('1f2003d5')",
+                "disassembler = Cs(CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN)",
                 "instructions = list(disassembler.disasm(code, 0x1000))",
                 "assert len(instructions) == 1 and instructions[0].mnemonic == 'nop'",
+                "tools = patchtools()",
+                "assert tools.assembler('nop') == code.hex()",
+                "assert tools.disasm(code, 0x1000) == ['nop\\t']",
             ))),
             ("qrcode", "capstone", "\n".join((
                 "from pathlib import Path",
@@ -86,17 +107,21 @@ class DependencyTests(unittest.TestCase):
                 run(str(python), "-m", "pip", "install",
                     str(self.wheels[0]) + "[" + extra + "]", cwd=self.work)
                 run(str(python), "-m", "pip", "check", cwd=self.work)
-                run(str(python), "-c",
-                    f"import importlib.util; assert importlib.util.find_spec('{missing}') is None",
-                    cwd=self.work)
-                run(str(python), "-c", check, cwd=self.work)
+                self.check_script(python,
+                    f"import importlib.util; assert importlib.util.find_spec('{missing}') is None")
+                if extra == "asm":
+                    output = run(str(python), "-m", "edlclient.Library.asmtools",
+                                 "--asm", "arm64,arm", "--inp", "nop", cwd=self.work)
+                    self.assertEqual(output.splitlines(),
+                                     ["CPU: arm64, MODE: arm", "1f2003d5"])
+                self.check_script(python, check)
 
     def test_legacy_requirements(self):
         python = self.environment("legacy-source")
         run(str(python), "-m", "pip", "install", "-r",
             str(ROOT / "requirements.txt"), cwd=self.work)
         run(str(python), "-m", "pip", "check", cwd=self.work)
-        run(str(python), "-c", "\n".join((
+        self.check_script(python, "\n".join((
             "import importlib.util",
             "assert importlib.util.find_spec('edlclient') is None",
             "from Cryptodome.Cipher import AES",
@@ -104,7 +129,7 @@ class DependencyTests(unittest.TestCase):
             "from passlib.hash import md5_crypt",
             "import requests, serial, usb.core, capstone, keystone, qrcode",
             "from PIL import Image",
-        )), cwd=self.work)
+        )))
 
     def test_generated_requirements(self):
         run(sys.executable, str(ROOT / ".github/scripts/update_requirements.py"),
