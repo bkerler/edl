@@ -18,9 +18,13 @@ from struct import unpack, pack
 from binascii import hexlify, unhexlify
 
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(os.path.dirname(current_dir))
-sys.path.insert(0, parent_dir)
+# Allow direct execution from a source checkout as well as installed entry points.
+if __package__ in (None, ""):
+    root_dir = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    sys.path.insert(0, root_dir)
+
 from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
 from edlclient.Library.Connection.usblib import usb_class
 from edlclient.Library.Connection.seriallib import serial_class

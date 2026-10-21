@@ -54,14 +54,20 @@ class PackagingTests(unittest.TestCase):
             run(sys.executable, "-m", "build", "--no-isolation", *flags,
                 "--outdir", str(output), cwd=ROOT)
             cls.wheels.append(next(output.glob("*.whl")))
-        cls.environment = cls.work / "environment"
-        venv.EnvBuilder(with_pip=True).create(cls.environment)
-        cls.scripts = cls.environment / ("Scripts" if os.name == "nt" else "bin")
-        cls.python = cls.scripts / ("python.exe" if os.name == "nt" else "python")
+        cls.python, cls.scripts = cls.create_environment("installed")
+        cls.source_python, _ = cls.create_environment("source")
+
+    @classmethod
+    def create_environment(cls, name):
+        environment = cls.work / name
+        venv.EnvBuilder(with_pip=True).create(environment)
+        scripts = environment / ("Scripts" if os.name == "nt" else "bin")
+        python = scripts / ("python.exe" if os.name == "nt" else "python")
         # Use the existing requirements file to exercise package structure
         # independently of dependency metadata.
-        run(str(cls.python), "-m", "pip", "install", "-r",
+        run(str(python), "-m", "pip", "install", "-r",
             str(ROOT / "requirements.txt"), cwd=cls.work)
+        return python, scripts
 
     def test_wheel_contents(self):
         for wheel in self.wheels:
@@ -108,9 +114,13 @@ class PackagingTests(unittest.TestCase):
                                        "--version", cwd=self.work))
 
     def test_source_launchers(self):
+        # The source checks must never fall back to an installed application.
+        run(str(self.source_python), "-c",
+            "import importlib.util; assert importlib.util.find_spec('edlclient') is None",
+            cwd=self.work)
         for script in ("edl.py", "qc_diag.py", "boottodwnload.py", "enableadb.py", "fhloaderparse.py"):
             with self.subTest(script=script):
-                output = run(str(self.python), str(ROOT / script),
+                output = run(str(self.source_python), str(ROOT / script),
                              *CLI_ARGS[Path(script).stem], cwd=self.work)
                 self.assertIn("usage:", output.lower())
         # These tools used to depend on the Tools/Library and Tools/Config links.
@@ -118,7 +128,7 @@ class PackagingTests(unittest.TestCase):
             script = ROOT / "edlclient" / "Tools" / (command + ".py")
             if script.exists():
                 with self.subTest(script=str(script)):
-                    output = run(str(self.python), str(script), *args, cwd=self.work)
+                    output = run(str(self.source_python), str(script), *args, cwd=self.work)
                     self.assertIn("usage:", output.lower())
 
 
