@@ -585,7 +585,7 @@ class SierraKeygen(metaclass=LogBase):
         return False
 
 
-def main(args):
+def main(args=None):
     version = "1.5"
     info = 'Sierra Wireless Generator ' + version + ' (c) B. Kerler 2019-2021'
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=info)
@@ -630,7 +630,7 @@ def main(args):
         help='run selftest',
         default=False, action='store_true')
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     openlock = args.openlock
     openmep = args.openmep
@@ -692,4 +692,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()

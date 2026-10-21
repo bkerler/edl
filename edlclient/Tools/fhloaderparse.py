@@ -13,14 +13,13 @@ from io import BytesIO
 from os import walk
 from shutil import copyfile
 from struct import unpack
-try:
-    from Config.qualcomm_config import vendor
-    from Library.loader_db import loader_utils
-    from Library.utils import elf
-except ModuleNotFoundError:
-    from edlclient.Config.qualcomm_config import vendor
-    from edlclient.Library.loader_db import loader_utils
-    from edlclient.Library.utils import elf
+# Allow direct execution from a source checkout as well as installed entry points.
+if __package__ in (None, ""):
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from edlclient.Config.qualcomm_config import vendor
+from edlclient.Library.loader_db import loader_utils
+from edlclient.Library.utils import elf
 
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
@@ -283,7 +282,9 @@ def is_duplicate(loaderdb, sign_info):
     return False
 
 
-def main(argv):
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
     file_list = []
     path = ""
     if len(argv) < 3:
@@ -502,4 +503,5 @@ def main(argv):
     rt.close()
 
 
-main(sys.argv)
+if __name__ == '__main__':
+    main()

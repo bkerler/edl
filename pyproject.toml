@@ -49,3 +49,5 @@ include-package-data = true
 zip-safe = false
 
 [ tool.setuptools.packages.find ]
+include = ["edlclient", "edlclient.*"]
+namespaces = false
