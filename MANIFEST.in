@@ -1,6 +1,7 @@
 include README.md
 include LICENSE
 include fastpwn
+include edl.py
 recursive-include Loaders *
 include edlclient/Windows/*.dll
 include edlclient/Config/nvitems.xml
