@@ -184,6 +184,69 @@ Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running download
 Assert (-not (Get-ChildItem -LiteralPath $target -Filter '.edl-stage-*' -Force)) 'Staging directory was not cleaned'
 ''')
 
+    def test_checkout_rolls_back_and_recovers_a_killed_publisher(self):
+        self.check_script(r'''
+$bootstrap = $InstallerPath
+$target = Join-Path $work 'checkout target'
+$archiveRoot = Join-Path $work 'edl-master'
+New-Item -ItemType Directory -Path $target, "$archiveRoot\edlclient" | Out-Null
+[IO.File]::WriteAllText("$archiveRoot\pyproject.toml", "[project]`nname = 'edlclient'`n")
+[IO.File]::WriteAllText("$archiveRoot\install.py", '# installer')
+[IO.File]::WriteAllText("$archiveRoot\zz-payload.bin", 'complete source')
+$script:InstallerPath = Join-Path $target 'install_edl_win10_win11.ps1'
+[IO.File]::WriteAllText($script:InstallerPath, '# running installer')
+Compress-Archive -Path $archiveRoot -DestinationPath "$work\source.zip"
+function Get-Command { [CmdletBinding()]param($Name) return $null }
+function Invoke-InstallerHttp($Uri, $OutFile) { [IO.File]::Copy("$work\source.zip", $OutFile) }
+$script:moves = 0
+$script:failMove = $true
+function Move-Item {
+    [CmdletBinding()]param($LiteralPath, $Destination)
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination
+    if ((Split-Path -Parent $Destination) -eq $target) {
+        $script:moves++
+        if ($script:failMove -and $script:moves -eq 2) { $script:failMove = $false; throw 'Simulated move failure' }
+    }
+}
+$failed = $false
+try { Get-EdlCheckout $target 'https://github.com/bkerler/edl.git' } catch { $failure = $_; $failed = $_ -like '*Simulated move failure*' }
+Assert $failed "Move failure was hidden: $failure"
+Assert (@(Get-ChildItem -LiteralPath $target -Force).Count -eq 1) 'Failed publication left partial source or state'
+Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running installer') 'Rollback changed the running installer'
+$worker = @'
+param($Installer, $Target, $Archive)
+. $Installer
+$script:InstallerPath = Join-Path $Target 'install_edl_win10_win11.ps1'
+function Get-Command { [CmdletBinding()]param($Name) return $null }
+function Invoke-InstallerHttp($Uri, $OutFile) { [IO.File]::Copy($Archive, $OutFile) }
+function Move-Item {
+    [CmdletBinding()]param($LiteralPath, $Destination)
+    Microsoft.PowerShell.Management\Move-Item -LiteralPath $LiteralPath -Destination $Destination
+    if ((Split-Path -Parent $Destination) -eq $Target -and (Test-EdlCheckout $Target)) {
+        [Diagnostics.Process]::GetCurrentProcess().Kill()
+    }
+}
+Get-EdlCheckout $Target 'https://github.com/bkerler/edl.git'
+'@
+[IO.File]::WriteAllText("$work\killed-publisher.ps1", $worker)
+$process = Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$work\killed-publisher.ps1`"", "`"$bootstrap`"", "`"$target`"", "`"$work\source.zip`"") -WindowStyle Hidden -Wait -PassThru
+Assert ($process.ExitCode -ne 0) 'Publisher was not killed'
+Assert (Test-EdlCheckout $target) 'Fixture did not reach a valid-looking partial checkout'
+Assert (Test-Path -LiteralPath "$target\.edl-checkout-state\plan.json") 'Killed publisher lost its recovery plan'
+Get-EdlCheckout $target 'https://github.com/bkerler/edl.git'
+Assert ((Get-Content -LiteralPath "$target\zz-payload.bin") -eq 'complete source') 'Retry did not publish complete source'
+Assert (-not (Test-Path -LiteralPath "$target\.edl-checkout-state")) 'Retry left checkout state'
+Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running installer') 'Recovery changed the running installer'
+# Interrupted cleanup of a committed checkout must not roll its source back.
+New-Item -ItemType Directory -Path "$target\.edl-checkout-state" | Out-Null
+[IO.File]::WriteAllText("$target\.edl-checkout-state\committed", 'edl-checkout-v1')
+[IO.File]::WriteAllText("$target\.edl-checkout-state\plan.json", '["pyproject.toml", "edlclient"]')
+function Invoke-InstallerHttp { throw 'Committed checkout was downloaded again' }
+Get-EdlCheckout $target 'https://github.com/bkerler/edl.git'
+Assert (Test-EdlCheckout $target) 'Committed source was rolled back during cleanup recovery'
+Assert (-not (Test-Path -LiteralPath "$target\.edl-checkout-state")) 'Committed state was not cleaned'
+''')
+
     def test_invalid_target_rejected_before_python_selection(self):
         self.check_script(r'''
 $target = Join-Path $work 'other project'

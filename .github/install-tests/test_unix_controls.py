@@ -158,6 +158,70 @@ class UnixControlTests(unittest.TestCase):
         self.assertEqual(len(log.read_text().splitlines()), 2)
         self.assertEqual(list(self.work.glob(".edl-stage.*")), [])
 
+    def test_checkout_rolls_back_and_recovers_a_killed_publisher(self):
+        source = self.work / "edl-master"
+        source.mkdir()
+        (source / "edlclient").mkdir()
+        (source / "pyproject.toml").write_text('[project]\nname = "edlclient"\n', encoding="utf-8")
+        shutil.copy2(self.work / "install.py", source / "install.py")
+        (source / "zz-payload.bin").write_text("complete source", encoding="utf-8")
+        archive = self.work / "source.tar.gz"
+        with tarfile.open(archive, "w:gz") as output:
+            output.add(source, arcname="edl-master")
+        target = self.work / "checkout target"
+        target.mkdir()
+        script = target / "autoinstall.sh"
+        script.write_bytes((ROOT / "autoinstall.sh").read_bytes().replace(b"\r\n", b"\n"))
+        original = script.read_bytes()
+        tools = self.work / "publishing tools"
+        tools.mkdir()
+        for name in ("dirname", "basename", "tar", "gzip", "rm", "awk", "mkdir", "rmdir", "cat", "ls"):
+            (tools / name).symlink_to(shutil.which(name))
+        curl = tools / "curl"
+        curl.write_text("#!/bin/sh\nexec " + shlex.quote(shutil.which("cp")) + " "
+                        + shlex.quote(str(archive)) + ' "$4"\n', encoding="utf-8")
+        curl.chmod(0o755)
+        mode = self.work / "failure-mode"
+        mode.write_text("error", encoding="utf-8")
+        move = tools / "mv"
+        move.write_text("#!/bin/sh\n" + shlex.quote(shutil.which("mv")) + ' "$@" || exit $?\n'
+                        + 'if [ "$2" = ' + shlex.quote(str(target / "pyproject.toml")) + ' ]; then\n'
+                        + '  case "$(cat ' + shlex.quote(str(mode)) + ')" in\n'
+                        + '    error) exit 1 ;;\n    kill) kill -KILL "$PPID" ;;\n  esac\nfi\n', encoding="utf-8")
+        move.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = str(tools)
+        command = ["/bin/sh", str(script), "--python", sys.executable,
+                   "--skip-drivers", "--skip-loaders", "--no-input"]
+        def invoke():
+            return subprocess.run(command, cwd=target, env=env, capture_output=True, text=True, timeout=30)
+        failed = invoke()
+        self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
+        self.assertEqual(list(target.iterdir()), [script], failed.stdout + failed.stderr)
+        self.assertEqual(script.read_bytes(), original)
+        mode.write_text("kill", encoding="utf-8")
+        killed = invoke()
+        self.assertNotEqual(killed.returncode, 0)
+        state = target / ".edl-checkout-state"
+        self.assertTrue((state / "plan").is_file(), killed.stdout + killed.stderr)
+        self.assertTrue((target / "edlclient").is_dir())
+        self.assertTrue((target / "pyproject.toml").is_file())
+        mode.write_text("success", encoding="utf-8")
+        completed = invoke()
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        self.assertEqual((target / "zz-payload.bin").read_text(), "complete source")
+        self.assertTrue((target / "install.result").exists())
+        self.assertEqual(script.read_bytes(), original)
+        self.assertFalse(state.exists())
+        state.mkdir()
+        (state / "committed").write_text("edl-checkout-v1\n", encoding="utf-8")
+        (state / "plan").write_text("pyproject.toml\nedlclient\n", encoding="utf-8")
+        curl.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+        completed = invoke()
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        self.assertTrue((target / "edlclient").is_dir())
+        self.assertFalse(state.exists())
+
     def test_archive_without_git_preserves_downloaded_script(self):
         target = self.work / "archive install"
         target.mkdir()
@@ -176,7 +240,7 @@ class UnixControlTests(unittest.TestCase):
             output.add(source, arcname="edl-master")
         tools = self.work / "archive tools"
         tools.mkdir()
-        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm", "awk"):
+        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm", "awk", "mkdir", "rmdir", "cat", "ls"):
             (tools / name).symlink_to(shutil.which(name))
         curl = tools / "curl"
         curl.write_text("#!/bin/sh\nexec " + shlex.quote(shutil.which("cp")) + " "

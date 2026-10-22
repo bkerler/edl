@@ -47,6 +47,65 @@ function Remove-InstallerStage([string]$Stage, [string]$Parent) {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 
+function Remove-CheckoutState([string]$Target) {
+    $state = Join-Path $Target '.edl-checkout-state'
+    $resolved = (Resolve-Path -LiteralPath $state).Path
+    if ($resolved -ne [IO.Path]::GetFullPath($state) -or
+        ((Get-Item -LiteralPath $state -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Refusing to clean an unexpected checkout state directory.'
+    }
+    # Keep the ownership/commit records until all other cleanup has finished.
+    foreach ($entry in Get-ChildItem -LiteralPath $state -Force) {
+        if ($entry.Name -notin @('owner', 'committed')) {
+            if (-not $entry.FullName.StartsWith($resolved + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                throw 'Unexpected checkout cleanup path.'
+            }
+            Remove-Item -LiteralPath $entry.FullName -Recurse -Force
+        }
+    }
+    foreach ($name in @('owner', 'committed')) {
+        $path = Join-Path $state $name
+        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force }
+    }
+    Remove-Item -LiteralPath $state -Force
+}
+
+function Restore-InterruptedCheckout([string]$Target) {
+    $state = Join-Path $Target '.edl-checkout-state'
+    if (-not (Test-Path -LiteralPath $state)) { return }
+    if (-not (Test-Path -LiteralPath $state -PathType Container) -or
+        ((Get-Item -LiteralPath $state -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'The checkout state path is not a regular directory.'
+    }
+    if (-not (Get-ChildItem -LiteralPath $state -Force)) { Remove-CheckoutState $Target; return }
+    $committed = (Test-Path -LiteralPath "$state\committed" -PathType Leaf) -and
+                 (Get-Content -LiteralPath "$state\committed" -Raw) -match '\Aedl-checkout-v1(?:\r?\n)?\z'
+    $owned = (Test-Path -LiteralPath "$state\owner" -PathType Leaf) -and
+             (Get-Content -LiteralPath "$state\owner" -Raw) -match '\Aedl-checkout-v1(?:\r?\n)?\z'
+    if (-not $owned -and -not $committed) { throw 'Unrecognized .edl-checkout-state directory; move it aside before installing.' }
+    if (-not $committed -and (Test-Path -LiteralPath "$state\plan.json" -PathType Leaf)) {
+        $names = Get-Content -LiteralPath "$state\plan.json" -Raw | ConvertFrom-Json
+        foreach ($name in $names) {
+            if ($name -isnot [string] -or -not $name -or $name -in @('.', '..', '.edl-checkout-state') -or
+                [IO.Path]::GetFileName($name) -ne $name -or (Join-Path $Target $name) -eq $InstallerPath) {
+                throw 'Invalid entry in the checkout recovery plan.'
+            }
+        }
+        foreach ($name in $names) {
+            $source = Join-Path "$state\source" $name
+            $destination = Join-Path $Target $name
+            $original = Get-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue
+            $published = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+            if ($published) {
+                if ($original) { throw "Checkout recovery would overwrite staged data: $name. Both copies were retained." }
+                Move-Item -LiteralPath $destination -Destination $source
+            }
+        }
+        Write-Host 'Rolled back an interrupted source checkout.'
+    }
+    Remove-CheckoutState $Target
+}
+
 function Test-EdlCheckout([string]$Target) {
     if (-not (Test-Path -LiteralPath "$Target\pyproject.toml" -PathType Leaf) -or
         -not (Test-Path -LiteralPath "$Target\edlclient" -PathType Container)) { return $false }
@@ -68,11 +127,14 @@ function Assert-InstallationTarget([string]$Target) {
 }
 
 function Get-EdlCheckout([string]$Target, [string]$Source) {
+    Restore-InterruptedCheckout $Target
     Assert-InstallationTarget $Target
     if (Test-EdlCheckout $Target) { return }
-    $stage = Join-Path $Target ('.edl-stage-' + [guid]::NewGuid().ToString('N'))
+    $stage = Join-Path $Target '.edl-checkout-state'
     New-Item -ItemType Directory -Path $stage | Out-Null
+    $prepared = $false
     try {
+        [IO.File]::WriteAllText("$stage\owner", 'edl-checkout-v1')
         $checkout = Join-Path $stage 'source'
         if (Get-Command git -ErrorAction SilentlyContinue) {
             & git clone --quiet --no-hardlinks -- $Source $checkout
@@ -81,26 +143,35 @@ function Get-EdlCheckout([string]$Target, [string]$Source) {
             if ($Source -ne 'https://github.com/bkerler/edl.git') { throw 'Git is required for a custom repository.' }
             Invoke-InstallerHttp 'https://github.com/bkerler/edl/archive/refs/heads/master.zip' "$stage\source.zip"
             Expand-Archive -LiteralPath "$stage\source.zip" -DestinationPath "$stage\expanded"
-            $checkout = Join-Path $stage 'expanded\edl-master'
+            Move-Item -LiteralPath "$stage\expanded\edl-master" -Destination $checkout
         }
         if (-not (Test-EdlCheckout $checkout)) { throw 'The downloaded source is not an edlclient project.' }
         # Check every destination before moving anything, including the running installer.
         foreach ($entry in Get-ChildItem -LiteralPath $checkout -Force) {
+            if ($entry.Name -eq '.edl-checkout-state') { throw 'The downloaded source contains a reserved installer path.' }
             $destination = Join-Path $Target $entry.Name
             if ((Test-Path -LiteralPath $destination) -and $destination -ne $InstallerPath) {
                 throw "Refusing to overwrite $destination"
             }
         }
-        foreach ($entry in Get-ChildItem -LiteralPath $checkout -Force) {
-            $destination = [IO.Path]::GetFullPath((Join-Path $Target $entry.Name))
+        $names = @(Get-ChildItem -LiteralPath $checkout -Force |
+                   Where-Object { (Join-Path $Target $_.Name) -ne $InstallerPath } |
+                   ForEach-Object { $_.Name })
+        [IO.File]::WriteAllText("$stage\plan.tmp", (ConvertTo-Json -InputObject $names))
+        [IO.File]::Move("$stage\plan.tmp", "$stage\plan.json")
+        $prepared = $true
+        foreach ($name in $names) {
+            $destination = [IO.Path]::GetFullPath((Join-Path $Target $name))
             if (-not $destination.StartsWith($Target.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
                 throw 'Unexpected checkout destination.'
             }
-            if ($destination -eq $InstallerPath) { continue }
-            Move-Item -LiteralPath $entry.FullName -Destination $destination
+            if (Test-Path -LiteralPath $destination) { throw "Refusing to overwrite $destination" }
+            Move-Item -LiteralPath (Join-Path $checkout $name) -Destination $destination
         }
+        [IO.File]::WriteAllText("$stage\committed", 'edl-checkout-v1')
     } finally {
-        Remove-InstallerStage $stage $Target
+        if ($prepared) { Restore-InterruptedCheckout $Target }
+        else { Remove-CheckoutState $Target }
     }
 }
 
@@ -296,6 +367,7 @@ function Invoke-EdlInstaller {
     }
     $target = (Get-Location).Path
     Write-Host "Installing EDL in $target"
+    Restore-InterruptedCheckout $target
     Assert-InstallationTarget $target
     if (Test-Path -LiteralPath "$target\.venv") {
         if (-not (Test-Path -LiteralPath "$target\.venv\pyvenv.cfg") -or

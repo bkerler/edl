@@ -81,6 +81,13 @@ It stages downloads separately and preserves the running installer when the
 repository contains a file with the same name. Other existing files are never
 overwritten. An existing EDL checkout is reused.
 
+Fresh source checkouts keep a move plan in `.edl-checkout-state` until all
+source entries have been published. A move error rolls back the entries already
+moved. After a forced interruption, rerun the installer in the same directory:
+it recovers the pending checkout before checking the directory or selecting
+Python. Leave the state directory in place for recovery. If permissions or
+locked files prevent rollback, resolve that problem and rerun the installer.
+
 On Windows (PowerShell 5.1 or newer):
 ```powershell
 mkdir edl-client

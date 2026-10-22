@@ -12,6 +12,9 @@ SKIP_DRIVERS=0
 SKIP_LOADERS=0
 NO_INPUT=0
 STAGE=
+CHECKOUT_STATE="$TARGET/.edl-checkout-state"
+CHECKOUT_ACTIVE=0
+CHECKOUT_PREPARED=0
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 need_value() { [ "$2" -ge 2 ] || die "Missing value for $1"; }
@@ -37,8 +40,52 @@ cleanup_stage() {
     case "$STAGE" in "$TARGET"/.edl-stage.*) rm -rf "$STAGE" ;; *) die 'Unexpected staging directory' ;; esac
     STAGE=
 }
-trap cleanup_stage 0
+finish_checkout() {
+    [ "$CHECKOUT_ACTIVE" = 1 ] || return 0
+    if [ "$CHECKOUT_PREPARED" = 1 ]; then restore_interrupted_checkout
+    else remove_checkout_state; fi
+    CHECKOUT_ACTIVE=0
+}
+trap 'finish_checkout; cleanup_stage' 0
 trap 'exit 1' HUP INT TERM
+
+remove_checkout_state() {
+    [ -d "$CHECKOUT_STATE" ] && [ ! -L "$CHECKOUT_STATE" ] || die 'Unexpected checkout state directory.'
+    for entry in "$CHECKOUT_STATE"/* "$CHECKOUT_STATE"/.[!.]* "$CHECKOUT_STATE"/..?*; do
+        [ -e "$entry" ] || [ -L "$entry" ] || continue
+        case "$entry" in "$CHECKOUT_STATE/owner"|"$CHECKOUT_STATE/committed") continue ;; esac
+        rm -rf "$entry"
+    done
+    rm -f "$CHECKOUT_STATE/owner" "$CHECKOUT_STATE/committed"
+    rmdir "$CHECKOUT_STATE"
+}
+
+restore_interrupted_checkout() {
+    [ -e "$CHECKOUT_STATE" ] || [ -L "$CHECKOUT_STATE" ] || return 0
+    [ -d "$CHECKOUT_STATE" ] && [ ! -L "$CHECKOUT_STATE" ] || die 'Unexpected checkout state directory.'
+    if [ -z "$(ls -A "$CHECKOUT_STATE")" ]; then remove_checkout_state; return; fi
+    committed=0
+    if [ -f "$CHECKOUT_STATE/committed" ] && [ "$(cat "$CHECKOUT_STATE/committed")" = edl-checkout-v1 ]; then committed=1; fi
+    if [ "$committed" = 0 ]; then
+        [ -f "$CHECKOUT_STATE/owner" ] && [ "$(cat "$CHECKOUT_STATE/owner")" = edl-checkout-v1 ] || die 'Unrecognized .edl-checkout-state directory; move it aside before installing.'
+        if [ -f "$CHECKOUT_STATE/plan" ]; then
+            while IFS= read -r name; do
+                case "$name" in ''|.|..|*/*|.edl-checkout-state) die 'Invalid checkout recovery entry.' ;; esac
+                [ "$TARGET/$name" != "$SELF" ] || die 'The recovery plan includes the running installer.'
+            done < "$CHECKOUT_STATE/plan"
+            while IFS= read -r name; do
+                if [ -e "$TARGET/$name" ] || [ -L "$TARGET/$name" ]; then
+                    if [ -e "$CHECKOUT_STATE/source/$name" ] || [ -L "$CHECKOUT_STATE/source/$name" ]; then
+                        die "Checkout recovery would overwrite staged data: $name. Both copies were retained."
+                    fi
+                    mv "$TARGET/$name" "$CHECKOUT_STATE/source/$name"
+                fi
+            done < "$CHECKOUT_STATE/plan"
+            printf 'Rolled back an interrupted source checkout.\n'
+        fi
+    fi
+    remove_checkout_state
+}
 
 fetch_file() {
     if command -v curl >/dev/null 2>&1; then curl -fL "$1" -o "$2"
@@ -74,32 +121,43 @@ check_target() {
 }
 
 get_checkout() {
+    restore_interrupted_checkout
     check_target
     if is_edl_checkout "$TARGET"; then return; fi
-    STAGE=$(mktemp -d "$TARGET/.edl-stage.XXXXXX")
+    mkdir "$CHECKOUT_STATE"
+    CHECKOUT_ACTIVE=1
+    printf 'edl-checkout-v1\n' > "$CHECKOUT_STATE/owner"
+    checkout="$CHECKOUT_STATE/source"
     if command -v git >/dev/null 2>&1; then
-        git clone --quiet --no-hardlinks -- "$REPOSITORY" "$STAGE/source"
-        checkout="$STAGE/source"
+        git clone --quiet --no-hardlinks -- "$REPOSITORY" "$checkout"
     else
         [ "$REPOSITORY" = https://github.com/bkerler/edl.git ] || die 'Git is required for a custom repository.'
-        fetch_file https://github.com/bkerler/edl/archive/refs/heads/master.tar.gz "$STAGE/source.tar.gz"
-        tar -xzf "$STAGE/source.tar.gz" -C "$STAGE"
-        checkout="$STAGE/edl-master"
+        fetch_file https://github.com/bkerler/edl/archive/refs/heads/master.tar.gz "$CHECKOUT_STATE/source.tar.gz"
+        tar -xzf "$CHECKOUT_STATE/source.tar.gz" -C "$CHECKOUT_STATE"
+        mv "$CHECKOUT_STATE/edl-master" "$checkout"
     fi
     is_edl_checkout "$checkout" || die 'The downloaded source is not an edlclient project.'
+    : > "$CHECKOUT_STATE/plan.tmp"
     for entry in "$checkout"/* "$checkout"/.[!.]* "$checkout"/..?*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         destination="$TARGET/$(basename "$entry")"
+        name=$(basename "$entry")
+        case "$name" in .edl-checkout-state|*'
+'*) die 'The downloaded source contains a reserved or unsupported installer path.' ;; esac
         if [ -e "$destination" ] || [ -L "$destination" ]; then
             [ "$destination" = "$SELF" ] || die "Refusing to overwrite $destination"
         fi
+        [ "$destination" = "$SELF" ] || printf '%s\n' "$name" >> "$CHECKOUT_STATE/plan.tmp"
     done
-    for entry in "$checkout"/* "$checkout"/.[!.]* "$checkout"/..?*; do
-        [ -e "$entry" ] || [ -L "$entry" ] || continue
-        destination="$TARGET/$(basename "$entry")"
-        [ "$destination" = "$SELF" ] || mv "$entry" "$destination"
-    done
-    cleanup_stage
+    mv "$CHECKOUT_STATE/plan.tmp" "$CHECKOUT_STATE/plan"
+    CHECKOUT_PREPARED=1
+    while IFS= read -r name; do
+        destination="$TARGET/$name"
+        if [ -e "$destination" ] || [ -L "$destination" ]; then die "Refusing to overwrite $destination"; fi
+        mv "$checkout/$name" "$destination"
+    done < "$CHECKOUT_STATE/plan"
+    printf 'edl-checkout-v1\n' > "$CHECKOUT_STATE/committed"
+    finish_checkout
 }
 
 get_loaders() {
@@ -210,6 +268,7 @@ ensure_usb() {
 }
 
 printf 'Installing EDL in %s\n' "$TARGET"
+restore_interrupted_checkout
 check_target
 if [ -e "$TARGET/.venv" ]; then
     [ -f "$TARGET/.venv/pyvenv.cfg" ] || die 'The existing .venv is not an isolated virtual environment. Move it aside first.'
