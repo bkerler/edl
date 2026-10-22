@@ -72,6 +72,33 @@ class UnixControlTests(unittest.TestCase):
         self.assertIn("apt-get install -y python3 python3-venv", commands)
         self.assertTrue((self.work / "install.result").exists())
 
+    def test_invalid_target_rejected_before_python_selection(self):
+        target = self.work / "other project"
+        target.mkdir()
+        original = target / "keep.txt"
+        original.write_text("original contents", encoding="utf-8")
+        missing = self.work / "missing-python"
+        probe = self.work / "python-was-probed"
+        missing.write_text("#!/bin/sh\nprintf probe > " + shlex.quote(str(probe)) + "\nexit 1\n", encoding="utf-8")
+        missing.chmod(0o755)
+        guards = self.work / "global install guards"
+        guards.mkdir()
+        for name in ("sudo", "apt-get", "dnf", "pacman", "brew"):
+            tool = guards / name
+            tool.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+            tool.chmod(0o755)
+        env = os.environ.copy()
+        env["PATH"] = str(guards) + os.pathsep + env["PATH"]
+        result = subprocess.run(["sh", str(ROOT / "autoinstall.sh"), "--python", str(missing),
+                                 "--skip-drivers", "--skip-loaders"], cwd=target, input="y\n",
+                                env=env, capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("contains other files", result.stderr)
+        self.assertNotIn("GLOBAL/system Python", result.stdout)
+        self.assertFalse(probe.exists(), "Python selection started for an invalid target")
+        self.assertEqual(original.read_text(), "original contents")
+        self.assertEqual(list(target.iterdir()), [original])
+
     def test_cancel_does_not_download_into_an_empty_directory(self):
         target = self.work / "cancel here"
         target.mkdir()

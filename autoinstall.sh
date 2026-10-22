@@ -65,12 +65,17 @@ is_edl_checkout() {
     ' "$1/pyproject.toml"
 }
 
-get_checkout() {
+check_target() {
     if is_edl_checkout "$TARGET"; then return; fi
     for entry in "$TARGET"/* "$TARGET"/.[!.]* "$TARGET"/..?*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         [ "$entry" = "$SELF" ] || die 'The current directory contains other files. Choose an empty directory or an EDL checkout.'
     done
+}
+
+get_checkout() {
+    check_target
+    if is_edl_checkout "$TARGET"; then return; fi
     STAGE=$(mktemp -d "$TARGET/.edl-stage.XXXXXX")
     if command -v git >/dev/null 2>&1; then
         git clone --quiet --no-hardlinks -- "$REPOSITORY" "$STAGE/source"
@@ -109,7 +114,7 @@ get_loaders() {
         [ -d "$STAGE/Loaders-main" ] && [ -n "$(ls -A "$STAGE/Loaders-main")" ] || die 'The Loader archive is empty.'
         mkdir -p "$TARGET/Loaders"
         cp -R "$STAGE/Loaders-main/." "$TARGET/Loaders/"
-        # Retry after interrupted downloads/extraction/copies, preserving local loaders.
+        # Retry interrupted downloads/extraction/copies; keep files absent from the archive.
         printf 'edl-loaders-main-v1\n' > "$STAGE/complete"
         mv -f "$STAGE/complete" "$marker"
         cleanup_stage
@@ -205,6 +210,7 @@ ensure_usb() {
 }
 
 printf 'Installing EDL in %s\n' "$TARGET"
+check_target
 if [ -e "$TARGET/.venv" ]; then
     [ -f "$TARGET/.venv/pyvenv.cfg" ] || die 'The existing .venv is not an isolated virtual environment. Move it aside first.'
     grep -Eq '^[[:space:]]*include-system-site-packages[[:space:]]*=[[:space:]]*false[[:space:]]*$' "$TARGET/.venv/pyvenv.cfg" || die 'The existing .venv shares system packages. Move it aside first.'

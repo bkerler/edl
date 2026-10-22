@@ -113,10 +113,13 @@ submodule tracks `main`, but installation does not use `--remote`). Without Git,
 the installer downloads the Loaders `main` archive at installation time, which
 can differ from that pinned commit. Archive installs write
 `Loaders/.edl-download-complete` only after download, extraction and copying
-succeed. Missing or incomplete markers cause a retry on the next run; existing
-local loader files are preserved. Remove that marker to fetch `main` again.
+succeed. Missing or incomplete markers cause a retry on the next run. Custom
+files whose paths are absent from the archive are kept; files at paths included
+in the archive may be overwritten. Remove that marker to fetch `main` again.
 
-The installer detects Python 3.10+ with `venv` and `ensurepip`, then creates or
+The installer first checks that the current directory is an EDL checkout or is
+empty except for the running installer, before offering any global Python
+installation. It detects Python 3.10+ with `venv` and `ensurepip`, then creates or
 reuses an isolated `.venv` in the current directory. EDL and its dependencies are
 installed there. The local `edl.bat` / `edl` launcher uses that environment, so
 activation and changes to the machine PATH are unnecessary. Other CLI commands

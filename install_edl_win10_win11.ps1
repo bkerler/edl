@@ -58,13 +58,18 @@ function Test-EdlCheckout([string]$Target) {
     return $names.Count -eq 1 -and $names[0].Value -match '^[ \t]*name[ \t]*=[ \t]*([''"])edlclient\1[ \t]*(?:#.*)?$'
 }
 
-function Get-EdlCheckout([string]$Target, [string]$Source) {
+function Assert-InstallationTarget([string]$Target) {
     if (Test-EdlCheckout $Target) { return }
     foreach ($entry in Get-ChildItem -LiteralPath $Target -Force) {
         if ($entry.FullName -ne $InstallerPath) {
             throw 'The current directory is not an EDL checkout and contains other files. Choose an empty directory.'
         }
     }
+}
+
+function Get-EdlCheckout([string]$Target, [string]$Source) {
+    Assert-InstallationTarget $Target
+    if (Test-EdlCheckout $Target) { return }
     $stage = Join-Path $Target ('.edl-stage-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $stage | Out-Null
     try {
@@ -291,6 +296,7 @@ function Invoke-EdlInstaller {
     }
     $target = (Get-Location).Path
     Write-Host "Installing EDL in $target"
+    Assert-InstallationTarget $target
     if (Test-Path -LiteralPath "$target\.venv") {
         if (-not (Test-Path -LiteralPath "$target\.venv\pyvenv.cfg") -or
             (Get-Content -LiteralPath "$target\.venv\pyvenv.cfg" -Raw) -notmatch '(?im)^\s*include-system-site-packages\s*=\s*false\s*$') {

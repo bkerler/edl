@@ -184,17 +184,43 @@ Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running download
 Assert (-not (Get-ChildItem -LiteralPath $target -Filter '.edl-stage-*' -Force)) 'Staging directory was not cleaned'
 ''')
 
+    def test_invalid_target_rejected_before_python_selection(self):
+        self.check_script(r'''
+$target = Join-Path $work 'other project'
+New-Item -ItemType Directory -Path $target | Out-Null
+[IO.File]::WriteAllText("$target\keep.txt", 'original contents')
+Set-Location -LiteralPath $target
+$script:pythonChecks = 0
+function Find-CompatiblePython { $script:pythonChecks++; return $null }
+function Read-Host { throw 'A global Python install was offered for an invalid target' }
+function Install-GlobalPython { throw 'Global Python install was attempted for an invalid target' }
+function Get-EdlCheckout { throw 'Source download was attempted for an invalid target' }
+$rejected = $false
+try { Invoke-EdlInstaller } catch { $rejected = $_ -like '*contains other files*' }
+Assert $rejected 'Invalid target was not rejected before Python selection'
+Assert ($script:pythonChecks -eq 0) 'Python selection started for an invalid target'
+Assert ((Get-Content -LiteralPath "$target\keep.txt") -eq 'original contents') 'Existing file was changed'
+Assert (@(Get-ChildItem -LiteralPath $target -Force).Count -eq 1) 'Preflight created files'
+''')
+
     def test_cancel_before_source_download(self):
         self.check_script(r'''
-Set-Location -LiteralPath $work
 function Find-CompatiblePython { return $null }
 function Read-Host { return 'n' }
 function Get-EdlCheckout { throw 'Source download was attempted before Python consent' }
 function Ensure-UsbDriver { throw 'Driver setup ran after cancellation' }
-$cancelled = $false
-try { Invoke-EdlInstaller } catch { $cancelled = $_ -like '*cancelled*' }
-Assert $cancelled 'Python cancellation did not stop before source download'
-Assert (-not (Test-Path -LiteralPath "$work\.git")) 'Source checkout was created'
+foreach ($name in @('empty', 'downloaded installer')) {
+    $target = Join-Path $work $name
+    New-Item -ItemType Directory -Path $target | Out-Null
+    $script:InstallerPath = Join-Path $target 'install_edl_win10_win11.ps1'
+    if ($name -eq 'downloaded installer') { [IO.File]::WriteAllText($script:InstallerPath, '# running installer') }
+    $before = @(Get-ChildItem -LiteralPath $target -Force).Count
+    Set-Location -LiteralPath $target
+    $cancelled = $false
+    try { Invoke-EdlInstaller } catch { $cancelled = $_ -like '*cancelled*' }
+    Assert $cancelled 'An empty target or downloaded installer did not reach Python cancellation'
+    Assert (@(Get-ChildItem -LiteralPath $target -Force).Count -eq $before) 'Python cancellation created files'
+}
 ''')
 
     def test_loader_archive_retries_failed_copy_and_preserves_local_files(self):
