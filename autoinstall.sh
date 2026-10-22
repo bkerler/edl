@@ -15,6 +15,7 @@ STAGE=
 CHECKOUT_STATE="$TARGET/.edl-checkout-state"
 CHECKOUT_ACTIVE=0
 CHECKOUT_PREPARED=0
+INSTALL_LOCK="$TARGET/.edl-install.lock"
 
 die() { printf '%s\n' "$*" >&2; exit 1; }
 need_value() { [ "$2" -ge 2 ] || die "Missing value for $1"; }
@@ -49,6 +50,26 @@ finish_checkout() {
 trap 'finish_checkout; cleanup_stage' 0
 trap 'exit 1' HUP INT TERM
 
+acquire_installation_lock() {
+    if [ -e "$INSTALL_LOCK" ] || [ -L "$INSTALL_LOCK" ]; then
+        [ -f "$INSTALL_LOCK" ] && [ ! -L "$INSTALL_LOCK" ] && [ ! -s "$INSTALL_LOCK" ] || die 'The reserved .edl-install.lock path must be an empty regular file.'
+    fi
+    if command -v flock >/dev/null 2>&1; then lock_tool=flock
+    elif command -v perl >/dev/null 2>&1; then lock_tool=perl
+    else die 'Install flock or Perl with native flock support before running this installer.'; fi
+    # Keep this inode in place and fd 9 open through cleanup and child writers.
+    exec 9>>"$INSTALL_LOCK"
+    if [ "$lock_tool" = flock ]; then
+        flock -n 9 || die 'Another installer is using this directory, or its lock is unavailable.'
+    else
+        perl -MFcntl=:flock -MConfig -e '
+            $Config{d_flock} eq "define" or die "Native flock support is required\n";
+            open(my $lock, ">&=9") or die "$!\n";
+            flock($lock, LOCK_EX | LOCK_NB) or exit 1;
+        ' || die 'Another installer is using this directory, or its lock is unavailable.'
+    fi
+}
+
 remove_checkout_state() {
     [ -d "$CHECKOUT_STATE" ] && [ ! -L "$CHECKOUT_STATE" ] || die 'Unexpected checkout state directory.'
     for entry in "$CHECKOUT_STATE"/* "$CHECKOUT_STATE"/.[!.]* "$CHECKOUT_STATE"/..?*; do
@@ -70,7 +91,7 @@ restore_interrupted_checkout() {
         [ -f "$CHECKOUT_STATE/owner" ] && [ "$(cat "$CHECKOUT_STATE/owner")" = edl-checkout-v1 ] || die 'Unrecognized .edl-checkout-state directory; move it aside before installing.'
         if [ -f "$CHECKOUT_STATE/plan" ]; then
             while IFS= read -r name; do
-                case "$name" in ''|.|..|*/*|.edl-checkout-state) die 'Invalid checkout recovery entry.' ;; esac
+                case "$name" in ''|.|..|*/*|.edl-checkout-state|.edl-install.lock) die 'Invalid checkout recovery entry.' ;; esac
                 [ "$TARGET/$name" != "$SELF" ] || die 'The recovery plan includes the running installer.'
             done < "$CHECKOUT_STATE/plan"
             while IFS= read -r name; do
@@ -116,6 +137,7 @@ check_target() {
     if is_edl_checkout "$TARGET"; then return; fi
     for entry in "$TARGET"/* "$TARGET"/.[!.]* "$TARGET"/..?*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
+        [ "$entry" != "$INSTALL_LOCK" ] || continue
         [ "$entry" = "$SELF" ] || die 'The current directory contains other files. Choose an empty directory or an EDL checkout.'
     done
 }
@@ -142,7 +164,7 @@ get_checkout() {
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         destination="$TARGET/$(basename "$entry")"
         name=$(basename "$entry")
-        case "$name" in .edl-checkout-state|*'
+        case "$name" in .edl-checkout-state|.edl-install.lock|*'
 '*) die 'The downloaded source contains a reserved or unsupported installer path.' ;; esac
         if [ -e "$destination" ] || [ -L "$destination" ]; then
             [ "$destination" = "$SELF" ] || die "Refusing to overwrite $destination"
@@ -268,6 +290,9 @@ ensure_usb() {
 }
 
 printf 'Installing EDL in %s\n' "$TARGET"
+# Reject unrelated files without creating a lock; pending source needs locked recovery.
+if [ ! -e "$CHECKOUT_STATE" ] && [ ! -L "$CHECKOUT_STATE" ]; then check_target; fi
+acquire_installation_lock
 restore_interrupted_checkout
 check_target
 if [ -e "$TARGET/.venv" ]; then

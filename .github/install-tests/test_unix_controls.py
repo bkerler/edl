@@ -108,7 +108,7 @@ class UnixControlTests(unittest.TestCase):
                                 cwd=target, input="n\n", capture_output=True, text=True, timeout=30)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("cancelled", result.stderr)
-        self.assertEqual(list(target.iterdir()), [])
+        self.assertEqual(list(target.iterdir()), [target / ".edl-install.lock"])
 
     def test_loader_archive_retries_failed_copy_and_preserves_local_files(self):
         loaders = self.work / "Loaders"
@@ -175,7 +175,9 @@ class UnixControlTests(unittest.TestCase):
         original = script.read_bytes()
         tools = self.work / "publishing tools"
         tools.mkdir()
-        for name in ("dirname", "basename", "tar", "gzip", "rm", "awk", "mkdir", "rmdir", "cat", "ls"):
+        for name in ("dirname", "basename", "tar", "gzip", "rm", "awk", "mkdir", "rmdir", "cat", "ls", "flock", "perl"):
+            if name in ("flock", "perl") and not shutil.which(name):
+                continue
             (tools / name).symlink_to(shutil.which(name))
         curl = tools / "curl"
         curl.write_text("#!/bin/sh\nexec " + shlex.quote(shutil.which("cp")) + " "
@@ -197,7 +199,7 @@ class UnixControlTests(unittest.TestCase):
             return subprocess.run(command, cwd=target, env=env, capture_output=True, text=True, timeout=30)
         failed = invoke()
         self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
-        self.assertEqual(list(target.iterdir()), [script], failed.stdout + failed.stderr)
+        self.assertEqual(set(target.iterdir()), {script, target / ".edl-install.lock"}, failed.stdout + failed.stderr)
         self.assertEqual(script.read_bytes(), original)
         mode.write_text("kill", encoding="utf-8")
         killed = invoke()
@@ -240,7 +242,9 @@ class UnixControlTests(unittest.TestCase):
             output.add(source, arcname="edl-master")
         tools = self.work / "archive tools"
         tools.mkdir()
-        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm", "awk", "mkdir", "rmdir", "cat", "ls"):
+        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm", "awk", "mkdir", "rmdir", "cat", "ls", "flock", "perl"):
+            if name in ("flock", "perl") and not shutil.which(name):
+                continue
             (tools / name).symlink_to(shutil.which(name))
         curl = tools / "curl"
         curl.write_text("#!/bin/sh\nexec " + shlex.quote(shutil.which("cp")) + " "

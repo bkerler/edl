@@ -88,6 +88,14 @@ it recovers the pending checkout before checking the directory or selecting
 Python. Leave the state directory in place for recovery. If permissions or
 locked files prevent rollback, resolve that problem and rerun the installer.
 
+An exclusive `.edl-install.lock` is acquired before recovery and held through
+installation and cleanup. A second installer targeting the same directory exits
+without touching the active checkout. Windows uses an exclusive, inheritable
+file handle with deletion on last close. Unix uses `flock`, or Perl with native
+`flock` support; its empty lock file stays in place so every run locks the same
+inode. The operating system releases the lock after the installer and any
+inheriting native writers have exited. Leave the Unix lock file in place.
+
 On Windows (PowerShell 5.1 or newer):
 ```powershell
 mkdir edl-client

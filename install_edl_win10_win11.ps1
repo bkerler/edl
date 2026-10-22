@@ -22,6 +22,26 @@ param(
 $ErrorActionPreference = 'Stop'
 $InstallerPath = $PSCommandPath
 
+function Enter-InstallationLock([string]$Target) {
+    $path = Join-Path $Target '.edl-install.lock'
+    try {
+        if (Test-Path -LiteralPath $path) {
+            $entry = Get-Item -LiteralPath $path -Force
+            if ($entry.PSIsContainer -or $entry.Length -ne 0 -or
+                ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                throw 'The reserved .edl-install.lock path must be an empty regular file.'
+            }
+        }
+        # Inheritable keeps native child writers protected if this process is killed.
+        # DeleteOnClose removes the name only when the last handle closes.
+        return [IO.FileStream]::new($path, [IO.FileMode]::OpenOrCreate,
+            [IO.FileAccess]::ReadWrite, [IO.FileShare]::Inheritable, 4096,
+            [IO.FileOptions]::DeleteOnClose)
+    } catch [IO.IOException] {
+        throw "Another installer may be using this directory, or its lock cannot be opened: $($_.Exception.Message)"
+    }
+}
+
 function Invoke-InstallerHttp([string]$Uri, [string]$OutFile) {
     $previous = [Net.ServicePointManager]::SecurityProtocol
     try {
@@ -86,7 +106,7 @@ function Restore-InterruptedCheckout([string]$Target) {
     if (-not $committed -and (Test-Path -LiteralPath "$state\plan.json" -PathType Leaf)) {
         $names = Get-Content -LiteralPath "$state\plan.json" -Raw | ConvertFrom-Json
         foreach ($name in $names) {
-            if ($name -isnot [string] -or -not $name -or $name -in @('.', '..', '.edl-checkout-state') -or
+            if ($name -isnot [string] -or -not $name -or $name -in @('.', '..', '.edl-checkout-state', '.edl-install.lock') -or
                 [IO.Path]::GetFileName($name) -ne $name -or (Join-Path $Target $name) -eq $InstallerPath) {
                 throw 'Invalid entry in the checkout recovery plan.'
             }
@@ -120,7 +140,7 @@ function Test-EdlCheckout([string]$Target) {
 function Assert-InstallationTarget([string]$Target) {
     if (Test-EdlCheckout $Target) { return }
     foreach ($entry in Get-ChildItem -LiteralPath $Target -Force) {
-        if ($entry.FullName -ne $InstallerPath) {
+        if ($entry.FullName -ne $InstallerPath -and $entry.Name -ne '.edl-install.lock') {
             throw 'The current directory is not an EDL checkout and contains other files. Choose an empty directory.'
         }
     }
@@ -148,7 +168,7 @@ function Get-EdlCheckout([string]$Target, [string]$Source) {
         if (-not (Test-EdlCheckout $checkout)) { throw 'The downloaded source is not an edlclient project.' }
         # Check every destination before moving anything, including the running installer.
         foreach ($entry in Get-ChildItem -LiteralPath $checkout -Force) {
-            if ($entry.Name -eq '.edl-checkout-state') { throw 'The downloaded source contains a reserved installer path.' }
+            if ($entry.Name -in @('.edl-checkout-state', '.edl-install.lock')) { throw 'The downloaded source contains a reserved installer path.' }
             $destination = Join-Path $Target $entry.Name
             if ((Test-Path -LiteralPath $destination) -and $destination -ne $InstallerPath) {
                 throw "Refusing to overwrite $destination"
@@ -367,25 +387,30 @@ function Invoke-EdlInstaller {
     }
     $target = (Get-Location).Path
     Write-Host "Installing EDL in $target"
-    Restore-InterruptedCheckout $target
-    Assert-InstallationTarget $target
-    if (Test-Path -LiteralPath "$target\.venv") {
-        if (-not (Test-Path -LiteralPath "$target\.venv\pyvenv.cfg") -or
-            (Get-Content -LiteralPath "$target\.venv\pyvenv.cfg" -Raw) -notmatch '(?im)^\s*include-system-site-packages\s*=\s*false\s*$') {
-            throw 'The existing .venv is not an isolated virtual environment. Move it aside before installing.'
+    $installationLock = Enter-InstallationLock $target
+    try {
+        Restore-InterruptedCheckout $target
+        Assert-InstallationTarget $target
+        if (Test-Path -LiteralPath "$target\.venv") {
+            if (-not (Test-Path -LiteralPath "$target\.venv\pyvenv.cfg") -or
+                (Get-Content -LiteralPath "$target\.venv\pyvenv.cfg" -Raw) -notmatch '(?im)^\s*include-system-site-packages\s*=\s*false\s*$') {
+                throw 'The existing .venv is not an isolated virtual environment. Move it aside before installing.'
+            }
         }
+        $interpreter = Resolve-InstallerPython $Python ([bool]$NoInput)
+        Write-Host "Using Python: $interpreter"
+        Get-EdlCheckout $target $Repository
+        if (-not (Test-Path -LiteralPath "$target\install.py")) { throw 'This checkout is outdated: update it to include install.py.' }
+        if (-not $SkipDrivers) { Ensure-UsbDriver ([bool]$NoInput) }
+        if (-not $SkipLoaders) { Get-EdlLoaders $target }
+        $arguments = @('-I', "$target\install.py", '--venv', "$target\.venv")
+        if ($Extras) { $arguments += @('--extras', $Extras) }
+        & $interpreter @arguments
+        if ($LASTEXITCODE -ne 0) { throw 'Installing EDL in .venv failed.' }
+        Write-Host 'Ready. Run .\edl.bat --help (or .\.venv\Scripts\edl.exe --help).'
+    } finally {
+        $installationLock.Dispose()
     }
-    $interpreter = Resolve-InstallerPython $Python ([bool]$NoInput)
-    Write-Host "Using Python: $interpreter"
-    Get-EdlCheckout $target $Repository
-    if (-not (Test-Path -LiteralPath "$target\install.py")) { throw 'This checkout is outdated: update it to include install.py.' }
-    if (-not $SkipDrivers) { Ensure-UsbDriver ([bool]$NoInput) }
-    if (-not $SkipLoaders) { Get-EdlLoaders $target }
-    $arguments = @('-I', "$target\install.py", '--venv', "$target\.venv")
-    if ($Extras) { $arguments += @('--extras', $Extras) }
-    & $interpreter @arguments
-    if ($LASTEXITCODE -ne 0) { throw 'Installing EDL in .venv failed.' }
-    Write-Host 'Ready. Run .\edl.bat --help (or .\.venv\Scripts\edl.exe --help).'
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
