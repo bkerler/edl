@@ -81,6 +81,29 @@ git submodule update --init --recursive
 pip3 install -r requirements.txt
 ```
 
+### Python dependencies
+
+Python 3.10 or newer is required. Install the package with `python -m pip install .`
+to get the dependencies needed by all declared CLI commands, including modem tools
+and OnePlus encryption support.
+
+Additional features are available as extras:
+
+| Extra | Install from a checkout | Features |
+| --- | --- | --- |
+| `asm` | `python -m pip install ".[asm]"` | Assembly and disassembly with Capstone and Keystone |
+| `qrcode` | `python -m pip install ".[qrcode]"` | OnePlus factory QR codes saved as PNG images |
+
+Install both with `python -m pip install ".[asm,qrcode]"`.
+`python -m pip install -r requirements.txt` installs the base dependencies and both
+extras for users running scripts from a checkout; it does not install the package.
+
+`pyproject.toml` is the source of truth for dependencies. `requirements.txt` is a
+generated compatibility file for existing installation scripts. After changing
+dependencies, run `python .github/scripts/update_requirements.py` and `uv lock`. The generator
+uses `tomli` on Python 3.10 (also installed by the `build` development tool).
+CI checks the generated file with `python .github/scripts/update_requirements.py --check`.
+
 ### Linux (Debian/Ubuntu/Mint/etc): 
 ```bash
 # Debian/Ubuntu/Mint/etc

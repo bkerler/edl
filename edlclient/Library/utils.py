@@ -21,15 +21,6 @@ from struct import unpack
 
 import colorama
 
-try:
-    from capstone import *
-except ImportError:
-    print("Capstone library is missing (optional).")
-try:
-    from keystone import *
-except ImportError:
-    print("Keystone library is missing (optional).")
-
 
 def is_windows():
     if sys.platform == 'win32' or sys.platform == 'win64' or sys.platform == 'winnt':
@@ -628,6 +619,13 @@ class patchtools:
         return True
 
     def disasm(self, code, size):
+        try:
+            from capstone import Cs, CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN
+        except ImportError as exc:
+            raise ImportError(
+                'Disassembly requires Capstone; install it with pip install "edlclient[asm]".'
+            ) from exc
+
         cs = Cs(CS_ARCH_ARM64, CS_MODE_LITTLE_ENDIAN)
         instr = []
         for i in cs.disasm(code, size):
@@ -636,6 +634,13 @@ class patchtools:
         return instr
 
     def assembler(self, code):
+        try:
+            from keystone import Ks, KsError, KS_ARCH_ARM64, KS_MODE_LITTLE_ENDIAN
+        except ImportError as exc:
+            raise ImportError(
+                'Assembly requires Keystone; install it with pip install "edlclient[asm]".'
+            ) from exc
+
         ks = Ks(KS_ARCH_ARM64, KS_MODE_LITTLE_ENDIAN)
         if self.bDebug:
             try:
