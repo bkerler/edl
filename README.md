@@ -73,17 +73,53 @@ User: user, Password:user (based on Ubuntu 22.04 LTS)
 
 ## Installation
 
-#### Grab files and install
+### Install in the current directory
+
+Use a normal user terminal in an empty directory. You can download just the
+installer there; it obtains the source directly into the **current directory**.
+It stages downloads separately and preserves the running installer when the
+repository contains a file with the same name. Other existing files are never
+overwritten. An existing EDL checkout is reused.
+
+On Windows (PowerShell 5.1 or newer):
+```powershell
+mkdir edl-client
+cd edl-client
+curl.exe -fL -o install_edl_win10_win11.ps1 https://raw.githubusercontent.com/bkerler/edl/master/install_edl_win10_win11.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_edl_win10_win11.ps1
+.\edl.bat --help
 ```
+
+On Linux/macOS:
+```sh
+mkdir edl-client
+cd edl-client
+curl -fL -o autoinstall.sh https://raw.githubusercontent.com/bkerler/edl/master/autoinstall.sh
+sh ./autoinstall.sh
+./edl --help
+```
+
+Git is used when available; otherwise the official GitHub source archive is
+downloaded. Loaders are fetched automatically unless `-SkipLoaders` (Windows) or
+`--skip-loaders` (Unix) is specified. Alternatively, get the source yourself:
+```sh
 git clone https://github.com/bkerler/edl
 cd edl
 git submodule update --init --recursive
-pip3 install -r requirements.txt
 ```
+
+The installer detects Python 3.10+ with `venv` and `ensurepip`, then creates or
+reuses an isolated `.venv` in the current directory. EDL and its dependencies are
+installed there. The local `edl.bat` / `edl` launcher uses that environment, so
+activation and changes to the machine PATH are unnecessary. Other CLI commands
+are in `.venv\Scripts` on Windows or `.venv/bin` on Unix.
+
+After updating the source, rerun the installer to update the environment. Existing
+directories that are not isolated virtual environments are refused.
 
 ### Python dependencies
 
-Python 3.10 or newer is required. Install the package with `python -m pip install .`
+Inside an activated virtual environment, install with `python -m pip install .`
 to get the dependencies needed by all declared CLI commands, including modem tools
 and OnePlus encryption support.
 
@@ -99,73 +135,124 @@ Install both with `python -m pip install ".[asm,qrcode]"`.
 extras for users running scripts from a checkout; it does not install the package.
 
 `pyproject.toml` is the source of truth for dependencies. `requirements.txt` is a
-generated compatibility file for existing installation scripts. After changing
+generated compatibility file for source-only workflows. After changing
 dependencies, run `python .github/scripts/update_requirements.py` and `uv lock`. The generator
 uses `tomli` on Python 3.10 (also installed by the `build` development tool).
 CI checks the generated file with `python .github/scripts/update_requirements.py --check`.
 
-### Linux (Debian/Ubuntu/Mint/etc): 
-```bash
-# Debian/Ubuntu/Mint/etc
-sudo apt install adb fastboot python3-dev python3-pip liblzma-dev git
-sudo apt purge modemmanager
-# Fedora/CentOS/etc
-sudo dnf install adb fastboot python3-devel python3-pip xz-devel git
-# Arch/Manjaro/etc
-sudo pacman -S android-tools python python-pip git xz
-sudo pacman -R modemmanager
-# Gentoo (run as root!)
-emerge -aq dev-util/android-tools dev-vcs/git dev-python/pip
+### Linux (Debian/Ubuntu/Mint/etc):
+From the directory where you want EDL installed:
+```sh
+sh ./autoinstall.sh
+./edl --help
 
-# For systemd distros
-sudo systemctl stop ModemManager
-sudo systemctl disable ModemManager
-# For OpenRC distros (run as root!)
-rc-update del modemmanager default boot sysinit
-rc-service modemmanager stop
-
-git clone https://github.com/bkerler/edl.git # do NOT use --recurse-submodules
-cd edl
-git submodule update --init --recursive
-
-# Autoinstall (run as root!)
-./autoinstall.sh
-
-# Manual install
-chmod +x ./install-linux-edl-drivers.sh
-bash ./install-linux-edl-drivers.sh
-pip3 install .
+# An existing interpreter and optional features
+sh ./autoinstall.sh --python /path/to/python3 --extras asm,qrcode
 ```
 
-If you have SELinux enabled, you may need to set it to permissive mode temporarily to prevent permission issues. SELinux is commonly used by RedHat-like distros (for example, RHEL, Fedora, and CentOS). You can set it to permissive run-time until next boot with `sudo setenforce 0`.
+If no compatible Python is found, the `[y/N/path]` prompt accepts an existing
+executable path, cancels on `N`/Enter, or installs **system/global Python outside
+the project** on `y`. Linux uses apt, dnf or pacman; this system package step may
+need `sudo`. Python Install Manager is Windows-only. On Debian/Ubuntu, a manual
+Python setup needs the `python3-venv` package as well as `python3`.
+
+For a manual install, use `python3 -m venv .venv` followed by
+`.venv/bin/python -m pip install .`. To use the CLI names in the current shell,
+run `. .venv/bin/activate`.
+
+#### Linux USB detection and permissions
+
+The installer checks libusb and compares the udev rules/blacklist with `Drivers/`.
+If anything is missing, it asks before installing system packages or running the
+driver configuration with `sudo`. Already configured systems need no elevation.
+Use `--skip-drivers` for serial-only operation or to manage USB setup yourself:
+
+```sh
+sudo sh ./install-linux-edl-drivers.sh
+```
+
+This installs the udev rules and qcserial blacklist from `Drivers/`. Follow its
+instructions to rebuild your distribution's initramfs and reboot. If ModemManager
+claims the device, stop that service before using EDL.
 
 ### macOS:
 ```bash
-brew install libusb git
-
-git clone https://github.com/bkerler/edl.git
-cd edl
-git submodule update --init --recursive
-pip3 install .
+# From the installation directory, as your normal user:
+sh ./autoinstall.sh
+./edl --help
 ```
+
+Missing Python or libusb can be installed with Homebrew after confirmation.
 
 ### Windows:
 
-#### Method 1 - Automatic with PowerShell (Windows 10 and later)
+#### Install with PowerShell (Windows 10 and later)
 
-1.   Open PowerShell (Not CMD). To do that, right-click on the Windows start menu and select PowerShell or Terminal.
-2.   Copy and paste the code below and press enter
+Open a normal PowerShell window in the installation directory. The installer
+searches the local `.venv`, active environment, PATH, registered Python/Store
+installations and Python launcher runtimes.
+
+```powershell
+.\install_edl_win10_win11.ps1
+.\edl.bat --help
+
+# An existing interpreter and optional features
+.\install_edl_win10_win11.ps1 -Python C:\Python310\python.exe -Extras 'asm,qrcode'
 ```
-curl.exe -O https://raw.githubusercontent.com/bkerler/edl/master/install_edl_win10_win11.ps1; .\install_edl_win10_win11.ps1
+
+If local script execution is disabled, run
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_edl_win10_win11.ps1`.
+If no compatible Python is found, the `[y/N/path]` prompt means:
+
+- `N` or Enter cancels without installing Python.
+- A path selects an existing Python 3.10+ executable, including one in a virtual environment.
+- `y` installs the official [Python Install Manager](https://docs.python.org/3.14/using/windows.html)
+  and Python 3.14. This is a **current-user global Python installation outside
+  the project `.venv`**, not an all-users installation. It changes the user-wide
+  Python environment. WinGet uses the official Store package; without WinGet,
+  the official python.org AppInstaller feed is used.
+
+Detection disables implicit Python Manager runtime installation. Python and EDL
+setup stay in the original user process. WinGet and Zadig request administrator
+privileges only when their installation or driver configuration needs them.
+
+For unattended/serial-only setup with an existing Python:
+```powershell
+.\install_edl_win10_win11.ps1 -Python C:\Python310\python.exe -SkipDrivers -SkipLoaders -NoInput
 ```
 
-#### Method 2 - Manual
-#### Install python + git
-- Install Python 3.10 or newer and git
-- If you install python from microsoft store, "python setup.py install" will fail, but that step isn't required.
-- WIN+R ```cmd```
+Unix has equivalent `--python`, `--skip-drivers`, `--skip-loaders` and `--no-input`
+options. Unattended mode fails when a required prerequisite is missing; it never
+confirms a global Python or driver installation automatically.
 
-#### Get latest UsbDk 64-Bit
+For a manual installation:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install .
+.\.venv\Scripts\edl.exe --help
+```
+
+#### Windows USB driver setup
+
+The installer checks whether Zadig is available and, if needed, asks permission
+to install it with `winget install --id akeo.ie.Zadig --exact --source winget`.
+WinGet and Zadig handle any required elevation; the EDL/Python installation stays
+in the original user process. Declining continues setup for serial mode.
+Use `-SkipDrivers` if your device driver is already configured or you manage it yourself.
+
+After installation, connect the device in EDL mode and open Zadig. Enable
+**Options > List All Devices**, select your **EDL/QHSUSB_BULK device**, then
+install **WinUSB** for that device. Having Zadig installed does not prove that
+the device driver is ready. See the [official Zadig guide](https://github.com/pbatard/libwdi/wiki/Zadig).
+
+For manual driver setup:
+```powershell
+.\install_edl_win10_win11.ps1 -DriversOnly
+```
+
+`Drivers\Windows\Install_Windows.bat` retains the upstream OnePlus 9008
+driver entry. Use the separate `-DriversOnly` command above for Zadig setup.
+
 - Install normal QC 9008 Serial Port driver (or use default Windows COM Port one, make sure no exclamation is seen)
 - Get usbdk installer (.msi) from [here](https://github.com/daynix/UsbDk/releases/) and install it
 - Test on device connect using "UsbDkController -n" if you see a device with pid 0x9008

@@ -2,6 +2,14 @@ include README.md
 include LICENSE
 include fastpwn
 include edl.py
+include edl
+include edl.bat
+include install.py
+include autoinstall.sh
+include install_edl_win10_win11.ps1
+include install-linux-edl-drivers.sh
+recursive-include Drivers *.rules *.conf
+include Drivers/Windows/Install_Windows.bat
 include requirements.txt
 include .github/scripts/update_requirements.py
 recursive-include Loaders *

@@ -1,0 +1,216 @@
+"""Test consent and elevation decisions without installing host software."""
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+@unittest.skipUnless(os.name == "nt", "Windows bootstrap controls")
+class WindowsControlTests(unittest.TestCase):
+    def check_script(self, body):
+        with tempfile.TemporaryDirectory(prefix="edl-windows-controls-") as directory:
+            work = Path(directory)
+            script = work / "control-test.ps1"
+            source = str(ROOT / "install_edl_win10_win11.ps1").replace("'", "''")
+            target = str(work).replace("'", "''")
+            script.write_text(
+                "$ErrorActionPreference = 'Stop'\n. '" + source + "'\n$work = '" + target + "'\n"
+                "function Assert($Value, $Message) { if (-not $Value) { throw $Message } }\n"
+                + body + "\nWrite-Output 'control-check-complete'\n", encoding="utf-8-sig")
+            result = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+                                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.stdout.splitlines()[-1], "control-check-complete")
+
+    def test_python_y_n_and_path(self):
+        self.check_script(r'''
+function Find-CompatiblePython { return $null }
+function Test-CompatiblePython($Candidate) { if ($Candidate -eq 'C:\chosen\python.exe') { return $Candidate } }
+function Install-GlobalPython { $script:installs++; return 'C:\managed\python.exe' }
+function Start-Process { throw 'Python selection must not elevate' }
+function Read-Host { return $script:answer }
+$script:installs = 0
+$script:answer = 'n'
+$cancelled = $false
+try { Resolve-InstallerPython '' $false } catch { $cancelled = $_ -like '*cancelled*' }
+Assert $cancelled 'N did not cancel'
+Assert ($script:installs -eq 0) 'N installed global Python'
+$script:answer = 'C:\chosen\python.exe'
+Assert ((Resolve-InstallerPython '' $false) -eq $script:answer) 'Explicit Python path was not used'
+Assert ($script:installs -eq 0) 'Path selection installed Python'
+$script:answer = 'y'
+Assert ((Resolve-InstallerPython '' $false) -eq 'C:\managed\python.exe') 'y did not select managed Python'
+Assert ($script:installs -eq 1) 'y did not request exactly one global install'
+function Read-Host { throw 'Unattended mode prompted' }
+$rejected = $false
+try { Resolve-InstallerPython '' $true } catch { $rejected = $_ -like '*Supply -Python*' }
+Assert $rejected 'Unattended mode did not reject missing Python'
+Assert ($script:installs -eq 1) 'Unattended mode installed Python'
+''')
+
+    def test_official_manager_install_commands(self):
+        self.check_script(r'''
+$script:managerInstalled = $false
+$script:runtimeInstalled = $false
+function Find-PythonManager { if ($script:managerInstalled) { return 'Mock-Manager' } }
+function Get-Command { [CmdletBinding()]param($Name) if ($Name -eq 'winget') { return $null }; throw 'Unexpected command lookup' }
+function Add-AppxPackage($AppInstallerFile) {
+    Assert ($AppInstallerFile -eq 'https://www.python.org/ftp/python/pymanager/pymanager.appinstaller') 'Not the official Python manager feed'
+    $script:managerInstalled = $true
+}
+function Mock-Manager {
+    if ($args[0] -eq 'install') {
+        Assert ($args[1] -eq '3.14') 'Unexpected runtime request'
+        $script:runtimeInstalled = $true
+    } elseif ($args[0] -eq 'list') {
+        Assert ($args[1] -eq '--format=exe') 'Runtime path was not requested explicitly'
+        return 'C:\managed\python.exe'
+    } else { throw 'Unexpected manager command' }
+    $global:LASTEXITCODE = 0
+}
+function Test-CompatiblePython($Candidate) { return $Candidate }
+function Start-Process { throw 'Manager installation must not elevate' }
+Assert ((Install-GlobalPython) -eq 'C:\managed\python.exe') 'Managed Python path was lost'
+Assert $script:managerInstalled 'Official manager was not installed'
+Assert $script:runtimeInstalled 'Runtime was not installed'
+''')
+
+    def test_probe_disables_implicit_install_and_restores_environment(self):
+        self.check_script(r'''
+$probe = Join-Path $work 'probe.cmd'
+$state = Join-Path $work 'probe-state.txt'
+$code = '@echo off' + "`r`n" + 'echo %PYTHON_MANAGER_AUTOMATIC_INSTALL%>"' + $state + '"' + "`r`nexit /b 1`r`n"
+[IO.File]::WriteAllText($probe, $code)
+$env:PYTHON_MANAGER_AUTOMATIC_INSTALL = 'true'
+$env:PYLAUNCHER_ALLOW_INSTALL = '1'
+Assert (-not (Test-CompatiblePython $probe)) 'Invalid Python was accepted'
+Assert ((Get-Content -LiteralPath $state).Trim() -eq 'false') 'Probe permitted an implicit global install'
+Assert ($env:PYTHON_MANAGER_AUTOMATIC_INSTALL -eq 'true') 'Probe changed caller environment'
+Assert ($env:PYLAUNCHER_ALLOW_INSTALL -eq '1') 'Probe lost launcher configuration'
+Assert (-not (Test-CompatiblePython 'C:\Users\test\AppData\Local\Microsoft\WindowsApps\python.exe')) 'Store stub was invoked'
+''')
+
+    def test_existing_zadig_decline_and_consent(self):
+        self.check_script(r'''
+$script:installed = $true
+$script:installs = 0
+function Test-Zadig { return $script:installed }
+function Install-Zadig { $script:installs++ }
+function Read-Host { return $script:answer }
+Ensure-UsbDriver $false
+Assert ($script:installs -eq 0) 'Existing Zadig was reinstalled'
+$script:installed = $false
+$script:answer = 'n'
+Ensure-UsbDriver $false
+Assert ($script:installs -eq 0) 'Declining installed Zadig'
+$script:answer = 'y'
+Ensure-UsbDriver $false
+Assert ($script:installs -eq 1) 'Zadig consent was ignored'
+$rejected = $false
+try { Ensure-UsbDriver $true } catch { $rejected = $_ -like '*Zadig is unavailable*' }
+Assert $rejected 'Unattended mode installed missing Zadig'
+Assert ($script:installs -eq 1) 'Unattended mode installed Zadig'
+''')
+
+    def test_zadig_install_uses_only_winget(self):
+        self.check_script(r'''
+$script:installs = 0
+function Get-Command { [CmdletBinding()]param($Name) if ($Name -eq 'winget') { return 'winget' }; throw 'Unexpected command lookup' }
+function winget {
+    Assert ($args[0] -eq 'install') 'Unexpected WinGet command'
+    Assert (($args -join ' ') -like '*--id akeo.ie.Zadig --exact --source winget*') 'Not the upstream Zadig package'
+    Assert ($args -contains '--no-upgrade') 'Existing Zadig could be upgraded unnecessarily'
+    Assert ($args -contains '--disable-interactivity') 'WinGet may wait for hidden input'
+    $script:installs++
+    $global:LASTEXITCODE = 0
+}
+function Start-Process { throw 'The bootstrap must not elevate itself or launch another driver installer' }
+function Invoke-InstallerHttp { throw 'The bootstrap must not download an alternative driver' }
+Install-Zadig
+Assert ($script:installs -eq 1) 'Expected one WinGet Zadig installation'
+function winget { $global:LASTEXITCODE = 1 }
+$failed = $false
+try { Install-Zadig } catch { $failed = $_ -like '*Zadig with WinGet failed*' }
+Assert $failed 'Failed WinGet installation was treated as success'
+function Get-Command { [CmdletBinding()]param($Name) return $null }
+$failed = $false
+try { Install-Zadig } catch { $failed = $_ -like '*WinGet is unavailable*' }
+Assert $failed 'Missing WinGet was not explained'
+''')
+
+    def test_detect_zadig_without_assuming_a_device_driver(self):
+        self.check_script(r'''
+$script:inPath = $true
+function Get-Command {
+    [CmdletBinding()]param($Name)
+    if ($Name -eq 'zadig' -and $script:inPath) { return 'zadig' }
+    if ($Name -eq 'winget') { return 'winget' }
+}
+function winget {
+    Assert (($args -join ' ') -like 'list --id akeo.ie.Zadig --exact --source winget*') 'Unexpected package detection'
+    $global:LASTEXITCODE = $script:packageStatus
+}
+function Get-PnpDevice { throw 'A fixed VID/PID must not be used as proof of USB readiness' }
+Assert (Test-Zadig) 'Zadig in PATH was not detected'
+$script:inPath = $false
+$script:packageStatus = 0
+Assert (Test-Zadig) 'WinGet-installed Zadig was not detected'
+$script:packageStatus = 1
+Assert (-not (Test-Zadig)) 'Missing Zadig was reported as present'
+''')
+
+    def test_archive_fallback_preserves_the_running_installer(self):
+        self.check_script(r'''
+$target = Join-Path $work 'install here'
+$archiveRoot = Join-Path $work 'edl-master'
+New-Item -ItemType Directory -Path $target, "$archiveRoot\edlclient" | Out-Null
+[IO.File]::WriteAllText("$archiveRoot\pyproject.toml", '# fixture')
+[IO.File]::WriteAllText("$archiveRoot\install.py", '# shared installer')
+[IO.File]::WriteAllText("$archiveRoot\install_edl_win10_win11.ps1", '# archived copy')
+$script:InstallerPath = Join-Path $target 'install_edl_win10_win11.ps1'
+[IO.File]::WriteAllText($script:InstallerPath, '# running downloaded script')
+Compress-Archive -Path $archiveRoot -DestinationPath "$work\fixture.zip"
+function Get-Command { [CmdletBinding()]param($Name) if ($Name -eq 'git') { return $null }; throw 'Unexpected command lookup' }
+function Invoke-InstallerHttp($Uri, $OutFile) {
+    Assert ($Uri -eq 'https://github.com/bkerler/edl/archive/refs/heads/master.zip') 'Unexpected source download'
+    Copy-Item -LiteralPath "$work\fixture.zip" -Destination $OutFile
+}
+Get-EdlCheckout $target 'https://github.com/bkerler/edl.git'
+Assert (Test-Path -LiteralPath "$target\install.py") 'Archive contents were not installed in the current directory'
+Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running downloaded script') 'Running installer was replaced'
+Assert (-not (Get-ChildItem -LiteralPath $target -Filter '.edl-stage-*' -Force)) 'Staging directory was not cleaned'
+''')
+
+    def test_registered_python_without_path_or_launcher(self):
+        self.check_script(r'''
+$script:legacy = $false
+function Get-ChildItem { [CmdletBinding()]param($LiteralPath) return [pscustomobject]@{PSPath = 'fixture-python'} }
+function Get-Item {
+    [CmdletBinding()]param($LiteralPath)
+    $key = [pscustomobject]@{}
+    $key | Add-Member -MemberType ScriptMethod -Name GetValue -Value {
+        param($Name)
+        if ($Name -eq 'ExecutablePath' -and -not $script:legacy) { return 'C:\existing\python.exe' }
+        if ($Name -eq '') { return 'C:\existing' }
+    }
+    return $key
+}
+function Test-CompatiblePython($Candidate) { if ($Candidate -eq 'C:\existing\python.exe') { return $Candidate } }
+Assert ((Find-RegisteredPython) -eq 'C:\existing\python.exe') 'Registered Python was not discovered'
+$script:legacy = $true
+Assert ((Find-RegisteredPython) -eq 'C:\existing\python.exe') 'Legacy InstallPath registration was not discovered'
+''')
+
+    def test_driver_only_does_not_clone_or_install_python(self):
+        self.check_script(r'''
+$script:DriversOnly = $true
+$script:calls = 0
+function Ensure-UsbDriver($Unattended) { $script:calls++ }
+function Get-EdlCheckout { throw 'Driver-only mode tried to clone source' }
+function Resolve-InstallerPython { throw 'Driver-only mode tried to install Python' }
+Invoke-EdlInstaller
+Assert ($script:calls -eq 1) 'Driver-only mode did not check the driver'
+''')

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 import venv
@@ -85,6 +86,18 @@ class PackagingTests(unittest.TestCase):
                         self.assertNotIn("edlclient/Tools/Library/", name)
                         self.assertNotIn("edlclient/Tools/Config/", name)
                         compile(archive.read(name), name, "exec")
+
+    def test_sdist_installers(self):
+        source = next((self.work / "sdist").glob("*.tar.gz"))
+        with tarfile.open(source) as archive:
+            names = {name.partition("/")[2] for name in archive.getnames()}
+        for required in (
+            "install.py", "edl", "edl.bat", "autoinstall.sh", "install_edl_win10_win11.ps1",
+            "install-linux-edl-drivers.sh", "Drivers/51-edl.rules",
+            "Drivers/blacklist-qcserial.conf",
+            "Drivers/Windows/Install_Windows.bat",
+        ):
+            self.assertIn(required, names)
 
     def test_installed_entry_points(self):
         for wheel in self.wheels:
