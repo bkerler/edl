@@ -108,6 +108,14 @@ cd edl
 git submodule update --init --recursive
 ```
 
+With Git, Loaders use the submodule commit recorded in the EDL checkout (the
+submodule tracks `main`, but installation does not use `--remote`). Without Git,
+the installer downloads the Loaders `main` archive at installation time, which
+can differ from that pinned commit. Archive installs write
+`Loaders/.edl-download-complete` only after download, extraction and copying
+succeed. Missing or incomplete markers cause a retry on the next run; existing
+local loader files are preserved. Remove that marker to fetch `main` again.
+
 The installer detects Python 3.10+ with `venv` and `ensurepip`, then creates or
 reuses an isolated `.venv` in the current directory. EDL and its dependencies are
 installed there. The local `edl.bat` / `edl` launcher uses that environment, so
@@ -204,7 +212,7 @@ If local script execution is disabled, run
 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install_edl_win10_win11.ps1`.
 If no compatible Python is found, the `[y/N/path]` prompt means:
 
-- `N` or Enter cancels without installing Python.
+- `N` or Enter cancels before downloading source or installing Python.
 - A path selects an existing Python 3.10+ executable, including one in a virtual environment.
 - `y` installs the official [Python Install Manager](https://docs.python.org/3.14/using/windows.html)
   and Python 3.14. This is a **current-user global Python installation outside

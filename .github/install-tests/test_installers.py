@@ -156,6 +156,18 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(marker.read_text(encoding="utf-8"), "preserved")
         self.assertFalse((target / ".git").exists())
 
+    def test_refuse_a_different_project_despite_matching_directory(self):
+        target, _ = self.downloaded_installer("different project")
+        (target / "edlclient").mkdir()
+        metadata = '[project]\nname = "another-project"\n[tool.fixture]\nname = "edlclient"\n'
+        (target / "pyproject.toml").write_text(metadata, encoding="utf-8")
+        (target / "install.py").write_text("raise RuntimeError('Other project executed')\n", encoding="utf-8")
+        result = self.bootstrap(target, success=False)
+        self.assertIn("contains other files", result.stdout + result.stderr)
+        self.assertNotIn("Other project executed", result.stdout + result.stderr)
+        self.assertFalse((target / ".venv").exists())
+        self.assertEqual((target / "pyproject.toml").read_text(encoding="utf-8"), metadata)
+
     def test_helper_refuses_unsafe_environments(self):
         for name, shared in (("unrelated directory", False), ("system site packages", True)):
             with self.subTest(name=name):

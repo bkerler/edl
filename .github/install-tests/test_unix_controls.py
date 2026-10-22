@@ -20,7 +20,7 @@ class UnixControlTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name)
         (self.work / "edlclient").mkdir()
-        (self.work / "pyproject.toml").write_text("# existing test checkout\n", encoding="utf-8")
+        (self.work / "pyproject.toml").write_text('[project]\nname = "edlclient"\n', encoding="utf-8")
         (self.work / "install.py").write_text(
             "import json, sys\nfrom pathlib import Path\n"
             "Path(__file__).with_suffix('.result').write_text(json.dumps(sys.executable))\n", encoding="utf-8")
@@ -72,6 +72,65 @@ class UnixControlTests(unittest.TestCase):
         self.assertIn("apt-get install -y python3 python3-venv", commands)
         self.assertTrue((self.work / "install.result").exists())
 
+    def test_cancel_does_not_download_into_an_empty_directory(self):
+        target = self.work / "cancel here"
+        target.mkdir()
+        result = subprocess.run(["sh", str(ROOT / "autoinstall.sh"), "--python",
+                                 str(self.work / "missing-python"), "--repository",
+                                 str(self.work / "nonexistent repository"), "--skip-drivers"],
+                                cwd=target, input="n\n", capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("cancelled", result.stderr)
+        self.assertEqual(list(target.iterdir()), [])
+
+    def test_loader_archive_retries_failed_copy_and_preserves_local_files(self):
+        loaders = self.work / "Loaders"
+        loaders.mkdir()
+        (loaders / "custom.bin").write_text("local loader", encoding="utf-8")
+        source = self.work / "Loaders-main"
+        source.mkdir()
+        (source / "first.bin").write_text("complete download", encoding="utf-8")
+        archive = self.work / "loaders.tar.gz"
+        with tarfile.open(archive, "w:gz") as output:
+            output.add(source, arcname="Loaders-main")
+        tools = self.work / "loader tools"
+        tools.mkdir()
+        log = self.work / "downloads.log"
+        allow = self.work / "allow-copy"
+        copy = shlex.quote(shutil.which("cp"))
+        scripts = {
+            "curl": "printf 'download\\n' >> " + shlex.quote(str(log)) + "\nexec " + copy + " "
+                    + shlex.quote(str(archive)) + ' "$4"\n',
+            "cp": copy + ' "$@"\n[ -f ' + shlex.quote(str(allow)) + ' ] || exit 1\n',
+        }
+        for name, code in scripts.items():
+            tool = tools / name
+            tool.write_text("#!/bin/sh\n" + code, encoding="utf-8")
+            tool.chmod(0o755)
+        command = ["sh", str(ROOT / "autoinstall.sh"), "--python", sys.executable,
+                   "--skip-drivers", "--no-input"]
+        env = os.environ.copy()
+        env["PATH"] = str(tools) + os.pathsep + env["PATH"]
+        def invoke():
+            return subprocess.run(command, cwd=self.work, env=env, capture_output=True, text=True, timeout=30)
+        failed = invoke()
+        self.assertNotEqual(failed.returncode, 0, failed.stdout + failed.stderr)
+        marker = loaders / ".edl-download-complete"
+        self.assertFalse(marker.exists())
+        marker.write_text("incomplete marker", encoding="utf-8")
+        (loaders / "first.bin").write_text("interrupted copy", encoding="utf-8")
+        allow.touch()
+        result = invoke()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(log.read_text().splitlines(), ["download", "download"])
+        self.assertEqual((loaders / "first.bin").read_text(), "complete download")
+        self.assertEqual((loaders / "custom.bin").read_text(), "local loader")
+        self.assertEqual(marker.read_text().strip(), "edl-loaders-main-v1")
+        result = invoke()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(log.read_text().splitlines()), 2)
+        self.assertEqual(list(self.work.glob(".edl-stage.*")), [])
+
     def test_archive_without_git_preserves_downloaded_script(self):
         target = self.work / "archive install"
         target.mkdir()
@@ -82,7 +141,7 @@ class UnixControlTests(unittest.TestCase):
         source = self.work / "edl-master"
         source.mkdir()
         (source / "edlclient").mkdir()
-        (source / "pyproject.toml").write_text("# fixture\n", encoding="utf-8")
+        (source / "pyproject.toml").write_text('[project]\nname = "edlclient"\n', encoding="utf-8")
         shutil.copy2(self.work / "install.py", source / "install.py")
         (source / "autoinstall.sh").write_text("# archive copy\n", encoding="utf-8")
         archive = self.work / "source.tar.gz"
@@ -90,7 +149,7 @@ class UnixControlTests(unittest.TestCase):
             output.add(source, arcname="edl-master")
         tools = self.work / "archive tools"
         tools.mkdir()
-        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm"):
+        for name in ("dirname", "basename", "mktemp", "tar", "gzip", "mv", "rm", "awk"):
             (tools / name).symlink_to(shutil.which(name))
         curl = tools / "curl"
         curl.write_text("#!/bin/sh\nexec " + shlex.quote(shutil.which("cp")) + " "

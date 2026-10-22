@@ -167,7 +167,7 @@ Assert (-not (Test-Zadig)) 'Missing Zadig was reported as present'
 $target = Join-Path $work 'install here'
 $archiveRoot = Join-Path $work 'edl-master'
 New-Item -ItemType Directory -Path $target, "$archiveRoot\edlclient" | Out-Null
-[IO.File]::WriteAllText("$archiveRoot\pyproject.toml", '# fixture')
+[IO.File]::WriteAllText("$archiveRoot\pyproject.toml", "[project]`nname = 'edlclient'`n")
 [IO.File]::WriteAllText("$archiveRoot\install.py", '# shared installer')
 [IO.File]::WriteAllText("$archiveRoot\install_edl_win10_win11.ps1", '# archived copy')
 $script:InstallerPath = Join-Path $target 'install_edl_win10_win11.ps1'
@@ -182,6 +182,78 @@ Get-EdlCheckout $target 'https://github.com/bkerler/edl.git'
 Assert (Test-Path -LiteralPath "$target\install.py") 'Archive contents were not installed in the current directory'
 Assert ((Get-Content -LiteralPath $script:InstallerPath) -eq '# running downloaded script') 'Running installer was replaced'
 Assert (-not (Get-ChildItem -LiteralPath $target -Filter '.edl-stage-*' -Force)) 'Staging directory was not cleaned'
+''')
+
+    def test_cancel_before_source_download(self):
+        self.check_script(r'''
+Set-Location -LiteralPath $work
+function Find-CompatiblePython { return $null }
+function Read-Host { return 'n' }
+function Get-EdlCheckout { throw 'Source download was attempted before Python consent' }
+function Ensure-UsbDriver { throw 'Driver setup ran after cancellation' }
+$cancelled = $false
+try { Invoke-EdlInstaller } catch { $cancelled = $_ -like '*cancelled*' }
+Assert $cancelled 'Python cancellation did not stop before source download'
+Assert (-not (Test-Path -LiteralPath "$work\.git")) 'Source checkout was created'
+''')
+
+    def test_loader_archive_retries_failed_copy_and_preserves_local_files(self):
+        self.check_script(r'''
+$target = Join-Path $work 'loader target'
+$archiveRoot = Join-Path $work 'Loaders-main'
+New-Item -ItemType Directory -Path "$target\Loaders", $archiveRoot | Out-Null
+[IO.File]::WriteAllText("$target\Loaders\custom.bin", 'local loader')
+[IO.File]::WriteAllText("$archiveRoot\first.bin", 'complete download')
+Compress-Archive -Path $archiveRoot -DestinationPath "$work\loaders.zip"
+$script:downloads = 0
+$script:failCopy = $true
+function Get-Command { [CmdletBinding()]param($Name) return $null }
+function Invoke-InstallerHttp($Uri, $OutFile) {
+    Assert ($Uri -eq 'https://github.com/bkerler/Loaders/archive/refs/heads/main.zip') 'Unexpected Loader source'
+    [IO.File]::Copy("$work\loaders.zip", $OutFile)
+    $script:downloads++
+}
+function Copy-Item {
+    [CmdletBinding()]param($LiteralPath, $Destination, [switch]$Recurse, [switch]$Force,
+                          [Parameter(ValueFromPipeline=$true)]$InputObject)
+    process {
+        if ($script:failCopy) {
+            [IO.File]::WriteAllText("$Destination\first.bin", 'interrupted copy')
+            throw 'Simulated interrupted copy'
+        }
+        Microsoft.PowerShell.Management\Copy-Item -LiteralPath $InputObject.FullName -Destination $Destination -Recurse -Force
+    }
+}
+$failed = $false
+try { Get-EdlLoaders $target } catch { $failed = $_ -like '*interrupted copy*' }
+Assert $failed 'Copy failure was hidden or a nonempty partial directory was skipped'
+Assert (-not (Test-Path -LiteralPath "$target\Loaders\.edl-download-complete")) 'Failed copy was marked complete'
+[IO.File]::WriteAllText("$target\Loaders\.edl-download-complete", '')
+$script:failCopy = $false
+Get-EdlLoaders $target
+Assert ($script:downloads -eq 2) 'Interrupted installation was not downloaded again'
+Assert ((Get-Content -LiteralPath "$target\Loaders\first.bin") -eq 'complete download') 'Partial loader was not repaired'
+Assert ((Get-Content -LiteralPath "$target\Loaders\custom.bin") -eq 'local loader') 'Local loader was removed'
+Assert ((Get-Content -LiteralPath "$target\Loaders\.edl-download-complete") -eq 'edl-loaders-main-v1') 'Successful download was not marked complete'
+Get-EdlLoaders $target
+Assert ($script:downloads -eq 2) 'Complete archive was downloaded unnecessarily'
+Assert (-not (Get-ChildItem -LiteralPath $target -Filter '.edl-stage-*' -Force)) 'Loader stage was not cleaned'
+''')
+
+    def test_git_loaders_keep_the_recorded_submodule_commit(self):
+        self.check_script(r'''
+New-Item -ItemType Directory -Path "$work\.git" | Out-Null
+$script:calls = 0
+function Get-Command { [CmdletBinding()]param($Name) return 'git' }
+function git {
+    Assert (($args -join ' ') -like '*submodule update --init --recursive --quiet') 'Not a pinned submodule update'
+    Assert ($args -notcontains '--remote') 'Loader revision unexpectedly followed remote main'
+    $script:calls++
+    $global:LASTEXITCODE = 0
+}
+function Invoke-InstallerHttp { throw 'Git mode fetched a main archive' }
+Get-EdlLoaders $work
+Assert ($script:calls -eq 1) 'Submodule update was skipped'
 ''')
 
     def test_registered_python_without_path_or_launcher(self):

@@ -47,9 +47,19 @@ function Remove-InstallerStage([string]$Stage, [string]$Parent) {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 
+function Test-EdlCheckout([string]$Target) {
+    if (-not (Test-Path -LiteralPath "$Target\pyproject.toml" -PathType Leaf) -or
+        -not (Test-Path -LiteralPath "$Target\edlclient" -PathType Container)) { return $false }
+    # Accept the project name only inside the [project] table, not another table.
+    $text = [string](Get-Content -LiteralPath "$Target\pyproject.toml" -Raw)
+    $tables = [regex]::Matches($text, '(?ms)^[ \t]*\[[ \t]*project[ \t]*\][ \t]*(?:#[^\r\n]*)?\r?\n(?<metadata>.*?)(?=^[ \t]*\[|\z)')
+    if ($tables.Count -ne 1) { return $false }
+    $names = [regex]::Matches($tables[0].Groups['metadata'].Value, '(?m)^[ \t]*name[ \t]*=[^\r\n]*')
+    return $names.Count -eq 1 -and $names[0].Value -match '^[ \t]*name[ \t]*=[ \t]*([''"])edlclient\1[ \t]*(?:#.*)?$'
+}
+
 function Get-EdlCheckout([string]$Target, [string]$Source) {
-    if ((Test-Path -LiteralPath "$Target\pyproject.toml") -and
-        (Test-Path -LiteralPath "$Target\edlclient" -PathType Container)) { return }
+    if (Test-EdlCheckout $Target) { return }
     foreach ($entry in Get-ChildItem -LiteralPath $Target -Force) {
         if ($entry.FullName -ne $InstallerPath) {
             throw 'The current directory is not an EDL checkout and contains other files. Choose an empty directory.'
@@ -68,6 +78,7 @@ function Get-EdlCheckout([string]$Target, [string]$Source) {
             Expand-Archive -LiteralPath "$stage\source.zip" -DestinationPath "$stage\expanded"
             $checkout = Join-Path $stage 'expanded\edl-master'
         }
+        if (-not (Test-EdlCheckout $checkout)) { throw 'The downloaded source is not an edlclient project.' }
         # Check every destination before moving anything, including the running installer.
         foreach ($entry in Get-ChildItem -LiteralPath $checkout -Force) {
             $destination = Join-Path $Target $entry.Name
@@ -92,15 +103,23 @@ function Get-EdlLoaders([string]$Target) {
     if ((Test-Path -LiteralPath "$Target\.git") -and (Get-Command git -ErrorAction SilentlyContinue)) {
         & git -C $Target submodule update --init --recursive --quiet
         if ($LASTEXITCODE -ne 0) { throw 'Loader download failed; use -SkipLoaders to configure loaders later.' }
-    } elseif (-not (Get-ChildItem -LiteralPath "$Target\Loaders" -Force -ErrorAction SilentlyContinue)) {
+    } else {
+        $marker = Join-Path $Target 'Loaders\.edl-download-complete'
+        if ((Test-Path -LiteralPath $marker -PathType Leaf) -and
+            (Get-Content -LiteralPath $marker -Raw) -eq 'edl-loaders-main-v1') { return }
         $stage = Join-Path $Target ('.edl-stage-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $stage | Out-Null
         try {
             Invoke-InstallerHttp 'https://github.com/bkerler/Loaders/archive/refs/heads/main.zip' "$stage\loaders.zip"
             Expand-Archive -LiteralPath "$stage\loaders.zip" -DestinationPath "$stage\expanded"
+            $source = Join-Path $stage 'expanded\Loaders-main'
+            if (-not (Get-ChildItem -LiteralPath $source -Force -ErrorAction Stop)) { throw 'The Loader archive is empty.' }
             New-Item -ItemType Directory -Path "$Target\Loaders" -Force | Out-Null
-            Get-ChildItem -LiteralPath "$stage\expanded\Loaders-main" -Force |
-                Copy-Item -Destination "$Target\Loaders" -Recurse
+            Get-ChildItem -LiteralPath $source -Force |
+                Copy-Item -Destination "$Target\Loaders" -Recurse -Force
+            # A failed download, extraction or copy must never leave a success marker.
+            [IO.File]::WriteAllText("$stage\complete", 'edl-loaders-main-v1')
+            Move-Item -LiteralPath "$stage\complete" -Destination $marker -Force
         } finally { Remove-InstallerStage $stage $Target }
     }
 }
@@ -272,8 +291,6 @@ function Invoke-EdlInstaller {
     }
     $target = (Get-Location).Path
     Write-Host "Installing EDL in $target"
-    Get-EdlCheckout $target $Repository
-    if (-not (Test-Path -LiteralPath "$target\install.py")) { throw 'This checkout is outdated: update it to include install.py.' }
     if (Test-Path -LiteralPath "$target\.venv") {
         if (-not (Test-Path -LiteralPath "$target\.venv\pyvenv.cfg") -or
             (Get-Content -LiteralPath "$target\.venv\pyvenv.cfg" -Raw) -notmatch '(?im)^\s*include-system-site-packages\s*=\s*false\s*$') {
@@ -282,6 +299,8 @@ function Invoke-EdlInstaller {
     }
     $interpreter = Resolve-InstallerPython $Python ([bool]$NoInput)
     Write-Host "Using Python: $interpreter"
+    Get-EdlCheckout $target $Repository
+    if (-not (Test-Path -LiteralPath "$target\install.py")) { throw 'This checkout is outdated: update it to include install.py.' }
     if (-not $SkipDrivers) { Ensure-UsbDriver ([bool]$NoInput) }
     if (-not $SkipLoaders) { Get-EdlLoaders $target }
     $arguments = @('-I', "$target\install.py", '--venv', "$target\.venv")

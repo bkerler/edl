@@ -46,8 +46,27 @@ fetch_file() {
     else die 'Install Git, curl or wget to download the source.'; fi
 }
 
+is_edl_checkout() {
+    [ -f "$1/pyproject.toml" ] && [ -d "$1/edlclient" ] || return 1
+    awk -v quote="'" '
+        /^[[:space:]]*\[/ {
+            project = ($0 ~ /^[[:space:]]*\[[[:space:]]*project[[:space:]]*\][[:space:]]*(#.*)?$/)
+            if (project) tables++
+        }
+        project && /^[[:space:]]*name[[:space:]]*=/ {
+            names++
+            value = $0
+            sub(/^[^=]*=[[:space:]]*/, "", value)
+            sub(/[[:space:]]*#.*$/, "", value)
+            sub(/[[:space:]]*$/, "", value)
+            if (value == "\"edlclient\"" || value == quote "edlclient" quote) valid++
+        }
+        END { exit !(tables == 1 && names == 1 && valid == 1) }
+    ' "$1/pyproject.toml"
+}
+
 get_checkout() {
-    if [ -f "$TARGET/pyproject.toml" ] && [ -d "$TARGET/edlclient" ]; then return; fi
+    if is_edl_checkout "$TARGET"; then return; fi
     for entry in "$TARGET"/* "$TARGET"/.[!.]* "$TARGET"/..?*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         [ "$entry" = "$SELF" ] || die 'The current directory contains other files. Choose an empty directory or an EDL checkout.'
@@ -62,6 +81,7 @@ get_checkout() {
         tar -xzf "$STAGE/source.tar.gz" -C "$STAGE"
         checkout="$STAGE/edl-master"
     fi
+    is_edl_checkout "$checkout" || die 'The downloaded source is not an edlclient project.'
     for entry in "$checkout"/* "$checkout"/.[!.]* "$checkout"/..?*; do
         [ -e "$entry" ] || [ -L "$entry" ] || continue
         destination="$TARGET/$(basename "$entry")"
@@ -78,14 +98,20 @@ get_checkout() {
 }
 
 get_loaders() {
-    if [ -d "$TARGET/.git" ] && command -v git >/dev/null 2>&1; then
+    if [ -e "$TARGET/.git" ] && command -v git >/dev/null 2>&1; then
         git -C "$TARGET" submodule update --init --recursive --quiet
-    elif [ ! -d "$TARGET/Loaders" ] || [ -z "$(ls -A "$TARGET/Loaders")" ]; then
+    else
+        marker="$TARGET/Loaders/.edl-download-complete"
+        if [ -f "$marker" ] && [ "$(cat "$marker")" = edl-loaders-main-v1 ]; then return; fi
         STAGE=$(mktemp -d "$TARGET/.edl-stage.XXXXXX")
         fetch_file https://github.com/bkerler/Loaders/archive/refs/heads/main.tar.gz "$STAGE/loaders.tar.gz"
         tar -xzf "$STAGE/loaders.tar.gz" -C "$STAGE"
+        [ -d "$STAGE/Loaders-main" ] && [ -n "$(ls -A "$STAGE/Loaders-main")" ] || die 'The Loader archive is empty.'
         mkdir -p "$TARGET/Loaders"
         cp -R "$STAGE/Loaders-main/." "$TARGET/Loaders/"
+        # Retry after interrupted downloads/extraction/copies, preserving local loaders.
+        printf 'edl-loaders-main-v1\n' > "$STAGE/complete"
+        mv -f "$STAGE/complete" "$marker"
         cleanup_stage
     fi
 }
@@ -179,14 +205,14 @@ ensure_usb() {
 }
 
 printf 'Installing EDL in %s\n' "$TARGET"
-get_checkout
-[ -f "$TARGET/install.py" ] || die 'This checkout is outdated: update it to include install.py.'
 if [ -e "$TARGET/.venv" ]; then
     [ -f "$TARGET/.venv/pyvenv.cfg" ] || die 'The existing .venv is not an isolated virtual environment. Move it aside first.'
     grep -Eq '^[[:space:]]*include-system-site-packages[[:space:]]*=[[:space:]]*false[[:space:]]*$' "$TARGET/.venv/pyvenv.cfg" || die 'The existing .venv shares system packages. Move it aside first.'
 fi
 select_python
 printf 'Using Python: %s\n' "$PYTHON"
+get_checkout
+[ -f "$TARGET/install.py" ] || die 'This checkout is outdated: update it to include install.py.'
 [ "$SKIP_DRIVERS" = 1 ] || ensure_usb
 [ "$SKIP_LOADERS" = 1 ] || get_loaders
 set -- --venv "$TARGET/.venv"
