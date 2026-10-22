@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+ROOT=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+if [ ! -x "$ROOT/.venv/bin/edl" ]; then
+    printf 'EDL is not installed. Run autoinstall.sh from this directory first.\n' >&2
+    exit 1
+fi
+exec "$ROOT/.venv/bin/edl" "$@"

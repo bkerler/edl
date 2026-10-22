@@ -1,12 +1,19 @@
 #!/usr/bin/env sh
 
-PATH_DRIVERS=$(dirname "${0}")/Drivers
+set -eu
+
+PATH_SCRIPT=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+PATH_DRIVERS="${PATH_SCRIPT}/Drivers"
+
+[ "$(uname -s)" = Linux ] || { printf "This script configures Linux USB permissions only.\n"; exit 1; }
 
 [ "$(id -u)" != 0 ] && { printf "You must run this script as root!\n" && exit 1; }
 ! [ -d "${PATH_DRIVERS}" ] && { printf "Missing \"Drivers\" directory!\n" && exit 1; }
 
-cp "${PATH_DRIVERS}"/*.rules /etc/udev/rules.d/
-cp "${PATH_DRIVERS}"/blacklist*.conf /etc/modprobe.d/
+command -v udevadm >/dev/null || { printf "udevadm is required.\n"; exit 1; }
+
+install -m 644 "${PATH_DRIVERS}"/*.rules /etc/udev/rules.d/
+install -m 644 "${PATH_DRIVERS}"/blacklist*.conf /etc/modprobe.d/
 
 udevadm control --reload-rules
 udevadm trigger
