@@ -733,7 +733,7 @@ class firehose(metaclass=LogBase):
 
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
         rsp = self.xmlsend(data, self.skipresponse)
-        if "value" in rsp.data and rsp.data["value"] == "NAK":
+        if isinstance(rsp.data, dict) and rsp.data.get("value") == "NAK":
             return rsp
         self.cdc.xmlread = False
         resData = bytearray()
