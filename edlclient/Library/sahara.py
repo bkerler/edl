@@ -115,9 +115,10 @@ class sahara(metaclass=LogBase):
 
     def connect(self):
         try:
-            # pyusb timeouts are milliseconds. timeout=1 made Sahara HELLO
-            # reads miss often, then XML/HDLC probes confused the device.
-            v = self.cdc.read(length=0xC * 0x4, timeout=1000)
+            # pyusb timeouts are milliseconds; pyserial timeouts are seconds.
+            # USB needs ~1000 ms for HELLO; serial must stay at 1 second.
+            hello_timeout = 1 if getattr(self.cdc, "is_serial", False) else 1000
+            v = self.cdc.read(length=0xC * 0x4, timeout=hello_timeout)
             if len(v) > 1:
                 if v[0] == 0x01 or v[0] == cmd_t.SAHARA_END_TRANSFER:
                     pkt = self.ch.pkt_cmd_hdr(v)
@@ -130,7 +131,6 @@ class sahara(metaclass=LogBase):
                     elif pkt.cmd == cmd_t.SAHARA_END_TRANSFER:
                         rsp = self.ch.pkt_image_end(v)
                         self.error(self.get_error_desc(rsp.image_tx_status))
-                        print("Device is in Sahara END_TRANSFER state. Power-cycle and re-enter EDL, then retry.")
                         return {"mode": "error", "cmd": cmd_t.SAHARA_END_TRANSFER, "data": rsp}
                 elif b"<?xml" in v:
                     return {"mode": "firehose"}
@@ -139,7 +139,7 @@ class sahara(metaclass=LogBase):
             else:
                 data = b"<?xml version=\"1.0\" ?><data><nop /></data>"
                 self.cdc.write(data)
-                res = self.cdc.read(timeout=1000)
+                res = self.cdc.read(timeout=hello_timeout)
                 if b"<?xml" in res:
                     return {"mode": "firehose"}
                 elif len(res) > 0:
@@ -148,7 +148,6 @@ class sahara(metaclass=LogBase):
                     elif res[0] == cmd_t.SAHARA_END_TRANSFER:
                         rsp = self.ch.pkt_image_end(res)
                         self.error(self.get_error_desc(rsp.image_tx_status))
-                        print("Device is in Sahara END_TRANSFER state. Power-cycle and re-enter EDL, then retry.")
                         return {"mode": "error", "cmd": cmd_t.SAHARA_END_TRANSFER, "data": rsp}
                     elif res[0] == 0x01:
                         pkt = self.ch.pkt_cmd_hdr(res)
@@ -161,7 +160,7 @@ class sahara(metaclass=LogBase):
                 elif res == b"":
                     data = b"\x7E\x11\x00\x12\x00\xA0\xE3\x00\x00\xC1\xE5\x01\x40\xA0\xE3\x1E\xFF\x2F\xE1\x4B\xD9\x7E"
                     self.cdc.write(data)
-                    res = self.cdc.read(timeout=1000)
+                    res = self.cdc.read(timeout=hello_timeout)
                     if len(res) > 0 and res[1] == 0x12:
                         return {"mode": "nandprg"}
                     elif len(res) == 0:

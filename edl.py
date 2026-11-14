@@ -308,15 +308,17 @@ class main(metaclass=LogBase):
             version = conninfo.get("data").version
         except AttributeError:
             version = 2
+        # sahara.connect() reports END_TRANSFER with mode="error"; check cmd
+        # before mode dispatch so reset still runs.
+        if conninfo.get("cmd") == cmd_t.SAHARA_END_TRANSFER:
+            print("Sahara reported END_TRANSFER (not HELLO). Reboot into EDL and retry immediately.")
+            try:
+                self.sahara.cmd_reset()
+            except Exception:
+                pass
+            return self.exit(1)
         if mode == "sahara":
             cmd = conninfo["cmd"]
-            if cmd == cmd_t.SAHARA_END_TRANSFER:
-                print("Sahara reported END_TRANSFER (not HELLO). Reboot into EDL and retry immediately.")
-                try:
-                    self.sahara.cmd_reset()
-                except Exception:
-                    pass
-                return self.exit(1)
             if cmd == cmd_t.SAHARA_HELLO_REQ:
                 if "data" in conninfo:
                     data = conninfo["data"]
