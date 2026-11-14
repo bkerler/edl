@@ -78,13 +78,17 @@ class usb_class(DeviceClass):
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
             self.backend = usb.backend.libusb1.get_backend(find_library=lambda x: "libusb-1.0.so")
         elif is_windows():
+            # Let pyusb pick the backend for the bound Windows driver
+            # (WinUSB/libusb1 or libusb-win32/libusb0).
             self.backend = None
-        if self.backend is not None:
+        # libusb_set_option exists only on libusb1; never clear backend on failure
+        # (clearing the backend can force a mismatched backend and crash).
+        if self.backend is not None and self.backend.__class__.__module__.endswith("libusb1"):
             try:
                 self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
                 self.backend.lib.libusb_set_option(self.backend.ctx, 1)
-            except:
-                self.backend = None
+            except Exception:
+                pass
 
     def load_windows_dll(self):
         if os.name == 'nt':
@@ -388,6 +392,11 @@ class usb_class(DeviceClass):
         buffer = self.buffer[:resplen]
         epr = self.EP_IN.read
         extend = res.extend
+        # Retry count must be independent of the timeout value in ms.
+        # Callers such as Sahara use timeout=1000; the old "timeout == 10"
+        # exit never fired and could hang forever on "Device detected".
+        timeout_retries = 0
+        max_timeout_retries = 10
         while len(res) < resplen:
             try:
                 resplen = epr(buffer, timeout)
@@ -395,16 +404,17 @@ class usb_class(DeviceClass):
                 if resplen == self.EP_IN.wMaxPacketSize:
                     break
             except usb.core.USBError as e:
-                error = str(e.strerror)
-                if "timed out" in error:
+                error = str(e.strerror).lower() if e.strerror else str(e).lower()
+                # libusb1: "timed out"; libusb0-win32: "timeout error"
+                if "timed out" in error or "timeout" in error:
                     if timeout is None:
                         return b""
                     self.debug("Timed out")
-                    if timeout == 10:
+                    timeout_retries += 1
+                    if timeout_retries >= max_timeout_retries:
                         return b""
-                    timeout += 1
                     pass
-                elif "Overflow" in error:
+                elif "Overflow" in error or "overflow" in error:
                     self.error("USB Overflow")
                     return b""
                 else:
