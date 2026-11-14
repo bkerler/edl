@@ -381,7 +381,8 @@ class gpt(metaclass=LogBase):
         for idx in range(0, num_part_entries):
             data = gptdata[start + (idx * entrysize):start + (idx * entrysize) + entrysize]
             if int(hexlify(data[16:32]), 16) == 0:
-                break
+                # An unused entry: the UEFI spec allows used entries after it (e.g. after deleting a partition)
+                continue
             partentry = self.gpt_partition(data)
             pa = partf()
             guid1 = unpack("<I", partentry.unique[0:0x4])[0]
