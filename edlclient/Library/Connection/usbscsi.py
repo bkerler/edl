@@ -6,7 +6,7 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import argparse
-from edlclient.Library.Connection.usblib import *
+from edlclient.Library.Connection.usblib import Scsi
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     else:
         interface = -1
 
-    usbscsi = Scsi(vid, pid, interface)
+    usbscsi = Scsi(vid=vid, pid=pid, interface=interface)
     if usbscsi.connect():
         if args.nokia:
             usbscsi.send_fih_adbenable()

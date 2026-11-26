@@ -12,6 +12,7 @@ from Cryptodome.Util import Counter
 from Cryptodome.Hash import CMAC
 from Cryptodome.Util.number import long_to_bytes, bytes_to_long
 from binascii import hexlify, unhexlify
+from typing import Any
 
 
 class PKCS1BaseException(Exception):
@@ -311,7 +312,7 @@ class cryptutils:
     class rsa:  # RFC8017
         def __init__(self, hashtype="SHA256"):
             if hashtype == "SHA1":
-                self.hash = hashlib.sha1
+                self.hash: Any = hashlib.sha1
                 self.digestLen = 0x14
             elif hashtype == "SHA256":
                 self.hash = hashlib.sha256

@@ -5,14 +5,13 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import inspect
 import logging
 import os
 import sys
 from queue import Queue
 from struct import unpack
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 from edlclient.Library.utils import LogBase, print_progress
@@ -20,9 +19,21 @@ from edlclient.Library.utils import LogBase, print_progress
 MAX_STORE_SIZE = 1024 * 1024 * 1024 * 2  # 2 GBs
 
 
+def _open_for_write(path):
+    """Open path for writing, exiting with a clear message if that fails."""
+    try:
+        return open(path, "wb")
+    except OSError as err:
+        sys.exit(f"Couldn't write {path}: {err}")
+
+
 class QCSparse(metaclass=LogBase):
     def __init__(self, filename, loglevel):
-        self.rf = open(filename, 'rb')
+        try:
+            # Owned by the instance for its lifetime, see close()/__exit__
+            self.rf = open(filename, 'rb')  # noqa: SIM115
+        except OSError as err:
+            raise OSError(f"Couldn't open {filename}: {err}") from err
         self.data = Queue()
         self.__logger = self.__logger
         self.offset = 0
@@ -34,8 +45,8 @@ class QCSparse(metaclass=LogBase):
         self.file_hdr_sz = None
         self.chunk_hdr_sz = None
         self.blk_sz = None
-        self.total_blks = None
-        self.total_chunks = None
+        self.total_blks: int = 0
+        self.total_chunks: int = 0
         self.image_checksum = None
 
         self.tmp_offset = 0
@@ -49,6 +60,17 @@ class QCSparse(metaclass=LogBase):
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
+
+    def close(self):
+        if not self.rf.closed:
+            self.rf.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
 
     def readheader(self):
         buf = self.rf.read(0x1C)
@@ -75,7 +97,7 @@ class QCSparse(metaclass=LogBase):
         self.info("Sparse Format detected. Using unpacked image.")
         return True
 
-    def get_chunk_size(self):
+    def get_chunk_size(self) -> int:
         if self.total_blks < self.offset:
             self.error(
                 "The header said we should have %u output blocks, but we saw %u" % (self.total_blks, self.offset))
@@ -114,7 +136,7 @@ class QCSparse(metaclass=LogBase):
             self.debug("Unknown chunk type 0x%04X" % chunk_type)
             return -1
 
-    def unsparse(self):
+    def unsparse(self) -> bytes | int:
         if self.total_blks < self.offset:
             self.error(
                 "The header said we should have %u output blocks, but we saw %u" % (self.total_blks, self.offset))
@@ -186,7 +208,10 @@ class QCSparse(metaclass=LogBase):
             self.tmp_offset += length
             return tdata
         while (self.tmp_offset + length) > len(self.tmpdata):
-            self.tmpdata.extend(self.unsparse())
+            chunk = self.unsparse()
+            if not isinstance(chunk, (bytes, bytearray)):
+                return b""
+            self.tmpdata.extend(chunk)
             if (self.tmp_offset + length) <= len(self.tmpdata):
                 tdata = self.tmpdata[self.tmp_offset: self.tmp_offset + length]
                 self.tmp_offset += length
@@ -200,7 +225,7 @@ if __name__ == "__main__":
     sp = QCSparse(sys.argv[1], logging.INFO)
     if sp.readheader():
         print("Extracting sectors to " + sys.argv[2])
-        with open(sys.argv[2], "wb") as wf:
+        with _open_for_write(sys.argv[2]) as wf:
             """
             old=0
             while sp.offset<sp.total_blks:
@@ -238,10 +263,10 @@ if __name__ == "__main__":
                 if pv != 0:
                     filllen = (wlen // SECTOR_SIZE_IN_BYTES * SECTOR_SIZE_IN_BYTES) + \
                               SECTOR_SIZE_IN_BYTES
-                    wdata += b"\x00" * (filllen - wlen)
+                    wdata = bytes(wdata or b"") + b"\x00" * (filllen - wlen)
                     wlen = len(wdata)
 
-                wf.write(wdata)
+                wf.write(bytes(wdata or b""))
 
                 prog = round(float(pos) / float(total) * float(100), 1)
                 if prog > old:

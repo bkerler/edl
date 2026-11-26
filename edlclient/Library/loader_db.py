@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import inspect
 import logging
 import os
 import sys
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 try:
-    from edlclient.Library.utils import read_object, print_progress, rmrf, LogBase
-    from edlclient.Config.qualcomm_config import sochw, msmids, root_cert_hash
-except:
-    from Library.utils import read_object, print_progress, rmrf, LogBase
-    from Config.qualcomm_config import sochw, msmids, root_cert_hash
+    from edlclient.Config.qualcomm_config import msmids, sochw
+    from edlclient.Library.utils import LogBase
+except ImportError:  # pragma: no cover - legacy in-tree layout
+    from Config.qualcomm_config import msmids, sochw  # type: ignore[import-not-found]
+    from Library.utils import LogBase  # type: ignore[import-not-found]
 
 
 class loader_utils(metaclass=LogBase):
@@ -52,7 +50,7 @@ class loader_utils(metaclass=LogBase):
                     msmid = hwid[:8]
                     try:
                         int(msmid, 16)
-                    except:
+                    except ValueError:
                         continue
                     devid = hwid[8:]
                     if devid == '':
@@ -68,7 +66,7 @@ class loader_utils(metaclass=LogBase):
                         if pkhash not in self.loaderdb[mhwid]:
                             self.loaderdb[mhwid][pkhash] = fn
                 except Exception as e:  # pylint: disable=broad-except
-                    self.debug(f"Filename:{filename} => {str(e)}")
+                    self.debug(f"Filename:{filename} => {e!s}")
                     continue
         return self.loaderdb
 

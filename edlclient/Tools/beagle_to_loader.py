@@ -11,16 +11,24 @@ import sys
 from struct import unpack
 
 
+def _open_or_exit(path, mode):
+    """Open path, exiting with a clear message if it isn't accessible."""
+    try:
+        return open(path, mode)
+    except OSError as err:
+        sys.exit(f"Couldn't open {path}: {err}")
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: ./beagle_to_loader.py [beagle_log.bin] [loader.elf]")
         sys.exit(0)
-    with open(sys.argv[1], "rb") as rf:
+    with _open_or_exit(sys.argv[1], "rb") as rf:
         data = rf.read()
         outdata = bytearray()
         i = 0
         seq = b"\x03\x00\x00\x00\x14\x00\x00\x00\x0D\x00\x00\x00"
-        with open(sys.argv[2], "wb") as wf:
+        with _open_or_exit(sys.argv[2], "wb") as wf:
             while True:
                 idx = data.find(seq)
                 if idx == -1:
@@ -36,6 +44,10 @@ def main():
                         cmd, tlen, slen, offset, length = unpack("<IIIII", data[idx:idx + 0x14])
                     elif cmd == 0x12:
                         cmd, tlen, slen, offset, length = unpack("<IIQQQ", data[idx:idx + 0x20])
+                    else:
+                        print(f"Unknown command 0x{cmd:08X}, skipping")
+                        data = data[idx + 4:]
+                        continue
                     data = data[idx + 0x14:]
                     print("Offset : %08X Length: %08X" % (offset, length))
                     while len(outdata) < offset + length:

@@ -12,6 +12,8 @@ from edlclient.Library.utils import LogBase
 
 
 class xiaomi(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, fh, projid="18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
                  loglevel=logging.INFO):
         self.fh = fh

@@ -13,6 +13,8 @@ from edlclient.Library.utils import LogBase
 
 
 class nothing(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, fh, projid="22111", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0, supported_functions=None,
                  loglevel=logging.INFO):
         self.fh = fh
@@ -29,7 +31,7 @@ class nothing(metaclass=LogBase):
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-    def generatetoken(self, token1: str = None):
+    def generatetoken(self, token1: str | None = None):
         if token1 is None:
            token1 = random.randbytes(32).hex()
         authresp = token1 + self.projid + ("%x" % self.serial) + self.hashverify

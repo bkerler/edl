@@ -11,6 +11,8 @@ from edlclient.Library.utils import LogBase
 
 
 class generic(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, fh, serial, args, loglevel):
         self.fh = fh
         self.serial = serial

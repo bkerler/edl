@@ -8,38 +8,39 @@
 
 import logging
 from functools import cached_property
+from typing import Any
 
 from edlclient.Library.utils import LogBase
+
+# Optional device modules, None when the corresponding backend isn't available
+generic: Any = None
+oneplus: Any = None
+xiaomi: Any = None
+nothing: Any = None
 
 try:
     from edlclient.Library.Modules.generic import generic
 except ImportError as e:
     print(e)
-    generic = None
-    pass
 
 try:
     from edlclient.Library.Modules.oneplus import oneplus
 except ImportError as e:
     print(e)
-    oneplus = None
-    pass
 
 try:
     from edlclient.Library.Modules.xiaomi import xiaomi
 except ImportError as e:
     print(e)
-    xiaomi = None
-    pass
 
 try:
     from edlclient.Library.Modules.nothing import nothing
 except ImportError as e:
-    nothing = None
     pass
 
 
 class modules(metaclass=LogBase):
+    __logger: logging.Logger
     def __init__(self, fh, serial: int, supported_functions, loglevel, devicemodel: str, args):
         self.fh = fh
         self.args = args

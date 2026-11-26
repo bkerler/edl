@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
@@ -8,26 +7,32 @@
 import array
 import inspect
 import logging
+import os
+import sys
+import time
 from binascii import hexlify
-from ctypes import c_void_p, c_int
+from ctypes import c_int, c_void_p
 from enum import Enum
+from struct import pack
+from typing import Any
 
 import usb.backend.libusb0
 import usb.core  # pyusb
 import usb.util
 
 try:
-    from edlclient.Library.utils import *
-except:
-    from Library.utils import *
+    from edlclient.Library.utils import is_windows, write_object
+except ImportError:  # pragma: no cover - legacy in-tree layout
+    from Library.utils import is_windows, write_object  # type: ignore[import-not-found]
 if not is_windows():
     import usb.backend.libusb1
-from struct import pack
 
 try:
     from edlclient.Library.Connection.devicehandler import DeviceClass
-except:
-    from Library.Connection.devicehandler import DeviceClass
+except ImportError:  # pragma: no cover - legacy in-tree layout
+    from Library.Connection.devicehandler import (
+        DeviceClass,  # type: ignore[import-not-found]
+    )
 USB_DIR_OUT = 0  # to device
 USB_DIR_IN = 0x80  # to host
 
@@ -71,8 +76,10 @@ class usb_class(DeviceClass):
         super().__init__(loglevel, portconfig, devclass)
         self.serial_number = serial_number
         self.load_windows_dll()
-        self.EP_IN = None
-        self.EP_OUT = None
+        self.device: Any = None
+        self.backend: Any = None
+        self.EP_IN: Any = None
+        self.EP_OUT: Any = None
         self.is_serial = False
         self.buffer = array.array('B', [0]) * 1048576
         if sys.platform.startswith('freebsd') or sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
@@ -83,7 +90,8 @@ class usb_class(DeviceClass):
             try:
                 self.backend.lib.libusb_set_option.argtypes = [c_void_p, c_int]
                 self.backend.lib.libusb_set_option(self.backend.ctx, 1)
-            except:
+            except Exception as err:
+                self.debug(str(err))
                 self.backend = None
 
     def load_windows_dll(self):
@@ -111,7 +119,6 @@ class usb_class(DeviceClass):
                 self.device.set_configuration()
             except Exception as err:
                 self.debug(str(err))
-                pass
             self.configuration = self.device.get_active_configuration()
             self.debug(2, self.configuration)
             return self.configuration.bNumInterfaces
@@ -127,7 +134,7 @@ class usb_class(DeviceClass):
                   19200, 28800, 38400, 57600, 115200, 230400}
 
         if stopbits is not None:
-            if stopbits not in sbits.keys():
+            if stopbits not in sbits:
                 valid = ", ".join(str(k) for k in sorted(sbits.keys()))
                 raise ValueError("Valid stopbits are " + valid)
             self.stopbits = stopbits
@@ -156,7 +163,7 @@ class usb_class(DeviceClass):
                 dif = [abs(br - baudrate) for br in brs]
                 best = brs[dif.index(min(dif))]
                 raise ValueError(
-                    "Invalid baudrates, nearest valid is {}".format(best))
+                    f"Invalid baudrates, nearest valid is {best}")
             self.baudrate = baudrate
 
         linecode = [
@@ -176,7 +183,7 @@ class usb_class(DeviceClass):
         wlen = self.device.ctrl_transfer(
             req_type, CDC_CMDS["SET_LINE_CODING"],
             data_or_wLength=data, wIndex=1)
-        self.debug("Linecoding set, {}b sent".format(wlen))
+        self.debug(f"Linecoding set, {wlen}b sent")
 
     def setbreak(self):
         txdir = 0  # 0:OUT, 1:IN
@@ -186,7 +193,7 @@ class usb_class(DeviceClass):
         wlen = self.device.ctrl_transfer(
             bmRequestType=req_type, bRequest=CDC_CMDS["SEND_BREAK"],
             wValue=0, data_or_wLength=0, wIndex=1)
-        self.debug("Break set, {}b sent".format(wlen))
+        self.debug(f"Break set, {wlen}b sent")
 
     def setcontrollinestate(self, RTS=None, DTR=None, isFTDI=False):
         ctrlstate = (2 if RTS else 0) + (1 if DTR else 0)
@@ -205,7 +212,7 @@ class usb_class(DeviceClass):
             wValue=ctrlstate,
             wIndex=1,
             data_or_wLength=0)
-        self.debug("Linecoding set, {}b sent".format(wlen))
+        self.debug(f"Linecoding set, {wlen}b sent")
 
     def flush(self):
         return
@@ -217,9 +224,9 @@ class usb_class(DeviceClass):
         self.device = None
         self.EP_OUT = None
         self.EP_IN = None
-        devices = usb.core.find(find_all=True, backend=self.backend)
-        for dev in devices:
-            for usbid in self.portconfig:
+        devices: Any = usb.core.find(find_all=True, backend=self.backend)
+        for dev in devices or []:
+            for usbid in self.portconfig or []:
                 if dev.idProduct == usbid[1] and dev.idVendor == usbid[0]:
                     if self.serial_number is not None:
                         if dev.serial_number != self.serial_number:
@@ -244,8 +251,8 @@ class usb_class(DeviceClass):
                 self.device.set_configuration()
                 self.configuration = self.device.get_active_configuration()
             if e.errno == 13:
-                self.error("Permission denied accessing {:04x}:{:04x}.".format(self.vid,self.pid))
-                self.info("Potential fix (update udev rules): sudo echo 'SUBSYSTEM==\"usb\",ATTRS{{idVendor}}==\"{:04x}\",ATTRS{{idProduct}}==\"{:04x}\",MODE=\"0666\"' >> /etc/udev/rules.d/99-edl.rules".format(self.vid,self.pid))
+                self.error(f"Permission denied accessing {self.vid:04x}:{self.pid:04x}.")
+                self.info(f"Potential fix (update udev rules): sudo echo 'SUBSYSTEM==\"usb\",ATTRS{{idVendor}}==\"{self.vid:04x}\",ATTRS{{idProduct}}==\"{self.pid:04x}\",MODE=\"0666\"' >> /etc/udev/rules.d/99-edl.rules")
                 self.backend = usb.backend.libusb0.get_backend()
                 self.device = usb.core.find(idVendor=self.vid, idProduct=self.pid, backend=self.backend)
         if self.configuration is None:
@@ -281,8 +288,8 @@ class usb_class(DeviceClass):
 
             try:
                 usb.util.claim_interface(self.device, 0)
-            except:
-                pass
+            except Exception as err:
+                self.debug(str(err))
             """
             self.debug(self.configuration)
             if self.interface != 0:
@@ -330,7 +337,6 @@ class usb_class(DeviceClass):
                     self.device.attach_kernel_driver(0)
             except Exception as err:
                 self.debug(str(err))
-                pass
             usb.util.dispose_resources(self.device)
             del self.device
             if reset:
@@ -372,7 +378,6 @@ class usb_class(DeviceClass):
                     i += 1
                     if i == 3:
                         return False
-                    pass
         self.verify_data(bytearray(command), "TX:")
         return True
 
@@ -403,7 +408,6 @@ class usb_class(DeviceClass):
                     if timeout == 10:
                         return b""
                     timeout += 1
-                    pass
                 elif "Overflow" in error:
                     self.error("USB Overflow")
                     return b""
@@ -412,7 +416,9 @@ class usb_class(DeviceClass):
                     return b""
 
         if loglevel == logging.DEBUG:
-            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(resplen))
+            frame = inspect.currentframe()
+            caller = frame.f_back.f_code.co_name if frame and frame.f_back else "unknown"
+            self.debug(caller + ":" + hex(resplen))
             if self.loglevel == logging.DEBUG:
                 self.verify_data(res[:resplen], "RX:")
         return res[:resplen]
@@ -431,8 +437,8 @@ class usb_class(DeviceClass):
             self.pid = pid
 
     def detectdevices(self):
-        dev = usb.core.find(find_all=True, backend=self.backend)
-        ids = [self.deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
+        dev: Any = usb.core.find(find_all=True, backend=self.backend)
+        ids = [self.deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev or []]
         return ids
 
     def usbwrite(self, data, pktsize=None):
@@ -531,7 +537,8 @@ class Scsi:
         self.pid = pid
         self.interface = interface
         self.Debug = False
-        self.usb = None
+        self.usb: Any = None
+        self.device: Any = None
         self.loglevel = loglevel
 
     def connect(self):
@@ -648,7 +655,7 @@ class Scsi:
             lun = 0
             # datasize=common_cmnd[4]
             timeout = 5000
-            ret_tag = None
+            ret_tag = 0
             ret_tag += self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
             # ret_tag+=self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
             if datasize > 0:
@@ -664,7 +671,7 @@ class Scsi:
             common_cmnd = b"\x16\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             lun = 0
             timeout = 5000
-            ret_tag = None
+            ret_tag = 0
             ret_tag += self.send_mass_storage_command(lun, common_cmnd, USB_DIR_IN, 0x600)
             if datasize > 0:
                 data = self.usb.read(datasize, timeout)

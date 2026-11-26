@@ -12,6 +12,7 @@ import time
 import serial.tools.list_ports
 from Exscript.protocols.telnetlib import Telnet
 from binascii import hexlify, unhexlify
+from typing import Any
 import logging
 import logging.config
 import logging.handlers
@@ -92,7 +93,7 @@ C5 = 0 2		5	3	0		3 2
 C8 = 1 3		3	1	5		7 3
 C4 = 5 4		1	4	1		1 4
 '''
-prodtable = {
+prodtable: dict[str, dict[str, Any]] = {
     "MDM8200": dict(openlock=0, openmep=1, opencnd=0, clen=8, init=[1, 3, 5, 7, 0],
                     run="resultbuffer[i]=self.SierraAlgo(challenge[i], 2, 4, 1, 3, 0, 3, 4, 0)"),
     # MC878XC_F1.2.3.15 verified, key may be stored in nvitem 0x4e21;MC8700 M3.0.9.0 verified
@@ -222,7 +223,7 @@ keytable = bytearray([0xF0, 0x14, 0x55, 0x0D, 0x5E, 0xDA, 0x92, 0xB3, 0xA7, 0x6C
 class SierraGenerator:
     tbl = bytearray()
     rtbl = bytearray()
-    devicegeneration = None
+    devicegeneration: str = ""
 
     def __init__(self):
         for _ in range(0, 0x14):
@@ -233,17 +234,17 @@ class SierraGenerator:
     def run(self, devicegeneration, challenge, _type):
         challenge = bytearray(unhexlify(challenge))
 
-        self.devicegeneration = devicegeneration
         if devicegeneration not in prodtable:
             print("Sorry, " + devicegeneration + " not supported.")
-            exit(0)
+            sys.exit(0)
+        self.devicegeneration = devicegeneration
 
         mepid = prodtable[devicegeneration]["openmep"]
         cndid = prodtable[devicegeneration]["opencnd"]
         lockid = prodtable[devicegeneration]["openlock"]
         clen = prodtable[devicegeneration]["clen"]
         if len(challenge) < clen:
-            challenge = [0 for _ in range(0, clen - len(challenge))]
+            challenge = bytearray(clen - len(challenge))
 
         challengelen = len(challenge)
         if _type == 0:  # lockkey
@@ -252,6 +253,9 @@ class SierraGenerator:
             idf = mepid
         elif _type == 2:  # cndkey
             idf = cndid
+        else:
+            print(f"Unknown key type {_type}")
+            return ""
 
         key = keytable[idf * 16:(idf * 16) + 16]
         resp = self.SierraKeygen(challenge=challenge, key=key, challengelen=challengelen, keylen=16)[:challengelen]
@@ -310,9 +314,8 @@ class SierraGenerator:
         return [counter, challengelen, mcount]
 
     def SierraInit(self, key, keylen):
-        if keylen == 0 or keylen > 0x20:
-            retval = [0, keylen]
-        elif 1 <= keylen <= 0x20:
+        retval = [0, keylen]
+        if 1 <= keylen <= 0x20:
             self.tbl = [(i & 0xFF) for i in range(0, 0x100)]
             mcount = 0
             cl = keylen & 0xffffff00
@@ -418,6 +421,8 @@ class connection:
     def detect(self, port):
         if port == "":
             for port in serial.tools.list_ports.comports():
+                if port.location is None:
+                    continue
                 if port.vid == 0x1199:
                     portid = port.location[-1:]
                     if int(portid) == 3:
@@ -483,6 +488,7 @@ class SierraKeygen(metaclass=LogBase):
         self.keygen.selftest()
 
     def detectdevicegeneration(self):
+        devicegeneration = ""
         if self.cn.connected:
             info = self.cn.send("ATI")
             if info != -1:

@@ -31,10 +31,30 @@ except ImportError:
 try:
     from edlclient.Library.Modules.init import modules
 except ImportError as e:
-    pass
+    modules = None  # type: ignore[assignment]  # optional dependency
+
+
+def _open_or_none(path, mode, log):
+    """Open path, reporting the failure and returning None if it isn't accessible."""
+    try:
+        return open(path, mode)
+    except OSError as err:
+        log(f"Failed to open {path}: {err}")
+        return None
+
+
+def _file_size(path, log):
+    """Return the size of path (0 and a message if it can't be read)."""
+    try:
+        return os.stat(path).st_size
+    except OSError as err:
+        log(f"Failed to stat {path}: {err}")
+        return 0
 
 
 class firehose_client(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, arguments, cdc, sahara, loglevel, printer):
         self.cdc = cdc
         self.sahara = sahara
@@ -49,7 +69,7 @@ class firehose_client(metaclass=LogBase):
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-        self.cfg = firehose.cfg()
+        self.cfg = firehose.Cfg()
         if not arguments["--memory"] is None:
             self.cfg.MemoryName = arguments["--memory"].lower()
         else:
@@ -70,7 +90,12 @@ class firehose_client(metaclass=LogBase):
             if arguments["--devicemodel"] is not None:
                 devicemodel = arguments["--devicemodel"]
         self.cfg.programmer = self.sahara.programmer
-        self.firehose = firehose(cdc=cdc, xml=xmlparser(), cfg=self.cfg, loglevel=self.__logger.level,
+        self.cfg.vip_table_path = arguments.get("--vip-table-path") or ""
+        self.cfg.vip_digest_path = arguments.get("--create-digests") or ""
+        if self.cfg.vip_table_path and self.cfg.vip_digest_path:
+            self.error("--vip-table-path and --create-digests can't be combined")
+            sys.exit(1)
+        self.firehose = firehose(cdc=cdc, xml=xmlparser(), cfgobj=self.cfg, loglevel=self.__logger.level,
                                  devicemodel=devicemodel, serial=sahara.serial, skipresponse=skipresponse,
                                  luns=self.getluns(arguments), args=arguments)
         self.connected = False
@@ -121,7 +146,7 @@ class firehose_client(metaclass=LogBase):
             self.target_name = self.firehose.cfg.TargetName
             self.connected = True
             try:
-                if self.firehose.modules is None:
+                if self.firehose.modules is None and modules is not None:
                     self.firehose.modules = modules(fh=self.firehose, serial=self.firehose.serial,
                                                     supported_functions=self.firehose.supported_functions,
                                                     loglevel=self.__logger.level,
@@ -142,7 +167,10 @@ class firehose_client(metaclass=LogBase):
         part = -1
         for xml in rawprogram:
             filename = os.path.join(imagedir, xml)
-            with open(filename, "r") as fl:
+            handle = _open_or_none(filename, "r", self.error)
+            if handle is None:
+                return -1
+            with handle as fl:
                 for evt, elem in ET.iterparse(fl, events=["end"]):
                     if elem.tag == "program":
                         label = elem.get("label")
@@ -185,11 +213,19 @@ class firehose_client(metaclass=LogBase):
         if isinstance(storageinfo, str):
             if "storage_info" in storageinfo:
                 rs = storageinfo.replace("INFO: ", "")
-                field = json.loads(rs)
-                if "storage_info" in field:
+                try:
+                    field = json.loads(rs)
+                except ValueError as err:
+                    self.error(f"Couldn't parse the storage info: {err}")
+                    return False
+                if isinstance(field, dict) and "storage_info" in field:
                     info = field["storage_info"]
                     return info
         return False
+
+    def finalize(self):
+        """Flush pending VIP digest tables (no-op unless --create-digests was used)."""
+        return self.firehose.vip.finalize()
 
     def handle_firehose(self, cmd, options):
         if cmd == "gpt":
@@ -286,8 +322,11 @@ class firehose_client(metaclass=LogBase):
             if "--genxml" in options:
                 if options["--genxml"]:
                     genxml = True
-            if not os.path.exists(directory):
-                os.mkdir(directory)
+            try:
+                os.makedirs(directory, exist_ok=True)
+            except OSError as err:
+                self.error(f"Failed to create {directory}: {err}")
+                return False
 
             luns = self.getluns(options)
 
@@ -301,15 +340,24 @@ class firehose_client(metaclass=LogBase):
                     storedir = os.path.join(directory, "lun" + str(lun))
                 else:
                     storedir = directory
-                if not os.path.exists(storedir):
-                    os.mkdir(storedir)
+                try:
+                    os.makedirs(storedir, exist_ok=True)
+                except OSError as err:
+                    self.error(f"Failed to create {storedir}: {err}")
+                    return False
                 sfilename = os.path.join(storedir, f"gpt_main{str(lun)}.bin")
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data)
+                handle = _open_or_none(sfilename, "wb", self.error)
+                if handle is None:
+                    return False
+                with handle:
+                    handle.write(data)
 
                 sfilename = os.path.join(storedir, f"gpt_backup{str(lun)}.bin")
-                with open(sfilename, "wb") as write_handle:
-                    write_handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
+                handle = _open_or_none(sfilename, "wb", self.error)
+                if handle is None:
+                    return False
+                with handle:
+                    handle.write(data[self.firehose.cfg.SECTOR_SIZE_IN_BYTES * 2:])
 
                 if genxml:
                     guid_gpt.generate_rawprogram(lun, self.firehose.cfg.SECTOR_SIZE_IN_BYTES, storedir)
@@ -496,14 +544,17 @@ class firehose_client(metaclass=LogBase):
                                                              (guid_gpt.partentries[partition].sectors -
                                                               (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES)),
                                                              (0x4000 // self.firehose.cfg.SECTOR_SIZE_IN_BYTES), False)
-                        if data == b"":
+                        if not data.resp:
                             continue
                         val = unpack("<I", data.data[:4])[0]
                         if (val & 0xFFFFFFF0) == 0xD0B5B1C0:
-                            with open(filename, "wb") as write_handle:
-                                write_handle.write(data)
-                                self.printer(f"Dumped footer from {partition} as {filename}.")
-                                return True
+                            handle = _open_or_none(filename, "wb", self.error)
+                            if handle is None:
+                                return False
+                            with handle:
+                                handle.write(data.data)
+                            self.printer(f"Dumped footer from {partition} as {filename}.")
+                            return True
             self.error("Error: Couldn't detect footer partition.")
             return False
         elif cmd == "rs":
@@ -704,14 +755,15 @@ class firehose_client(metaclass=LogBase):
                     bad = True
                     continue
                 if partitionname.lower() == "gpt":
-                    sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                    sectors = _file_size(filename, self.error) // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
                     res = [True, lun, sectors]
                 else:
                     res = self.firehose.detect_partition(options, partitionname)
                 if res[0]:
                     lun = res[1]
-                    sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                    if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                    filesize = _file_size(filename, self.error)
+                    sectors = filesize // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                    if (filesize % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                         sectors += 1
                     if partitionname.lower() != "gpt":
                         partition = res[2]
@@ -758,7 +810,12 @@ class firehose_client(metaclass=LogBase):
             filenames = []
             if self.firehose.modules is not None:
                 self.firehose.modules.writeprepare()
-            for fname in filter(os.path.isfile, [os.path.join(directory, i) for i in os.listdir(directory)]):
+            try:
+                entries = os.listdir(directory)
+            except OSError as err:
+                self.error(f"Couldn't list {directory}: {err}")
+                return False
+            for fname in filter(os.path.isfile, [os.path.join(directory, i) for i in entries]):
                 filenames.append(fname)
             for lun in luns:
                 data, guid_gpt = self.firehose.get_gpt(lun, int(options["--gpt-num-part-entries"]),
@@ -776,8 +833,9 @@ class firehose_client(metaclass=LogBase):
                         continue
                     if partname in guid_gpt.partentries:
                         partition = guid_gpt.partentries[partname]
-                        sectors = os.stat(filename).st_size // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
-                        if (os.stat(filename).st_size % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
+                        filesize = _file_size(filename, self.error)
+                        sectors = filesize // self.firehose.cfg.SECTOR_SIZE_IN_BYTES
+                        if (filesize % self.firehose.cfg.SECTOR_SIZE_IN_BYTES) > 0:
                             sectors += 1
                         if sectors > partition.sectors:
                             self.error(f"Error: {filename} has {sectors} sectors but partition " +
@@ -938,7 +996,9 @@ class firehose_client(metaclass=LogBase):
                 filename = os.path.join(imagedir, xml)
                 if os.path.exists(filename):
                     self.info("[qfil] programming %s" % xml)
-                    fl = open(filename, "r")
+                    fl = _open_or_none(filename, "r", self.error)
+                    if fl is None:
+                        return False
                     for evt, elem in ET.iterparse(fl, events=["end"]):
                         if elem.tag == "program":
                             if elem.get("filename", ""):
@@ -970,7 +1030,9 @@ class firehose_client(metaclass=LogBase):
                 filename = os.path.join(imagedir, xml)
                 self.info("[qfil] patching with %s" % xml)
                 if os.path.exists(filename):
-                    fl = open(filename, "r")
+                    fl = _open_or_none(filename, "r", self.error)
+                    if fl is None:
+                        return False
                     for evt, elem in ET.iterparse(fl, events=["end"]):
                         if elem.tag == "patch":
                             filename = elem.get("filename")

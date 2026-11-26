@@ -13,16 +13,21 @@ Usage:
     oneplus_param.py setparam <filename> <sid> <offset> <value> [--mode=mode] [--serial=serial]
 """
 import hashlib
+import os
+import sys
 import zlib
+from binascii import hexlify, unhexlify
+from contextlib import suppress
 from enum import Enum
 from struct import calcsize, pack, unpack
+from typing import Any
+
+cryptutils: Any = None
 
 try:
     from edlclient.Library.cryptutils import cryptutils
 except ImportError as e:
-    import os, sys, inspect
-
-    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
     sys.path.insert(0, parent_dir)
     try:
@@ -30,7 +35,14 @@ except ImportError as e:
     except ImportError as e:
         print(str(e))
 
-from binascii import unhexlify, hexlify
+
+def _open_or_exit(path: str, mode: str = "rb"):
+    """Open path, reporting the error and exiting if it isn't accessible."""
+    try:
+        return open(path, mode)
+    except OSError as err:
+        print(f"Failed to open {path}: {err}")
+        sys.exit(1)
 
 
 class sid(Enum):
@@ -378,8 +390,8 @@ class paramtools:
         itemdata, hv, cv, updatecounter = self.decryptsid(data)
         if itemdata is not None:
             itemdata = bytearray(itemdata)
-            print(
-                f"Offset {hex(sid * 0x400)}: hv {hex(hv)}, cv {hex(cv)}, increase_enc_update_counter {hex(updatecounter)}.")
+            print(f"Offset {hex(sid * 0x400)}: hv {hv:#04x}, cv {cv:#04x}, "
+                  f"increase_enc_update_counter {updatecounter:#04x}.")
             i = 0
             while i < len(itemdata):
                 offset = i + 0x80
@@ -451,7 +463,7 @@ class paramtools:
         content = unpack(stype, item)
         try:
             content = "\"" + b"".join(content).replace(b'\x00', b'').decode('utf-8') + "\""
-        except:
+        except (UnicodeDecodeError, TypeError):
             if len(content) == 1:
                 content = hex(content[0])
             else:
@@ -495,6 +507,10 @@ class paramtools:
                     itemdata[offset - 0x80:(offset + len(value)) - 0x80] = value
                 # itemdata[0x84-0x80:(0x84+4)-0x80]=pack("<I",0xB7) #devkmsg_enable
                 mdata = self.encryptsid(itemdata, hv, cv, updatecounter)
+            else:
+                mdata = None
+            if mdata is None:
+                return data
             data = bytearray(data)
             data[sid * 0x400:(sid * 0x400) + 0x1000] = mdata
             # data[(sid+0x200) * 0x400:((sid+0x200) * 0x400) + 0x1000] = mdata
@@ -938,7 +954,7 @@ def main():
         mode = args["--mode"]
         serial = args["--serial"]
         param = paramtools(mode, serial)
-        with open(filename, 'rb') as rf:
+        with _open_or_exit(filename) as rf:
             data = rf.read()
             param.parse_decrypted_fields(data)
             print("\nEncrypted Values:\n-----------------\n")
@@ -950,13 +966,11 @@ def main():
         mode = args["--mode"]
         serial = args["--serial"]
         param = paramtools(mode, serial)
-        with open(filename, 'rb') as rf:
+        with _open_or_exit(filename) as rf:
             data = rf.read()
-            with open(filename + ".patched", 'wb') as wf:
-                try:
+            with _open_or_exit(filename + ".patched", "wb") as wf:
+                with suppress(IndexError, KeyError, ValueError):
                     data = param.setparamvalue(data, 0x12C, 0x80, 0x3)  # >= Oneplus 5
-                except:
-                    pass
                 data = param.setparamvalue(data, 0xC, 0x1A4, 0x1)  # < Oneplus 5
                 wf.write(data)
     elif args["setparam"]:
@@ -967,9 +981,9 @@ def main():
         mode = args["--mode"]
         serial = args["--serial"]
         param = paramtools(mode, serial)
-        with open(filename, 'rb') as rf:
+        with _open_or_exit(filename) as rf:
             data = rf.read()
-            with open(filename + ".patched", 'wb') as wf:
+            with _open_or_exit(filename + ".patched", "wb") as wf:
                 wf.write(param.setparamvalue(data, sid, offset, value))
     elif args["gencode"]:
         imei = args["<imei>"]

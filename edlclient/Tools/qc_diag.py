@@ -18,15 +18,15 @@ from struct import unpack, pack
 from binascii import hexlify, unhexlify
 
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, parent_dir)
 try:
-    from Library.utils import print_progress, read_object, write_object, LogBase
-    from Library.Connection.usblib import usb_class
-    from Library.Connection.seriallib import serial_class
-    from Library.hdlc import hdlc
-    from Config.usb_ids import default_diag_vid_pid
+    from Library.utils import print_progress, read_object, write_object, LogBase  # type: ignore[import-not-found]
+    from Library.Connection.usblib import usb_class  # type: ignore[import-not-found]
+    from Library.Connection.seriallib import serial_class  # type: ignore[import-not-found]
+    from Library.hdlc import hdlc  # type: ignore[import-not-found]
+    from Config.usb_ids import default_diag_vid_pid  # type: ignore[import-not-found]
 except Exception:
     from edlclient.Library.utils import print_progress, read_object, write_object, LogBase
     from edlclient.Library.Connection.usblib import usb_class
@@ -330,6 +330,8 @@ FS_DIAG_MAX_READ_REQ = 1024
 # define DIAG_NV_READ_F 0x26
 
 class qcdiag(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, loglevel, portconfig, ep_in=-1, ep_out=-1):
         self.portconfig = portconfig
         self.nvlist = {}
@@ -341,18 +343,18 @@ class qcdiag(metaclass=LogBase):
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
-        current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        current_dir = os.path.dirname(os.path.abspath(__file__))
         try:
             parent_dir = os.path.dirname(os.path.dirname(current_dir))
             nvxml = os.path.join(parent_dir, "edlclient", "Config", "nvitems.xml")
             e = ElementTree.parse(nvxml).getroot()
         except Exception:
-            current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+            current_dir = os.path.dirname(os.path.abspath(__file__))
             nvxml = os.path.join(current_dir, "edlclient", "Config", "nvitems.xml")
             e = ElementTree.parse(nvxml).getroot()
         for atype in e.findall("nv"):
             name = atype.get("name")
-            identifier = int(atype.get("id"))
+            identifier = int(atype.get("id") or 0)
             self.nvlist[identifier] = name
 
     def prettyprint(self, data):
@@ -410,9 +412,11 @@ class qcdiag(metaclass=LogBase):
     def disconnect(self):
         self.cdc.close(True)
 
-    def send(self, cmd):
+    def send(self, cmd) -> bytes:
         if self.hdlc is not None:
             return self.hdlc.send_cmd_np(cmd)
+        print("No HDLC connection, can't send command")
+        return b""
 
     def cmd_info(self):
         reply = self.send(b"\x00")
@@ -429,7 +433,8 @@ class qcdiag(metaclass=LogBase):
         print(self.decodestatus(res))
 
     def enter_saharamode(self):
-        self.hdlc.receive_reply(timeout=0)
+        if self.hdlc is not None:
+            self.hdlc.receive_reply(timeout=0)
         res = self.send(b"\x4b\x65\x01\x00")
         if res[0] == 0x4b:
             print("Done, switched to edl")
@@ -734,7 +739,7 @@ class qcdiag(metaclass=LogBase):
             print(info)
             resp = self.send(buf)
             if resp == 0 or resp == -1:
-                print("Data Error occured, ") + info
+                print("Data Error occured, " + info)
 
         error = unpack("<I", resp[4:8])[0]
 
@@ -942,10 +947,11 @@ class qcdiag(metaclass=LogBase):
             mtime = unpack("<I", resp[0x18:0x1C])[0]
             ctime = unpack("<I", resp[0x1C:0x20])[0]
             if self.efsdiagerror(diag_error) != 0:
-                return -1
+                return None
             return [mode, size, nlink, atime, mtime, ctime]
+        return None
 
-    def efs_fstat(self, efsmethod, fdata):
+    def efs_fstat(self, efsmethod, fdata) -> list[int] | None:
         buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_FSTAT.value, 0x00)  # open efs file
         buf += pack("<I", fdata)
         resp = self.send(buf)
@@ -958,10 +964,11 @@ class qcdiag(metaclass=LogBase):
             mtime = unpack("<I", resp[0x18:0x1C])[0]
             ctime = unpack("<I", resp[0x1C:0x20])[0]
             if self.efsdiagerror(diag_error) != 0:
-                return -1
+                return None
             return [mode, size, nlink, atime, mtime, ctime]
+        return None
 
-    def efs_lstat(self, efsmethod, path):
+    def efs_lstat(self, efsmethod, path) -> list[int] | None:
         buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_LSTAT.value, 0x00)  # open efs file
         buf += bytes(path, "utf-8") + b"\x00"
         resp = self.send(buf)
@@ -972,8 +979,9 @@ class qcdiag(metaclass=LogBase):
             mtime = unpack("<I", resp[0x10:0x14])[0]
             ctime = unpack("<I", resp[0x14:0x18])[0]
             if self.efsdiagerror(diag_error) != 0:
-                return -1
+                return None
             return [mode, atime, mtime, ctime]
+        return None
 
     def efs_get(self, efsmethod, path, data_length, sequence_number):
         path_length = len(path) + 1
@@ -990,7 +998,7 @@ class qcdiag(metaclass=LogBase):
                 return -1
             return [num_bytes, seq_no, data]
 
-    def efs_write(self, efsmethod, fdata, offset, data):
+    def efs_write(self, efsmethod, fdata, offset, data) -> list | None:
         buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
         buf += pack("<II", fdata, offset)
         buf += data
@@ -1001,8 +1009,9 @@ class qcdiag(metaclass=LogBase):
             bytes_written = unpack("<I", resp[0xC:0x10])[0]
             diag_error = unpack("<I", resp[0x10:0x14])[0]
             if self.efsdiagerror(diag_error) != 0:
-                return -1
+                return None
             return [fdata, offset, bytes_written]
+        return None
 
     def handle_error(self, resp):
         if resp[0] != diag_cmds.DIAG_BAD_SEC_MODE_F.value and resp[0] != diag_cmds.DIAG_BAD_LEN_F.value:
@@ -1044,7 +1053,7 @@ class qcdiag(metaclass=LogBase):
         resp = self.send(buf)
         return self.handle_error(resp)
 
-    def efs_read(self, efsmethod, fdata, nbytes, offset):
+    def efs_read(self, efsmethod, fdata, nbytes, offset) -> list | None:
         buf = pack("<BBBB", 0x4B, efsmethod, efs_cmds.EFS2_DIAG_WRITE.value, 0x00)  # open efs file
         buf += pack("<III", fdata, nbytes, offset)
         resp = self.send(buf)
@@ -1055,8 +1064,9 @@ class qcdiag(metaclass=LogBase):
             diag_error = unpack("<I", resp[0x10:0x14])[0]
             data = resp[0x14:]
             if self.efsdiagerror(diag_error) != 0:
-                return -1
+                return None
             return [fdata, offset, bytes_read, data]
+        return None
 
     def efsreadfile(self, srcpath, dstpath):
         alternateefs = b"\x4B\x3E\x00\x00" + b"\x00" * 0x28
@@ -1075,7 +1085,12 @@ class qcdiag(metaclass=LogBase):
         fdata = self.efs_open(efsmethod, O_RDONLY, 0, srcpath)
         if fdata == -1:
             return 0
-        mode, size, nlink, atime, mtime, ctime = self.efs_fstat(efsmethod, fdata)
+        fstat = self.efs_fstat(efsmethod, fdata)
+        if fstat is None:
+            logging.error("efs_fstat failed")
+            self.efs_close(efsmethod, fdata)
+            return 0
+        mode, size, nlink, atime, mtime, ctime = fstat
         if size == 0:
             self.efs_close(efsmethod, fdata)
             return 0
@@ -1096,7 +1111,7 @@ class qcdiag(metaclass=LogBase):
                 if rsize > FS_DIAG_MAX_READ_REQ:
                     rsize = FS_DIAG_MAX_READ_REQ
                 finfo = self.efs_read(efsmethod, fdata, rsize, offset)
-                if finfo == -1:
+                if finfo is None:
                     break
                 fdata, offset, bytes_read, data = finfo
                 write_handle.write(data)
@@ -1122,7 +1137,11 @@ class qcdiag(metaclass=LogBase):
             fdata = self.efs_open(efsmethod, O_RDONLY, 0, srcpath)
             if fdata == -1:
                 return 0
-            mode, size, nlink, atime, mtime, ctime = self.efs_fstat(efsmethod, fdata)
+            fstat = self.efs_fstat(efsmethod, fdata)
+            if fstat is None:
+                self.efs_close(efsmethod, fdata)
+                return 0
+            mode, size, nlink, atime, mtime, ctime = fstat
             if size == 0:
                 self.efs_close(efsmethod, fdata)
                 return 0
@@ -1143,7 +1162,7 @@ class qcdiag(metaclass=LogBase):
                     rsize = FS_DIAG_MAX_READ_REQ
                 data = rf.read(rsize)
                 finfo = self.efs_write(efsmethod, fdata, offset, data)
-                if finfo == -1:
+                if finfo is None:
                     break
                 fdata, offset, bytes_written = finfo
                 offset += rsize
@@ -1153,6 +1172,8 @@ class qcdiag(metaclass=LogBase):
 
 
 class DiagTools(metaclass=LogBase):
+    __logger: logging.Logger
+
     def run(self, args):
         self.interface = -1
         self.vid = None
@@ -1161,8 +1182,9 @@ class DiagTools(metaclass=LogBase):
             self.serial = args.serial
         except Exception:
             self.serial = False
+        self.portname: str = ""
         try:
-            self.portname = args.portname
+            self.portname = args.portname or ""
         except Exception:
             self.portname = ""
 
@@ -1206,12 +1228,12 @@ class DiagTools(metaclass=LogBase):
         if self.vid is None or self.pid is None:
             diag = qcdiag(loglevel=self.__logger.level, portconfig=default_diag_vid_pid)
             if self.serial:
-                diag.portname = self.portname
+                diag.portname = self.portname or ""
             connected = diag.connect(self.serial)
         else:
             diag = qcdiag(loglevel=self.__logger.level, portconfig=[[self.vid, self.pid, self.interface]])
             if self.serial:
-                diag.portname = self.portname
+                diag.portname = self.portname or ""
             connected = diag.connect(self.serial)
 
         if connected:

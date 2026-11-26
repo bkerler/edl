@@ -23,6 +23,8 @@ import time
 import random
 from struct import pack
 import logging
+import sys
+from typing import Any
 from edlclient.Library.utils import LogBase
 from edlclient.Library.Modules.oneplus_param import paramtools
 
@@ -129,6 +131,8 @@ deviceconfig = {
 
 
 class oneplus(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, fh, projid: str = "18825", serial=123456, ATOBuild=0, Flash_Mode=0, cf=0,
                  supported_functions=None,
                  args=None, loglevel=logging.INFO):
@@ -137,8 +141,8 @@ class oneplus(metaclass=LogBase):
         self.args = args
         self.ATOBuild = ATOBuild
         self.Flash_Mode = Flash_Mode
-        self.cf = cf  # CustFlag
-        self.supported_functions = supported_functions
+        self.cf = cf  # CustFlag, converted to str where it is hashed
+        self.supported_functions: list[str] | None = supported_functions
         self.__logger.setLevel(loglevel)
         self.info = self.__logger.info
         self.debug = self.__logger.debug
@@ -151,10 +155,9 @@ class oneplus(metaclass=LogBase):
                 data = self.fh.cmd_read_buffer(lun, rpartition.sector, 1, False)
                 value = data.data[24:24 + 5]
                 try:
-                    test = int(value.decode('utf-8'), 16)
-                    self.info("Oneplus protection with prjid %d detected" % test)
                     projid = value.decode('utf-8')
-                except:
+                    self.info(f"Oneplus protection with prjid {int(projid, 16):d} detected")
+                except (UnicodeDecodeError, ValueError):
                     pass
 
         if loglevel == logging.DEBUG:
@@ -170,7 +173,8 @@ class oneplus(metaclass=LogBase):
         except ImportError as e:
             self.__logger.error(str(e))
             self.ops_parm = None
-        self.ops = self.convert_projid(fh, projid, serial)
+        # Generation specific backend: oneplus1 or oneplus2, both duck-type the same API
+        self.ops: Any = self.convert_projid(fh, projid, serial)
 
     def getprodkey(self, projid):
         if projid in ["18825", "18801"]:  # key_guacamoles, fajiita
@@ -183,7 +187,7 @@ class oneplus(metaclass=LogBase):
         prodkey = self.getprodkey(projid)
         pk = ""
         val = bytearray(b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-        for i in range(0, 16):
+        for _ in range(16):
             rand = int(random.randint(0, 0x100))
             nr = (rand & 0xFF) % 0x3E
             pk += chr(val[nr])
@@ -196,31 +200,24 @@ class oneplus(metaclass=LogBase):
             elif version == 2:
                 if cm is not None:
                     return oneplus1(fh, cm, serial, pk, prodkey, self.cf)
-                else:
-                    assert "Device is not supported"
-                    exit(0)
+                raise ValueError(f"Device with projid {projid} is not supported")
             elif version == 3:
                 if cm is not None:
                     return oneplus2(fh, cm, serial, pk, prodkey, self.ATOBuild, self.Flash_Mode, self.cf)
-                else:
-                    assert "Device is not supported"
-                    exit(0)
-        assert "Unknown projid:" + str(projid)
-        return None
+                raise ValueError(f"Device with projid {projid} is not supported")
+        raise ValueError(f"Unknown projid: {projid}")
 
     def run(self):
+        funcs = self.supported_functions or []
         if self.ops is not None:
-            if "demacia" in self.supported_functions:
-                if not self.ops.run("demacia"):
-                    exit(0)
-            if "SetNetType" in self.supported_functions:
-                self.fh.cmd_send(f"SetNetType")
-            elif "setprojmodel" in self.supported_functions:
-                if not self.ops.run(""):
-                    exit(0)
-            if "setprocstart" in self.supported_functions:
-                if not self.ops.run(""):
-                    exit(0)
+            if "demacia" in funcs and not self.ops.run("demacia"):
+                sys.exit(0)
+            if "SetNetType" in funcs:
+                self.fh.cmd_send("SetNetType")
+            elif "setprojmodel" in funcs and not self.ops.run(""):
+                sys.exit(0)
+            if "setprocstart" in funcs and not self.ops.run(""):
+                sys.exit(0)
         return True
 
     def setprojmodel_verify(self, pk, token):
@@ -248,14 +245,16 @@ class oneplus(metaclass=LogBase):
         return None
 
     def addpatch(self):
-        if "setprojmodel" in self.supported_functions or "setswprojmodel" in self.supported_functions:
+        if self.supported_functions and ("setprojmodel" in self.supported_functions or
+                                         "setswprojmodel" in self.supported_functions):
             pk, token = self.ops.generatetoken(True)
             return f"pk=\"{pk}\" token=\"{token}\" "
         else:
             return ""
 
     def addprogram(self):
-        if "setprojmodel" in self.supported_functions or "setswprojmodel" in self.supported_functions:
+        if self.supported_functions and ("setprojmodel" in self.supported_functions or
+                                         "setswprojmodel" in self.supported_functions):
             pk, token = self.ops.generatetoken(True)
             return f"pk=\"{pk}\" token=\"{token}\" "
         else:
@@ -273,7 +272,7 @@ class oneplus1:
         self.cf = str(cf)
         self.soc_sn = str(serial)
 
-    def crypt_token(self, data, pk, decrypt=False, demacia=False):
+    def crypt_token(self, data, pk, decrypt=False, demacia=False) -> str | bytes | list[str]:
         aes = cryptutils().aes()
         if demacia:
             aeskey = b"\x01\x63\xA0\xD1\xFD\xE2\x67\x11" + bytes(pk, 'utf-8') + b"\x48\x27\xC2\x08\xFB\xB0\xE6\xF0"
@@ -303,16 +302,22 @@ class oneplus1:
             return rdata.upper().decode('utf-8')
 
     def cmd_setpro(self):
-        pk, token = self.generatetoken(False)
-        data = "<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-        return data
+        result = self.generatetoken(False)
+        if result is None:
+            print("Couldn't generate a setprojmodel token")
+            return ""
+        pk, token = result
+        return f"<?xml version=\"1.0\" ?>\n<data>\n<setprojmodel token=\"{token}\" pk=\"{pk}\" />\n</data>"
 
     def cmd_dem(self):
-        pk, token = self.demacia()
-        data = "<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"" + token + "\" pk=\"" + pk + "\" />\n</data>"
-        return data
+        result = self.demacia()
+        if result is None:
+            print("Couldn't generate a demacia token")
+            return ""
+        pk, token = result
+        return f"<?xml version=\"1.0\" ?>\n<data>\n<demacia token=\"{token}\" pk=\"{pk}\" />\n</data>"
 
-    def generatetoken(self, program=False):
+    def generatetoken(self, program=False) -> tuple[str, str] | None:
         timestamp = str(int(time.time()))
         ha = cryptutils().hash()
         h1 = self.prodkey + self.ModelVerifyPrjName + self.random_postfix
@@ -328,19 +333,18 @@ class oneplus1:
         # 0x7, Len:0x11
         # 0x24, Len:0x41
         #                         0x1c              0x4       0x14      0x90       0x7f        ModelVerifyHashToken
-        h2 = "c4b95538c57df231" + self.ModelVerifyPrjName + self.cf + self.soc_sn + self.Version + \
+        h2 = "c4b95538c57df231" + self.ModelVerifyPrjName + str(self.cf) + self.soc_sn + self.Version + \
              timestamp + ModelVerifyHashToken + "5b0217457e49381b"
         secret = hexlify(ha.sha256(bytes(h2, 'utf-8'))).decode('utf-8').upper()  # 0xd1
         if program:
             items = [timestamp, secret]
         else:
-            items = [self.ModelVerifyPrjName, self.random_postfix, ModelVerifyHashToken, self.Version, self.cf,
+            items = [self.ModelVerifyPrjName, self.random_postfix, ModelVerifyHashToken, self.Version, str(self.cf),
                      self.soc_sn, timestamp, secret]
-        data = ""
-        for item in items:
-            data += item + ","
-        data = data[:-1]
+        data = ",".join(str(item) for item in items)
         token = self.crypt_token(data, self.pk)
+        if not isinstance(token, str):
+            return None
         return self.pk, token
 
     def setprojmodel_verify(self, pk, token):
@@ -353,7 +357,7 @@ class oneplus1:
         print()
         if len(info) == len(items):
             for item in items:
-                print(info[i] + "=" + item)
+                print(f"{info[i]}={item}")
                 i += 1
         # Old
         # 0=ModelVerifyPrjName [param+0x1C]
@@ -364,14 +368,14 @@ class oneplus1:
         # 5=serial? [param_1+0x14]
         # 6=timestamp [param_1+0x7F]
 
-        hash1 = self.prodkey + items[0] + items[1]
+        hash1 = str(self.prodkey) + str(items[0]) + str(items[1])
         res1 = hexlify(ha.sha256(bytes(hash1, 'utf-8'))).decode('utf-8').upper()
         if items[2] != res1:
             print("Hash1 failed !")
             return
         #                             ModelVerifyPrjName cf         sn         ver        ts         ModelVerifyHashToken
-        secret = "c4b95538c57df231" + items[0] + items[4] + items[5] + items[3] + items[6] + \
-                 items[2] + "5b0217457e49381b"
+        secret = "".join(str(v) for v in ("c4b95538c57df231", items[0], items[4], items[5], items[3],
+                                          items[6], items[2], "5b0217457e49381b"))
         res2 = hexlify(ha.sha256(bytes(secret, 'utf-8'))).decode('utf-8').upper()
         if items[7] != res2:
             print("secret failed !")
@@ -383,7 +387,7 @@ class oneplus1:
         n = n & 0xffffffff
         return (n ^ 0x80000000) - 0x80000000
 
-    def demacia(self):
+    def demacia(self) -> tuple[str, str] | None:
         """
         return "<?xml version=\"1.0\" ?>\n<data>\n  " + \
                "<program SECTOR_SIZE_IN_BYTES=\"4096\" filename=\"param.bin\" " + \
@@ -397,17 +401,27 @@ class oneplus1:
         hash1 = "2e7006834dafe8ad" + serial + "a6674c6b039707ff"
         data = b"907heavyworkload" + ha.sha256(bytes(hash1, 'utf-8'))
         token = self.crypt_token(data, self.pk, False, True)
+        if not isinstance(token, str):
+            return None
         return self.pk, token
 
     def run(self, flag):
         if flag == "demacia":
-            pk, token = self.demacia()
+            result = self.demacia()
+            if result is None:
+                print("Couldn't generate a demacia token")
+                return False
+            pk, token = result
             res = self.fh.cmd_send(f"demacia token=\"{token}\" pk=\"{pk}\"")
             if b"verify_res=\"0\"" not in res:
                 print("Demacia failed:")
                 print(res)
                 return False
-        pk, token = self.generatetoken(False)
+        result = self.generatetoken(False)
+        if result is None:
+            print("Couldn't generate a setprojmodel token")
+            return False
+        pk, token = result
         res = self.fh.cmd_send(f"setprojmodel token=\"{token}\" pk=\"{pk}\"")
         if b"model_check=\"0\"" not in res or b"auth_token_verify=\"0\"" not in res:
             print("Setprojmodel failed.")
@@ -420,8 +434,8 @@ class oneplus1:
         self.pk = pk
         items = self.crypt_token(token, pk, True, False)
         if len(items) == 2:
-            print("Timestamp=" + items[0])
-            print("secret=" + items[1])
+            print(f"Timestamp={items[0]}")
+            print(f"secret={items[1]}")
         if items[0] != tokendata[6] or items[1] != tokendata[7]:
             print("Hash failed !")
             return
@@ -429,6 +443,8 @@ class oneplus1:
 
 
 class oneplus2(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, fh, ModelVerifyPrjName="20889", serial=123456, pk="", prodkey="", ATOBuild=0, Flash_Mode=0,
                  cf=0, loglevel=logging.INFO):
         self.device_timestamp = None
@@ -448,10 +464,10 @@ class oneplus2(metaclass=LogBase):
             fh = logging.FileHandler(logfilename)
             self.__logger.addHandler(fh)
 
-    def crypt_token(self, data, pk, device_timestamp: int, decrypt=False):
+    def crypt_token(self, data, pk, device_timestamp: int | None, decrypt=False) -> str | bytes | list[str]:
         aes = cryptutils().aes()
         aeskey = b"\x46\xA5\x97\x30\xBB\x0D\x41\xE8" + bytes(pk, 'utf-8') + \
-                 pack("<Q", device_timestamp)  # we get this using setprocstart
+                 pack("<Q", device_timestamp or 0)  # we get this using setprocstart
         aesiv = b"\xDC\x91\x0D\x88\xE3\xC6\xEE\x65\xF0\xC7\x44\xB4\x02\x30\xCE\x40"
         if decrypt:
             cdata = unhexlify(data)
@@ -481,10 +497,7 @@ class oneplus2(metaclass=LogBase):
             # 0x14[0x4]       0x90[0x40]   0x4[0x4]   0x114[0x4] 0x7F[0x10] 0xD1[0x41]
             items = [self.ModelVerifyPrjName, self.random_postfix, ModelVerifyHashToken, self.ato_build_state,
                      self.flash_mode, self.Version, self.soc_sn, self.device_id, timestamp, secret]
-        data = ""
-        for item in items:
-            data += item + ","
-        data = data[:-1]
+        data = ",".join(str(item) for item in items)
         token = self.crypt_token(data, self.pk, self.device_timestamp)
         return self.pk, token
 
@@ -516,7 +529,7 @@ class oneplus2(metaclass=LogBase):
         print()
         if len(info) == len(items):
             for item in items:
-                print(info[i] + "=" + item)
+                print(f"{info[i]}={item}")
                 i += 1
 
         # New
@@ -531,14 +544,14 @@ class oneplus2(metaclass=LogBase):
         # 8=timestamp [param_1+0x114]
         # 9=secret [param_1+0x7f]
 
-        hash1 = self.prodkey + items[0] + items[1]
+        hash1 = str(self.prodkey) + str(items[0]) + str(items[1])
         res1 = hexlify(ha.sha256(bytes(hash1, 'utf-8'))).decode('utf-8').upper()
         if items[2] != res1:
             print("Hash1 failed !")
             return
         #                   ModelVerifyPrjName sn     ver        ts         ModelVerifyHashToken
-        secret = self.prodkey + items[0] + items[6] + items[5] + items[8] + items[2] \
-                 + "8f7359c8a2951e8c"
+        secret = "".join(str(v) for v in (self.prodkey, items[0], items[6], items[5], items[8], items[2],
+                                          "8f7359c8a2951e8c"))
         # h2 = self.prodkey + self.ModelVerifyPrjName + self.soc_sn + self.Version + timestamp +
         # ModelVerifyHashToken + "8f7359c8a2951e8c"
         res2 = hexlify(ha.sha256(bytes(secret, 'utf-8'))).decode('utf-8').upper()
@@ -561,11 +574,16 @@ def main():
         # 18831 2799496336,2799496336
         # 18825
         # 18857 7 Europe
-        pk, token = op.demacia()
-        print(
-            f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><demacia " +
-            f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\"")
-        pk, token = op.generatetoken(False)
+        dem = op.demacia()
+        if dem is not None:
+            pk, token = dem
+            print(
+                f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><demacia " +
+                f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\"")
+        gen = op.generatetoken(False)
+        if gen is None:
+            raise SystemExit("Couldn't generate a setprojmodel token")
+        pk, token = gen
         print(
             f"./edl.py rawxml \"<?xml version=\\\"1.0\\\" ?><data><setprojmodel " +
             f"token=\\\"{token}\\\" pk=\\\"{pk}\\\" /></data>\" --debugmode")
@@ -626,7 +644,7 @@ def test_setswprojmodel_verify():
     op.ops.device_timestamp = int(device_timestamp)
     pk, token = op.generatetoken(False)
     if not op.setswprojmodel_verify(pk, token):
-        assert "Setswprojmodel error"
+        raise RuntimeError("Setswprojmodel failed")
 
 
 if __name__ == "__main__":

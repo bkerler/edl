@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2025 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
@@ -110,6 +109,9 @@ Options:
     --pagesperblock=number             Set NAND pages per block (firehose configure attribute)
     --memory=memtype                   Set memory type ("NAND", "eMMC", "UFS", "spinor")
     --partitionfilename=filename       Set partition table as filename for streaming mode
+    --vip-table-path=path              Directory with the signed VIP digest tables
+                                       (DigestsToSign.bin.mbn, ChainedTableOfDigests<n>.bin)
+    --create-digests=path              Write VIP digest tables for this session into path
     --partitions=partnames             Skip reading partition with names != "partname1,partname2,etc."
     --skipwrite                        Do not allow any writes to flash (simulate only)
     --skipresponse                     Do not expect a response from phone on read/write (some Qualcomms)
@@ -138,6 +140,7 @@ import time
 from docopt import docopt
 
 from edlclient.Config.usb_ids import default_ids
+from edlclient.Library.Connection.devicehandler import DeviceClass
 from edlclient.Library.Connection.seriallib import serial_class
 from edlclient.Library.Connection.usblib import usb_class
 from edlclient.Library.firehose_client import firehose_client
@@ -145,15 +148,44 @@ from edlclient.Library.sahara import sahara
 from edlclient.Library.sahara_defs import cmd_t, sahara_mode_t
 from edlclient.Library.streaming import Streaming
 from edlclient.Library.streaming_client import streaming_client
-from edlclient.Library.utils import LogBase
-from edlclient.Library.utils import is_windows
+from edlclient.Library.utils import LogBase, is_windows
 
-args = docopt(__doc__, version='3')
+
+def _extract_vip_options(argv):
+    """Pull the global VIP options out of argv before docopt sees them.
+
+    They apply to every flashing command, so listing them in all ~30 usage
+    patterns would only add noise.
+    """
+    opts = {"--vip-table-path": None, "--create-digests": None}
+    rest = list(argv[:1])
+    i = 1
+    while i < len(argv):
+        arg = argv[i]
+        for key in list(opts):
+            if arg == key and i + 1 < len(argv):
+                opts[key] = argv[i + 1]
+                i += 2
+                break
+            if arg.startswith(key + "="):
+                opts[key] = arg.split("=", 1)[1]
+                i += 1
+                break
+        else:
+            rest.append(arg)
+            i += 1
+    return opts, rest
+
+
+_vip_options, _argv = _extract_vip_options(sys.argv)
+args = docopt(__doc__, argv=_argv[1:], version='3')
+args.update(_vip_options)
 
 print("Qualcomm Sahara / Firehose Client V3.62 (c) B.Kerler 2018-2025.")
 
 
 class main(metaclass=LogBase):
+    __logger: logging.Logger
     def __init__(self, args, imported: str = ''):
         self.serial = None
         self.portname = None
@@ -162,13 +194,16 @@ class main(metaclass=LogBase):
         self.debug = self.__logger.debug
         self.error = self.__logger.error
         self.warning = self.__logger.warning
-        self.cdc = None
-        self.sahara = None
+        self.__logger.setLevel(self.__logger.level)
+        self.__logger.setLevel(self.__logger.level)
+        self.cdc: DeviceClass | None = None
+        self.sahara: sahara | None = None
         self.vid = None
         self.pid = None
         self.serial_number = None
         self.args = args
         self.fh = None
+        self.log_handler = None
 
         if imported == '':
             self.imported = True
@@ -191,13 +226,16 @@ class main(metaclass=LogBase):
 
 
     def console_cmd(self, cmd):
-        read = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        """Run a local command without a shell and return its output."""
+        read = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, close_fds=True)
+        if read.stdout is None:
+            return ""
+        data = read.stdout.read()
         try:
-            output = read.stdout.read().decode('utf-8')
-        except:
-            output = read.stdout.read().decode("ISO-8859-1")
-        return output
+            return data.decode('utf-8')
+        except UnicodeDecodeError:
+            return data.decode("ISO-8859-1")
 
 
     def parse_option(self, rargs):
@@ -208,8 +246,11 @@ class main(metaclass=LogBase):
         return options
 
     def doconnect(self, loop) -> dict:
+        if self.cdc is None or self.sahara is None:
+            self.error("No connection backend initialized")
+            return {"mode": "error"}
         while not self.cdc.connected:
-            self.cdc.connected = self.cdc.connect(portname=self.portname)
+            self.cdc.connected = self.cdc.connect(portname=self.portname or "")
             if not self.cdc.connected:
                 sys.stdout.write('.')
                 if loop == 5:
@@ -242,7 +283,7 @@ class main(metaclass=LogBase):
         return {"mode": "error"}
 
     def exit(self, status: int = 0, cdc_close: bool = True):
-        if cdc_close:
+        if cdc_close and self.cdc is not None:
             self.cdc.close()
 
         if self.imported:
@@ -252,9 +293,9 @@ class main(metaclass=LogBase):
 
     def run(self):
         if is_windows():
-            proper_driver = self.console_cmd(r'reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM')
+            proper_driver = self.console_cmd(['reg', 'query', r'HKLM\HARDWARE\DEVICEMAP\SERIALCOMM'])
             if re.findall(r'QCUSB', str(proper_driver)):
-                self.warning(f'Please first install libusb_win32 driver from Zadig')
+                self.warning('Please first install libusb_win32 driver from Zadig')
 
         loop = 0
         vid = int(self.args["--vid"], 16)
@@ -266,10 +307,14 @@ class main(metaclass=LogBase):
             portconfig = default_ids
         if self.args["--debugmode"]:
             logfilename = "log.txt"
-            if os.path.exists(logfilename):
-                os.remove(logfilename)
-            self.fh = logging.FileHandler(logfilename)
-            self.__logger.addHandler(self.fh)
+            try:
+                if os.path.exists(logfilename):
+                    os.remove(logfilename)
+            except OSError as err:
+                self.debug(f"Couldn't remove old {logfilename}: {err}")
+            # Keep the log handler separate from self.fh, which holds the firehose client
+            self.log_handler = logging.FileHandler(logfilename)
+            self.__logger.addHandler(self.log_handler)
             self.__logger.setLevel(logging.DEBUG)
         else:
             self.__logger.setLevel(logging.INFO)
@@ -301,12 +346,16 @@ class main(metaclass=LogBase):
             self.sahara.programmer = loader
 
         self.info("Waiting for the device")
+        if self.cdc is None or self.sahara is None:
+            self.error("Failed to initialize the connection backend")
+            return self.exit(1)
         self.cdc.timeout = 1500
         conninfo = self.doconnect(loop)
         mode = conninfo["mode"]
-        try:
-            version = conninfo.get("data").version
-        except AttributeError:
+        conninfo_data = conninfo.get("data")
+        if conninfo_data is not None and hasattr(conninfo_data, "version"):
+            version = conninfo_data.version
+        else:
             version = 2
         if mode == "sahara":
             cmd = conninfo["cmd"]
@@ -397,10 +446,14 @@ class main(metaclass=LogBase):
             if cmd != "" or self.imported:
                 self.info("Trying to connect to firehose loader ...")
                 if self.fh.connect(sahara):
-                    if self.imported:
-                        return self.exit(cdc_close=False)
-                    elif not self.fh.handle_firehose(cmd, options):
-                        return self.exit(1)
+                    try:
+                        if self.imported:
+                            return self.exit(cdc_close=False)
+                        elif not self.fh.handle_firehose(cmd, options):
+                            return self.exit(1)
+                    finally:
+                        # Writes the VIP digest tables when --create-digests was used
+                        self.fh.finalize()
                 else:
                     return self.exit(1)
 

@@ -11,13 +11,19 @@ import serial.tools.list_ports
 import argparse
 import requests
 from Exscript.protocols.telnetlib import Telnet
-import usb.core
 from enum import Enum
+import logging
+from typing import Any
 
-import os, sys, inspect
+import usb.core
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
+
+qcdiag: Any = None
 
 try:
     from edlclient.Tools.qc_diag import qcdiag
@@ -29,13 +35,7 @@ except ImportError:
     except ImportError as e:
         print("ImportError: %s" % e)
 
-try:
-    from edlclient.Library.utils import LogBase
-except ImportError as e:
-    try:
-        from Library.utils import LogBase
-    except ImportError as e:
-        print("ImportError: %s" % e)
+from edlclient.Library.utils import LogBase  # noqa: E402 - needs sys.path setup above
 
 
 class vendor(Enum):
@@ -56,6 +56,8 @@ class deviceclass:
 
 
 class connection(metaclass=LogBase):
+    __logger: logging.Logger
+
     def __init__(self, port=""):
         self.serial = None
         self.tn = None
@@ -85,7 +87,7 @@ class connection(metaclass=LogBase):
 
     def websend(self, url):
         headers = {'Referer': 'http://192.168.0.1/index.html', 'Accept-Charset': 'UTF-8'}
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=10)
         if b"FACTORY:ok" in r.content or b"success" in r.content:
             print(
                 "Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
@@ -96,8 +98,8 @@ class connection(metaclass=LogBase):
         return [port for port in serial.tools.list_ports.comports()]
 
     def detectusbdevices(self):
-        dev = usb.core.find(find_all=True)
-        ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
+        dev: Any = usb.core.find(find_all=True)
+        ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev or []]
         return ids
 
     def detect(self, port):
@@ -139,7 +141,7 @@ class connection(metaclass=LogBase):
                     break
         if mode == "AT" or mode == "Unknown":
             for port in self.getserialports():
-                if port.vid in vendortable:
+                if port.location and port.vid in vendortable:
                     portid = port.location[-1:]
                     if int(portid) == vendortable[port.vid][1]:
                         print(f"Detected a {vendortable[port.vid][0]} at interface at: " + port.device)
@@ -172,10 +174,10 @@ class connection(metaclass=LogBase):
             data = ""
             while True:
                 tmp = self.tn.read_eager()
-                if tmp != b"":
-                    data += tmp.strip().decode('utf-8')
-                else:
+                if tmp == b"" or tmp == "":
                     break
+                chunk = tmp.strip()
+                data += chunk.decode('utf-8') if isinstance(chunk, (bytes, bytearray)) else str(chunk)
             return data.split("\r\n")
         elif self.serial is not None:
             self.serial.write(bytes(cmd + "\r", 'utf-8'))
@@ -193,7 +195,7 @@ class connection(metaclass=LogBase):
     def ati(self):
         data = {}
         info = self.send("ATI")
-        if info != -1:
+        if info and info != -1:
             for line in info:
                 if "Revision" in line:
                     data["revision"] = line.split(":")[1].strip()
@@ -215,6 +217,8 @@ class connection(metaclass=LogBase):
 
 
 class dwnloadtools(metaclass=LogBase):
+    __logger: logging.Logger
+
     def sendcmd(self, tn, cmd):
         tn.write(bytes(cmd, 'utf-8') + b"\n")
         time.sleep(0.05)

@@ -5,10 +5,73 @@
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-from capstone import *
-from keystone import *
-from binascii import unhexlify
 import argparse
+import sys
+from binascii import unhexlify
+
+from capstone import (
+    CS_ARCH_ARM,
+    CS_ARCH_ARM64,
+    CS_ARCH_MIPS,
+    CS_ARCH_PPC,
+    CS_ARCH_SPARC,
+    CS_ARCH_SYSZ,
+    CS_ARCH_X86,
+    CS_ARCH_XCORE,
+    CS_MODE_16,
+    CS_MODE_32,
+    CS_MODE_64,
+    CS_MODE_ARM,
+    CS_MODE_BIG_ENDIAN,
+    CS_MODE_LITTLE_ENDIAN,
+    CS_MODE_MCLASS,
+    CS_MODE_MICRO,
+    CS_MODE_MIPS32,
+    CS_MODE_MIPS32R6,
+    CS_MODE_MIPS64,
+    CS_MODE_THUMB,
+    CS_MODE_V8,
+    CS_MODE_V9,
+    Cs,
+)
+from keystone import (
+    KS_ARCH_ARM,
+    KS_ARCH_ARM64,
+    KS_ARCH_HEXAGON,
+    KS_ARCH_MIPS,
+    KS_ARCH_PPC,
+    KS_ARCH_SPARC,
+    KS_ARCH_SYSTEMZ,
+    KS_ARCH_X86,
+    KS_MODE_16,
+    KS_MODE_32,
+    KS_MODE_64,
+    KS_MODE_ARM,
+    KS_MODE_BIG_ENDIAN,
+    KS_MODE_LITTLE_ENDIAN,
+    KS_MODE_MICRO,
+    KS_MODE_MIPS3,
+    KS_MODE_MIPS32,
+    KS_MODE_MIPS32R6,
+    KS_MODE_MIPS64,
+    KS_MODE_PPC32,
+    KS_MODE_PPC64,
+    KS_MODE_QPX,
+    KS_MODE_SPARC32,
+    KS_MODE_SPARC64,
+    KS_MODE_THUMB,
+    KS_MODE_V8,
+    KS_MODE_V9,
+    Ks,
+)
+
+
+def _open_or_exit(path, mode):
+    """Open path, exiting with a clear message if it isn't accessible."""
+    try:
+        return open(path, mode)
+    except OSError as err:
+        sys.exit(f"Couldn't open {path}: {err}")
 
 
 def asm(code, cpu, mode, bigendian):
@@ -132,9 +195,9 @@ def disasm(code, cpu, mode, bigendian, size):
     elif cpu == "xcore":
         cs = Cs(CS_ARCH_XCORE, 0)  # XCore architecture
 
-    if cs is not None:
+    if cs is None:
         print("CPU and/or mode not supported!")
-        exit(0)
+        sys.exit(0)
 
     instr = []
     for i in cs.disasm(code, size):
@@ -144,52 +207,42 @@ def disasm(code, cpu, mode, bigendian, size):
 
 
 def main():
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description='Disasm/Asm Tool (c) B. Kerler 2018')
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter, description="Disasm/Asm Tool (c) B. Kerler 2018"
+    )
+
+    parser.add_argument("--infile", "-in", help="Input File", default="")
+    parser.add_argument("--outfile", "-out", help="Output File", default="")
+
+    parser.add_argument("--cstyle", "-cstyle", help="Print in c style", action="store_true")
+
+    parser.add_argument("--bigendian", "-bigendian", help="Big endian", action="store_true")
 
     parser.add_argument(
-        '--infile', '-in',
-        help='Input File',
-        default='')
-    parser.add_argument(
-        '--outfile', '-out',
-        help='Output File',
-        default='')
+        "--disasm",
+        "-disasm",
+        help="Disasm: arm[arm,thumb,mclass,v8],arm64[arm],mips[micro,3,32R6,GP64],x86[16,32,64],ppc[64],sparc[32,64,"
+        "v9],systemz,xcore",
+        default="",
+    )
 
     parser.add_argument(
-        '--cstyle', '-cstyle',
-        help='Print in c style',
-        action="store_true")
+        "--asm",
+        "-asm",
+        help="Asm: arm[arm,thumb,mclass,v8],arm64[arm],mips[micro,32,64,32R6,32R6-Micro],x86[16,32,64],ppc[32,64,"
+        "qpx],sparc[None,v9],systemz,hexagon",
+        default="",
+    )
 
-    parser.add_argument(
-        '--bigendian', '-bigendian',
-        help='Big endian',
-        action="store_true")
-
-    parser.add_argument(
-        '--disasm', '-disasm',
-        help='Disasm: arm[arm,thumb,mclass,v8],arm64[arm],mips[micro,3,32R6,GP64],x86[16,32,64],ppc[64],sparc[32,64,'
-             'v9],systemz,xcore',
-        default='')
-
-    parser.add_argument(
-        '--asm', '-asm',
-        help='Asm: arm[arm,thumb,mclass,v8],arm64[arm],mips[micro,32,64,32R6,32R6-Micro],x86[16,32,64],ppc[32,64,'
-             'qpx],sparc[None,v9],systemz,hexagon',
-        default='')
-
-    parser.add_argument(
-        '--inp', '-input',
-        help='Disasm: hexstring, Asm: instruction string input ',
-        default='')
+    parser.add_argument("--inp", "-input", help="Disasm: hexstring, Asm: instruction string input ", default="")
 
     args = parser.parse_args()
 
-    if args.asm == '' and args.disasm == '':
+    if args.asm == "" and args.disasm == "":
         print("[asmtools] Usage: -asm cpu,mode or -disasm cpu,mode")
         exit(0)
 
-    if args.infile == '' and args.inp == '':
+    if args.infile == "" and args.inp == "":
         print("[asmtools] I must have an infile to work on (-in)")
         exit(0)
 
@@ -205,7 +258,7 @@ def main():
         else:
             aa = disasm(unhexlify(args.inp), cpu, mode, args.bigendian, len(args.inp))
     else:
-        with open(args.infile, "rb") as rf:
+        with _open_or_exit(args.infile, "rb") as rf:
             code = rf.read()
             if args.asm != "":
                 aa = asm(code, cpu, mode, args.bigendian)
@@ -213,14 +266,11 @@ def main():
                 aa = disasm(code, cpu, mode, args.bigendian, len(code))
 
     if args.outfile != "":
-        with open(args.outfile, "wb") as wf:
+        with _open_or_exit(args.outfile, "wb") as wf:
             if args.asm != "":
-                ba = bytearray()
-                for i in aa:
-                    ba.append(i)
-                wf.write(ba)
+                wf.write(bytes(bytearray(aa)))
             else:
-                wf.write(aa)
+                wf.write(bytes(aa))
     else:
         if args.asm != "":
             sc = ""
@@ -228,15 +278,15 @@ def main():
             out = ""
             for i in aa:
                 if args.cstyle:
-                    out += ("\\x%02x" % i)
+                    out += f"\\x{i:02x}"
                 else:
-                    out += ("%02x" % i)
-                sc += "%02x" % i
+                    out += f"{i:02x}"
+                sc += f"{i:02x}"
                 count += 1
             print(out)
         else:
             print(aa)
-        '''
+        """
         segment=bytearray(code[0x01C97C:0x01C990])
         segment[7]=0xE1
         segment[11]=0xE1
@@ -244,7 +294,7 @@ def main():
         segment[19]=0xEA
         print(hex(segment[7]))
         print(disasm(bytes(segment),len(segment)))
-        '''
+        """
 
 
 main()

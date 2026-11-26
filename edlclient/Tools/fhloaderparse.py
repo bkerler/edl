@@ -6,7 +6,6 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import hashlib
-import inspect
 import os
 import sys
 from io import BytesIO
@@ -14,15 +13,15 @@ from os import walk
 from shutil import copyfile
 from struct import unpack
 try:
-    from Config.qualcomm_config import vendor
-    from Library.loader_db import loader_utils
-    from Library.utils import elf
+    from Config.qualcomm_config import vendor  # type: ignore[import-not-found]
+    from Library.loader_db import loader_utils  # type: ignore[import-not-found]
+    from Library.utils import elf  # type: ignore[import-not-found]
 except ModuleNotFoundError:
     from edlclient.Config.qualcomm_config import vendor
     from edlclient.Library.loader_db import loader_utils
     from edlclient.Library.utils import elf
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
 lu = loader_utils()
 
@@ -47,6 +46,22 @@ class Signed:
     oem_version = ''
     pk_hash = ''
     hash = b''
+
+
+def open_or_skip(path, mode="rb"):
+    """Open a file, reporting the error and returning None if it isn't accessible."""
+    try:
+        return open(path, mode)
+    except OSError as err:
+        print(f"Skipping {path}: {err}")
+        return None
+
+
+def filesize_of(path):
+    try:
+        return os.stat(path).st_size
+    except OSError:
+        return 0
 
 
 def grabtext(data):
@@ -101,6 +116,9 @@ def extract_hdr(memsection, version, sign_info, mem_section, code_size, signatur
             signatureoffset = memsection.file_start_addr + 0x30 + md_size + code_size + signature_size
         elif version == 7:
             signatureoffset = memsection.file_start_addr + 0x28 + hdr1 + hdr2 + hdr3 + md_size + code_size + hdr4
+        else:
+            print(f"Unknown image version {version} in {sign_info.filename}")
+            return None
         try:
             if mem_section[signatureoffset] != 0x30:
                 print("Error on " + sign_info.filename + ", unknown signaturelength")
@@ -288,12 +306,15 @@ def main(argv):
     path = ""
     if len(argv) < 3:
         print("Usage: fhloaderparse [FHLoaderDir] [OutputDir]")
-        exit(0)
+        return 1
 
     path = argv[1]
     outputdir = argv[2]
-    if not os.path.exists(outputdir):
-        os.mkdir(outputdir)
+    try:
+        os.makedirs(outputdir, exist_ok=True)
+    except OSError as err:
+        print(f"Failed to create {outputdir}: {err}")
+        return 1
 
     # First hash all loaders in Loader directory
     hashes = {}
@@ -301,7 +322,10 @@ def main(argv):
     for mhwid in loaderdb:
         for pkhash in loaderdb[mhwid]:
             fname = loaderdb[mhwid][pkhash]
-            with open(fname, 'rb') as rhandle:
+            rhandle = open_or_skip(fname)
+            if rhandle is None:
+                continue
+            with rhandle:
                 data = rhandle.read()
                 sha256 = hashlib.sha256()
                 sha256.update(data)
@@ -311,7 +335,10 @@ def main(argv):
     for (dirpath, dirnames, filenames) in walk(outputdir):
         for filename in filenames:
             fname = os.path.join(dirpath, filename)
-            with open(fname, 'rb') as rhandle:
+            rhandle = open_or_skip(fname)
+            if rhandle is None:
+                continue
+            with rhandle:
                 data = rhandle.read()
                 sha256 = hashlib.sha256()
                 sha256.update(data)
@@ -326,18 +353,31 @@ def main(argv):
             if ext not in extensions:
                 file_list.append(os.path.join(dirpath, filename))
 
-    if not os.path.exists(os.path.join(outputdir, "Unknown")):
-        os.makedirs(os.path.join(outputdir, "Unknown"))
-    if not os.path.exists(os.path.join(outputdir, "Duplicate")):
-        os.mkdir(os.path.join(outputdir, "Duplicate"))
+    try:
+        os.makedirs(os.path.join(outputdir, "Unknown"), exist_ok=True)
+        os.makedirs(os.path.join(outputdir, "Duplicate"), exist_ok=True)
+    except OSError as err:
+        print(f"Failed to create output directories: {err}")
+        return 1
 
     # Lets hash all the input files and extract the signature
     filelist = []
-    rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
+    try:
+        rt = open(os.path.join(outputdir, argv[1] + ".log"), "w")
+    except OSError as err:
+        print(f"Failed to write the log file: {err}")
+        return 1
     for filename in file_list:
-        filesize = os.stat(filename).st_size
+        rhandle = open_or_skip(filename)
+        if rhandle is None:
+            continue
         elfpos = 0
-        with open(filename, 'rb') as rhandle:
+        with rhandle:
+            try:
+                filesize = os.stat(filename).st_size
+            except OSError as err:
+                print(f"Skipping {filename}: {err}")
+                continue
             data = rhandle.read()
             if len(data) < 4:
                 continue
@@ -346,13 +386,14 @@ def main(argv):
             sha256.update(data)
             signinfo.hash = sha256.digest()
             signinfo.filename = filename
-            signinfo.filesize = os.stat(filename).st_size
+            signinfo.filesize = filesize
+            mem_section = b""
 
             while elfpos < filesize:
                 if elfpos == -1:
                     break
                 mem_section = data[elfpos:]
-                elfheader = elf(mem_section, signinfo.filename)
+                elfheader = elf(mem_section, filename)
                 if len(elfheader.pentry) < 4:
                     elfpos = data.find(b"\x7FELF", elfpos + 1)
                     continue
@@ -418,8 +459,9 @@ def main(argv):
     sorted_x = sorted(filelist, key=lambda x: (x.hw_id, -x.filesize))
 
     class loaderinfo:
-        hw_id = ''
-        item = ''
+        hw_id: str = ''
+        pk_hash: str = ''
+        item: str = ''
 
     loaderlists = {}
     for item in sorted_x:
@@ -447,7 +489,10 @@ def main(argv):
                         for msmid in lu.convertmsmid(msmid):
                             hwid = (msmid + devid).lower()
                             auth = ""
-                            with open(item.filename, "rb") as rf:
+                            rf = open_or_skip(item.filename)
+                            if rf is None:
+                                continue
+                            with rf:
                                 data = rf.read()
                                 if b"sig tag can" in data:
                                     auth = "_EDLAuth"
@@ -461,7 +506,7 @@ def main(argv):
                                          os.path.join(outputdir,
                                                       hwid + "_" +
                                                       (loader_info.pk_hash[0:16] + "_FHPRG" + auth + ".bin").lower()))
-                            elif item.filesize > os.stat(fna).st_size:
+                            elif item.filesize > filesize_of(fna):
                                 copyfile(item.filename, os.path.join(outputdir, (hwid +
                                                                                  "_" +
                                                                                  loader_info.pk_hash[0:16] +

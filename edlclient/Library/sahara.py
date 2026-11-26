@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-import inspect
 import logging
 import os
 import sys
 import time
 from struct import pack
 
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
-from edlclient.Library.utils import print_progress, rmrf, LogBase
 from edlclient.Config.qualcomm_config import msmids, root_cert_hash
 from edlclient.Library.loader_db import loader_utils
-from edlclient.Library.sahara_defs import ErrorDesc, cmd_t, exec_cmd_t, sahara_mode_t, status_t, \
-    CommandHandler
+from edlclient.Library.sahara_defs import (
+    CommandHandler,
+    ErrorDesc,
+    cmd_t,
+    exec_cmd_t,
+    sahara_mode_t,
+    status_t,
+)
+from edlclient.Library.utils import LogBase, print_progress, rmrf
 from edlclient.Library.xmlparser import xmlparser
 
 
 class sahara(metaclass=LogBase):
+    __logger: logging.Logger
     def __init__(self, cdc, loglevel):
         self.cdc = cdc
         self.__logger = self.__logger
@@ -66,7 +68,7 @@ class sahara(metaclass=LogBase):
         else:
             return "Unknown error: " + hex(status)
 
-    def get_rsp(self):
+    def get_rsp(self) -> dict:
         try:
             data = self.cdc.read()
             if data == b'':
@@ -178,17 +180,21 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_serial_num(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_SERIAL_NUM_READ)
+        if res is None:
+            return None
         return int.from_bytes(res, 'little')
 
     def cmdexec_get_msm_hwid(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_MSM_HW_ID_READ)
-        if res is not None:
+        if res is not None and len(res) >= 8:
             return int.from_bytes(res[:8], 'little')
         return None
 
     def cmdexec_get_pkhash(self):
         try:
             res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_OEM_PK_HASH_READ)
+            if res is None:
+                return None
             idx = res[4:].find(res[:4])
             if idx != -1:
                 res = res[:4 + idx]
@@ -199,6 +205,8 @@ class sahara(metaclass=LogBase):
 
     def cmdexec_get_sbl_version(self):
         res = self.cmd_exec(exec_cmd_t.SAHARA_EXEC_CMD_GET_SOFTWARE_VERSION_SBL)
+        if res is None:
+            return None
         return int.from_bytes(res, 'little')
 
     def cmdexec_switch_to_dmss_dload(self):
@@ -259,20 +267,20 @@ class sahara(metaclass=LogBase):
     def cmd_info(self, version):
         if self.enter_command_mode(version=version):
             self.serial = self.cmdexec_get_serial_num()
-            self.serials = "{:08x}".format(self.serial)
+            self.serials = f"{self.serial:08x}"
             if version < 3:
                 self.hwid = self.cmdexec_get_msm_hwid()
                 self.pkhash = self.cmdexec_get_pkhash()
                 # if self.version>=2.4:
                 #    self.sblversion = "{:08x}".format(self.cmdexec_get_sbl_version())
                 if self.hwid is not None:
-                    self.hwidstr = "{:016x}".format(self.hwid)
+                    self.hwidstr = f"{self.hwid:016x}"
                     self.msm_id = int(self.hwidstr[2:8], 16)
                     self.oem_id = int(self.hwidstr[-8:-4], 16)
                     self.model_id = int(self.hwidstr[-4:], 16)
-                    self.oem_str = "{:04x}".format(self.oem_id)
-                    self.model_id = "{:04x}".format(self.model_id)
-                    self.msm_str = "{:08x}".format(self.msm_id)
+                    self.oem_str = f"{self.oem_id:04x}"
+                    self.model_id = f"{self.model_id:04x}"
+                    self.msm_str = f"{self.msm_id:08x}"
                     if self.msm_id in msmids:
                         cpustr = f"CPU detected:      \"{msmids[self.msm_id]}\"\n"
                     else:
@@ -295,7 +303,7 @@ class sahara(metaclass=LogBase):
                               cpustr +
                               f"PK_HASH:           0x{self.pkhash}\n" +
                               f"Serial:            0x{self.serials}\n")
-                if self.programmer == "":
+                if self.programmer == "" and self.hwidstr is not None and self.pkhash is not None:
                     if self.hwidstr in self.loaderdb:
                         mt = self.loaderdb[self.hwidstr]
                         unfused = False
@@ -350,7 +358,7 @@ class sahara(metaclass=LogBase):
                                 "_[FHPRG/ENPRG].bin) :(")
                         return False
                     else:
-                        self.error(f"Couldn't find a suitable loader :(")
+                        self.error("Couldn't find a suitable loader :(")
                         return False
             else:
                 # V3: Try to read pkhash first (may still work on some devices)
@@ -363,12 +371,12 @@ class sahara(metaclass=LogBase):
                     self.msm_id = v3_info['msm_id']
                     self.oem_id = v3_info['oem_id']
                     self.model_id = v3_info['model_id']
-                    self.msm_str = "{:06x}".format(self.msm_id)
-                    self.oem_str = "{:04x}".format(self.oem_id)
-                    model_str = "{:04x}".format(self.model_id)
-                    chip_id_v3_str = "{:08x}".format(chip_id_v3)
+                    self.msm_str = f"{self.msm_id:06x}"
+                    self.oem_str = f"{self.oem_id:04x}"
+                    model_str = f"{self.model_id:04x}"
+                    chip_id_v3_str = f"{chip_id_v3:08x}"
                     # Construct HWID (compatible with V1/V2 format)
-                    self.hwidstr = "00{:06x}{:04x}{:04x}".format(self.msm_id, self.oem_id, self.model_id)
+                    self.hwidstr = f"00{self.msm_id:06x}{self.oem_id:04x}{self.model_id:04x}"
                     self.hwid = int(self.hwidstr, 16)
                     self.model_id = model_str
                     
@@ -378,7 +386,7 @@ class sahara(metaclass=LogBase):
                         oem_name = msmids[self.msm_id]
                     
                     # Build V3 format output
-                    self.info(f"\nReading Chip Info : OK")
+                    self.info("\nReading Chip Info : OK")
                     self.info(f"- Sahara version  : {version}")
                     self.info(f"- Chip Serial Number : {self.serials}")
                     self.info(f"- Chip Identifier V3 : {chip_id_v3_str}")
@@ -389,7 +397,7 @@ class sahara(metaclass=LogBase):
                     if self.pkhash:
                         self.info(f"- OEM PKHASH : {self.pkhash}")
                     else:
-                        self.info(f"- OEM PKHASH : Not available (V3 restriction)")
+                        self.info("- OEM PKHASH : Not available (V3 restriction)")
                     self.info(f"- HW_ID : {self.hwidstr}")
                     
                     # Try to find loader using V3 info
@@ -428,12 +436,12 @@ class sahara(metaclass=LogBase):
                                         break
                 else:
                     # V3 extended info not available, show basic info
-                    self.info(f"\nReading Chip Info : OK")
+                    self.info("\nReading Chip Info : OK")
                     self.info(f"- Sahara version  : {version}")
                     self.info(f"- Chip Serial Number : {self.serials}")
                     if self.pkhash:
                         self.info(f"- OEM PKHASH : {self.pkhash}")
-                    self.info(f"- Note: V3 extended info (cmd=0x0A) not available")
+                    self.info("- Note: V3 extended info (cmd=0x0A) not available")
                 
                 if self.programmer == "":
                     self.warning("No autodetection of loader possible with sahara version 3, please use --loader option.")
@@ -445,7 +453,8 @@ class sahara(metaclass=LogBase):
     def streaminginfo(self):
         if self.enter_command_mode():
             self.serial = self.cmdexec_get_serial_num()
-            self.info(f"Device serial : {hex(self.serial)}")
+            if self.serial is not None:
+                self.info(f"Device serial : {hex(self.serial)}")
             self.cmd_modeswitch(sahara_mode_t.SAHARA_MODE_COMMAND)
             return True
         return False
@@ -505,7 +514,6 @@ class sahara(metaclass=LogBase):
                 self.cdc.read(1, 1)
             except Exception as e:  # pylint: disable=broad-except
                 self.debug(str(e))
-                pass
             if self.bit64:
                 if not self.cdc.write(pack("<IIQQ", cmd_t.SAHARA_64BIT_MEMORY_READ, 0x8 + 8 + 8, addr + pos,
                                            length)):
@@ -552,12 +560,15 @@ class sahara(metaclass=LogBase):
             length = part["length"]
             print(f"Dumping {filename}({desc}) at {hex(mem_base)}, length {hex(length)}")
             fname = os.path.join("memory", filename)
-            with open(fname, "wb") as wf:
-                self.read_memory(mem_base, length, True, wf)
-                if wf.tell() == length:
-                    print("Done dumping memory")
-                else:
-                    self.error("Error dumping memory")
+            try:
+                with open(fname, "wb") as wf:
+                    self.read_memory(mem_base, length, True, wf)
+                    if wf.tell() == length:
+                        print("Done dumping memory")
+                    else:
+                        self.error("Error dumping memory")
+            except OSError as err:
+                self.error(f"Failed to dump {filename}: {err}")
         self.cmd_reset()
         return True
 
@@ -566,7 +577,11 @@ class sahara(metaclass=LogBase):
             return False
         if os.path.exists("memory"):
             rmrf("memory")
-        os.mkdir("memory")
+        try:
+            os.mkdir("memory")
+        except OSError as err:
+            self.error(f"Failed to create memory directory: {err}")
+            return False
         res = self.get_rsp()
         if res["cmd"] == cmd_t.SAHARA_MEMORY_DEBUG or res["cmd"] == cmd_t.SAHARA_64BIT_MEMORY_DEBUG:
             memory_table_addr = res["data"].memory_table_addr
@@ -579,9 +594,11 @@ class sahara(metaclass=LogBase):
                             f"Reading 64-Bit partition from {hex(memory_table_addr)} with length of " +
                             f"{hex(memory_table_length)}")
                         ptbldata = self.read_memory(memory_table_addr, memory_table_length)
+                        if not ptbldata:
+                            return False
                         num_entries = len(ptbldata) // pktsize
                         partitions = []
-                        for id_entry in range(0, num_entries):
+                        for id_entry in range(num_entries):
                             pd = self.ch.parttbl_64bit(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
                             desc = pd.desc.replace(b"\x00", b"").decode('utf-8')
                             filename = pd.filename.replace(b"\x00", b"").decode('utf-8')
@@ -607,9 +624,11 @@ class sahara(metaclass=LogBase):
                         print(f"Reading 32-Bit partition from {hex(memory_table_addr)} " +
                               f"with length of {hex(memory_table_length)}")
                         ptbldata = self.read_memory(memory_table_addr, memory_table_length)
+                        if not ptbldata:
+                            return False
                         num_entries = len(ptbldata) // pktsize
                         partitions = []
-                        for id_entry in range(0, num_entries):
+                        for id_entry in range(num_entries):
                             pd = self.ch.parttbl(ptbldata[id_entry * pktsize:(id_entry * pktsize) + pktsize])
                             desc = pd.desc.replace(b"\x00", b"").decode('utf-8')
                             filename = pd.filename.replace(b"\x00", b"").decode('utf-8')
@@ -631,11 +650,13 @@ class sahara(metaclass=LogBase):
         return False
 
     def upload_loader(self, version):
-        if self.programmer == "":
+        if self.programmer is None or self.programmer == "":
             return ""
 
         is_xml_config = self.programmer.lower().endswith(".xml")
         mappings = {}
+        single_programmer_data = b""
+        requested_id = None
         
         if is_xml_config:
             self.info(f"Parsing Sahara XML config: {self.programmer}")
@@ -751,7 +772,7 @@ class sahara(metaclass=LogBase):
         data = pack("<III", cmd_t.SAHARA_SWITCH_MODE, 0xC, mode)
         self.cdc.write(data)
 
-    def cmd_exec(self, mcmd):  # CMD 0xD, RSP 0xE, CMD2 0xF
+    def cmd_exec(self, mcmd) -> bytes | None:  # CMD 0xD, RSP 0xE, CMD2 0xF
         # Send request
         data = pack("<III", cmd_t.SAHARA_EXECUTE_REQ, 0xC, mcmd)
         self.cdc.write(data)
@@ -769,4 +790,5 @@ class sahara(metaclass=LogBase):
                 pkt = res["data"]
                 self.error(self.get_error_desc(pkt.image_tx_status))
             return None
-        return res
+        self.debug(f"Unexpected sahara response: {res}")
+        return None

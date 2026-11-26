@@ -18,8 +18,18 @@ import sys
 import time
 from io import BytesIO
 from struct import unpack
+from typing import Any, Literal
 
 import colorama
+
+Cs: Any = None
+Ks: Any = None
+CsError: Any = Exception
+KsError: Any = Exception
+CS_ARCH_ARM64: Any = 0
+CS_MODE_LITTLE_ENDIAN: Any = 0
+KS_ARCH_ARM64: Any = 0
+KS_MODE_LITTLE_ENDIAN: Any = 0
 
 try:
     from capstone import *
@@ -40,11 +50,11 @@ def is_windows():
 class structhelper_io:
     pos = 0
 
-    def __init__(self, data: BytesIO = None, direction='little'):
-        self.data = data
-        self.direction = direction
+    def __init__(self, data: BytesIO | None = None, direction: Literal['little', 'big'] = 'little'):
+        self.data: BytesIO = data if data is not None else BytesIO()
+        self.direction: Literal['little', 'big'] = direction
 
-    def setdata(self, data, offset=0):
+    def setdata(self, data: BytesIO, offset=0):
         self.pos = offset
         self.data = data
 
@@ -164,7 +174,7 @@ class progress:
                 if datasize != 0 and tdiff != 0:
                     try:
                         throughput = datasize / tdiff
-                    except:
+                    except ZeroDivisionError:
                         throughput = 0
                 else:
                     throughput = 0
@@ -290,7 +300,8 @@ def do_tcp_server(client, arguments, handler):
                             marguments = line.split(":")[1]
                             try:
                                 opts = parse_args(cmd, marguments, arguments)
-                            except:
+                            except (IndexError, ValueError) as err:
+                                logging.debug(f"Couldn't parse {cmd}: {err}")
                                 response = "Wrong arguments\n<NAK>\n"
                                 opts = None
                             if opts is not None:
@@ -298,7 +309,7 @@ def do_tcp_server(client, arguments, handler):
                                     response = "<ACK>\n"
                                 else:
                                     response = "<NAK>\n"
-                            connection.sendall(bytes(response, 'utf-8'))
+                            connection.sendall(bytes(response or "", 'utf-8'))
         finally:
             connection.close()
 
@@ -389,10 +400,10 @@ def parse_args(cmd, args, mainargs):
 def getint(valuestr):
     try:
         return int(valuestr)
-    except:
+    except (TypeError, ValueError):
         try:
             return int(valuestr, 16)
-        except:
+        except (TypeError, ValueError):
             return 0
 
 
@@ -464,16 +475,23 @@ class LogBase(type):
 
 
 def del_rw(action, name, exc):
-    os.chmod(name, stat.S_IWRITE)
-    os.remove(name)
+    try:
+        os.chmod(name, stat.S_IWRITE)
+        os.remove(name)
+    except OSError as err:
+        logging.debug(f"Couldn't remove {name}: {err}")
 
 
 def rmrf(path):
-    if os.path.exists(path):
+    if not os.path.exists(path):
+        return
+    try:
         if os.path.isfile(path):
             del_rw("", path, "")
         else:
             shutil.rmtree(path, onerror=del_rw)
+    except OSError as err:
+        logging.debug(f"Couldn't remove {path}: {err}")
 
 
 class elf:
@@ -487,6 +505,8 @@ class elf:
     def __init__(self, indata, filename):
         self.data = indata
         self.filename = filename
+        self.header: Any
+        self.pentry: Any
         self.header, self.pentry = self.parse()
         self.memorylayout = []
         for entry in self.pentry:
@@ -706,11 +726,11 @@ class patchtools:
         return None
 
 
-def read_object(data: object, definition: object) -> dict:
+def read_object(data: bytes, definition: list[tuple[str, str]]) -> dict:
     """
     Unpacks a structure using the given data and definition.
     """
-    obj = {}
+    obj: dict = {}
     object_size = 0
     pos = 0
     for (name, stype) in definition:

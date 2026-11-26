@@ -25,6 +25,7 @@ class streaming_client(metaclass=LogBase):
         self.__logger.setLevel(loglevel)
         self.error = self.__logger.error
         self.info = self.__logger.info
+        self.warning = self.__logger.warning
         if loglevel == logging.DEBUG:
             logfilename = "log.txt"
             fh = logging.FileHandler(logfilename)
@@ -92,8 +93,11 @@ class streaming_client(metaclass=LogBase):
                 data = self.streaming.read_partition_table()
                 sfilename = os.path.join(directory, f"partition.bin")
                 if data != b"":
-                    with open(sfilename, "wb") as write_handle:
-                        write_handle.write(data)
+                    try:
+                        with open(sfilename, "wb") as write_handle:
+                            write_handle.write(data)
+                    except OSError as err:
+                        self.error(f"File access failed: {err}")
                     self.printer(f"Dumped Partition Table to {sfilename}")
                 else:
                     self.error(f"Error on dumping partition table to {sfilename}")
@@ -147,16 +151,21 @@ class streaming_client(metaclass=LogBase):
                     skip = options["--skip"].split(",")
                 else:
                     skip = []
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                storedir = directory
-                if not os.path.exists(storedir):
-                    os.mkdir(storedir)
+                try:
+                    os.makedirs(directory, exist_ok=True)
+                    storedir = directory
+                    os.makedirs(storedir, exist_ok=True)
+                except OSError as err:
+                    self.error(f"Failed to create {directory}: {err}")
+                    return False
                 sfilename = os.path.join(storedir, f"partition.bin")
                 partdata = self.streaming.read_partition_table()
-                if partdata != -1:
-                    with open(sfilename, "wb") as write_handle:
-                        write_handle.write(partdata)
+                if partdata:
+                    try:
+                        with open(sfilename, "wb") as write_handle:
+                            write_handle.write(partdata)
+                    except OSError as err:
+                        self.error(f"File access failed: {err}")
                 else:
                     self.error(f"Couldn't detect partition header.")
                     return
@@ -185,7 +194,7 @@ class streaming_client(metaclass=LogBase):
             elif cmd == "peekhex":
                 offset = getint(options["<offset>"])
                 length = getint(options["<length>"])
-                resp = self.streaming.memread(offset, length)
+                resp = self.streaming.memread(offset, length, info=length > 0x100)
                 self.printer("\n")
                 self.printer(hexlify(resp))
             elif cmd == "peekqword":
@@ -204,12 +213,12 @@ class streaming_client(metaclass=LogBase):
                 try:
                     with open(filename, "rb") as rf:
                         data = rf.read()
-                        if self.streaming.memwrite(offset, data):
-                            self.info("Poke succeeded.")
-                        else:
-                            self.error("Poke failed.")
-                except Exception as e:
-                    self.error(str(e))
+                    if self.streaming.memwrite(offset, data):
+                        self.info("Poke succeeded.")
+                    else:
+                        self.error("Poke failed.")
+                except OSError as err:
+                    self.error(f"File access failed: {err}")
             elif cmd == "pokehex":
                 offset = getint(options["<offset>"])
                 data = unhexlify(options["<data>"])
@@ -237,11 +246,14 @@ class streaming_client(metaclass=LogBase):
             elif cmd == "memtbl":
                 filename = options["<filename>"]
                 memtbl = self.streaming.settings.memtbl
-                data = self.streaming.memread(memtbl[0], memtbl[1])
+                data = self.streaming.memread(memtbl[0], memtbl[1], info=True)
                 if data != b"":
-                    with open(filename, "wb") as wf:
-                        wf.write(data)
-                        self.printer(f"Dumped memtbl at offset {hex(memtbl[0])} as {filename}.")
+                    try:
+                        with open(filename, "wb") as wf:
+                            wf.write(data)
+                            self.printer(f"Dumped memtbl at offset {hex(memtbl[0])} as {filename}.")
+                    except OSError as err:
+                        self.error(f"File access failed: {err}")
                 else:
                     self.error("Error on dumping memtbl")
             elif cmd == "secureboot":
@@ -270,22 +282,31 @@ class streaming_client(metaclass=LogBase):
                 filename = options["<filename>"]
                 pbl = self.streaming.settings.pbl
                 self.printer("Dumping pbl....")
-                data = self.streaming.memread(pbl[0], pbl[1])
+                data = self.streaming.memread(pbl[0], pbl[1], info=True)
+                if data != b"" and len(data) < pbl[1]:
+                    self.warning(f"Only {len(data)} of {pbl[1]} bytes could be read "
+                                 f"(readable extent 0x{pbl[0]:X}-0x{pbl[0] + len(data):X})")
                 if data != b"":
-                    with open(filename, "wb") as wf:
-                        wf.write(data)
-                        self.printer(f"Dumped pbl at offset {hex(pbl[0])} as {filename}.")
+                    try:
+                        with open(filename, "wb") as wf:
+                            wf.write(data)
+                            self.printer(f"Dumped pbl at offset {hex(pbl[0])} as {filename}.")
+                    except OSError as err:
+                        self.error(f"File access failed: {err}")
                 else:
                     self.error("Error on dumping pbl")
             elif cmd == "qfp":
                 filename = options["<filename>"]
                 qfp = self.streaming.settings.qfprom
                 self.printer("Dumping qfprom....")
-                data = self.streaming.memread(qfp[0], qfp[1])
+                data = self.streaming.memread(qfp[0], qfp[1], info=True)
                 if data != b"":
-                    with open(filename, "wb") as wf:
-                        wf.write(data)
-                        self.printer(f"Dumped qfprom at offset {hex(qfp[0])} as {filename}.")
+                    try:
+                        with open(filename, "wb") as wf:
+                            wf.write(data)
+                            self.printer(f"Dumped qfprom at offset {hex(qfp[0])} as {filename}.")
+                    except OSError as err:
+                        self.error(f"File access failed: {err}")
                 else:
                     self.error("Error on dumping qfprom")
             elif cmd == "memcpy":
@@ -316,6 +337,7 @@ class streaming_client(metaclass=LogBase):
                 partitionname = options["<partitionname>"]
                 filename = options["<filename>"]
                 partitionfilename = ""
+                ptable = b""
                 if "--partitionfilename" in options:
                     partitionfilename = options["--partitionfilename"]
                     if partitionfilename is not None:
@@ -323,7 +345,12 @@ class streaming_client(metaclass=LogBase):
                             self.error(f"Error: Couldn't find partition file: {partitionfilename}")
                             return False
                         else:
-                            ptable = open(partitionfilename, "rb").read()
+                            try:
+                                with open(partitionfilename, "rb") as rf:
+                                    ptable = rf.read()
+                            except OSError as err:
+                                self.error(f"Failed to read {partitionfilename}: {err}")
+                                return False
                 else:
                     self.error("Partition file is needed for writing (--partitionfilename)")
                     sys.exit(1)
@@ -355,7 +382,7 @@ class streaming_client(metaclass=LogBase):
                         return False
                 else:
                 """
-                rpartitions = self.streaming.get_partitions(partitionfilename)
+                rpartitions = self.streaming.get_partitions(partitionfilename or "")
                 if self.streaming.enter_flash_mode(ptable=ptable):
                     if partitionname in rpartitions:
                         spartition = rpartitions[partitionname]
@@ -364,9 +391,13 @@ class streaming_client(metaclass=LogBase):
                         # attr1 = spartition["attr1"]
                         # attr2 = spartition["attr2"]
                         # attr3 = spartition["attr3"]
-                        sectors = int(os.stat(
-                            filename).st_size / self.streaming.settings.num_pages_per_blk /
-                                      self.streaming.settings.PAGESIZE)
+                        try:
+                            filesize = os.stat(filename).st_size
+                        except OSError as err:
+                            self.error(f"Failed to access {filename}: {err}")
+                            return False
+                        sectors = int(filesize / self.streaming.settings.num_pages_per_blk /
+                                     self.streaming.settings.PAGESIZE)
                         if sectors > length:
                             self.error(
                                 f"Error: {filename} has {sectors} sectors but partition only has {length}.")
@@ -416,7 +447,12 @@ class streaming_client(metaclass=LogBase):
                                         # attr1 = spartition["attr1"]
                                         # attr2 = spartition["attr2"]
                                         # attr3 = spartition["attr3"]
-                                        sectors = int(os.stat(filename).st_size /
+                                        try:
+                                            filesize = os.stat(filename).st_size
+                                        except OSError as err:
+                                            self.error(f"Failed to access {filename}: {err}")
+                                            return False
+                                        sectors = int(filesize /
                                                       self.streaming.settings.num_pages_per_blk /
                                                       self.streaming.settings.PAGESIZE)
                                         if sectors > length:

@@ -7,8 +7,12 @@
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import sys
 
+termios: ModuleType | None = None
 if not sys.platform.startswith('win32'):
-    import termios
+    try:
+        import termios
+    except ImportError:  # pragma: no cover - non posix without termios
+        termios = None
 
 
 def _reset_input_buffer():
@@ -16,26 +20,32 @@ def _reset_input_buffer():
 
 
 def _reset_input_buffer_org(self):
-    if not sys.platform.startswith('win32'):
+    if not sys.platform.startswith('win32') and termios is not None:
         return termios.tcflush(self.fd, termios.TCIFLUSH)
 
 
+import inspect
+import logging
+import time
+from types import ModuleType
+from typing import Any
+
 import serial
 import serial.tools.list_ports
-import inspect
 
 try:
-    from edlclient.Library.utils import *
+    from edlclient.Library.utils import LogBase
     from edlclient.Library.Connection.devicehandler import DeviceClass
-except:
-    from Library.utils import *
-    from Library.Connection.devicehandler import DeviceClass
+except ImportError:  # pragma: no cover - legacy in-tree layout
+    from Library.utils import LogBase  # type: ignore[import-not-found]
+    from Library.Connection.devicehandler import DeviceClass  # type: ignore[import-not-found]
 
 
 class serial_class(DeviceClass):
 
     def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
         super().__init__(loglevel, portconfig, devclass)
+        self.device: Any = None
         self.is_serial = True
 
     def connect(self, EP_IN=-1, EP_OUT=-1, portname: str = ""):
@@ -51,10 +61,11 @@ class serial_class(DeviceClass):
                                         parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,
                                         timeout=50,
                                         xonxoff=False, dsrdtr=True, rtscts=True)
-            self.device._reset_input_buffer = _reset_input_buffer
+            # pyserial's _reset_input_buffer is patched per instance, it is not part of the public API
+            self.device._reset_input_buffer = _reset_input_buffer  # type: ignore[method-assign]
             self.device.setPort(port=portname)
             self.device.open()
-            self.device._reset_input_buffer = _reset_input_buffer_org
+            self.device._reset_input_buffer = _reset_input_buffer_org  # type: ignore[method-assign]
             self.connected = self.device.is_open
             if self.connected:
                 return True
@@ -69,8 +80,8 @@ class serial_class(DeviceClass):
     def detectdevices(self):
         ids = []
         for port in serial.tools.list_ports.comports():
-            for usbid in self.portconfig:
-                if port.pid == usbid[1] and port.vid == usbid[0]:
+            for usbid in self.portconfig or []:
+                if port.location and port.pid == usbid[1] and port.vid == usbid[0]:
                     portid = port.location[-1:]
                     print(f"Detected {hex(port.vid)}:{hex(port.pid)} device at: " + port.device)
                     ids.append(port.device)
@@ -104,7 +115,7 @@ class serial_class(DeviceClass):
             try:
                 self.device.write(b'')
             except Exception as err:
-                error = str(err.strerror)
+                error = str(getattr(err, "strerror", err))
                 if "timeout" in error:
                     # time.sleep(0.01)
                     try:
@@ -152,7 +163,7 @@ class serial_class(DeviceClass):
         if self.xmlread:
             if length > self.device.in_waiting:
                 length = self.device.in_waiting
-        return self.usbread(length, timeout)
+        return self.usbread(length, timeout or 0)
 
     def flush(self):
         return self.device.flush()
@@ -200,7 +211,9 @@ class serial_class(DeviceClass):
                     return b""
 
         if loglevel == logging.DEBUG:
-            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(resplen))
+            frame = inspect.currentframe()
+            caller = frame.f_back.f_code.co_name if frame and frame.f_back else "unknown"
+            self.debug(caller + ":" + hex(resplen))
             if self.loglevel == logging.DEBUG:
                 self.verify_data(res[:resplen], "RX:")
         return res[:resplen]

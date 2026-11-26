@@ -1,32 +1,84 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
-from struct import pack
+import logging
 from binascii import unhexlify
-from edlclient.Library.utils import *
+from collections.abc import Callable
+from struct import pack
+
 from edlclient.Library.hdlc import *
-from edlclient.Library.nand_config import BadFlags, SettingsOpt, nandregs, NandDevice
+from edlclient.Library.nand_config import BadFlags, NandDevice, SettingsOpt, nandregs
+from edlclient.Library.utils import *
 from edlclient.Library.utils import progress
 
 STREAMING_DLOAD_PARTITION_TABLE_SIZE = 512
 
 
 class Streaming(metaclass=LogBase):
+    __logger: logging.Logger
+
+    # The NAND backends below are only created by connect(). They are exposed through
+    # properties so a call before connect() raises a clear error instead of an
+    # AttributeError on None, and so the hot paths stay readable.
+    _regs: "nandregs | None" = None
+    _settings: "SettingsOpt | None" = None
+    _nanddevice: "NandDevice | None" = None
+    _memread: "Callable | None" = None
+
+    @property
+    def regs(self) -> "nandregs":
+        if self._regs is None:
+            raise RuntimeError("Streaming isn't connected yet, no NAND registers available")
+        return self._regs
+
+    @regs.setter
+    def regs(self, value) -> None:
+        self._regs = value
+
+    @property
+    def settings(self) -> "SettingsOpt":
+        if self._settings is None:
+            raise RuntimeError("Streaming isn't connected yet, no flash settings available")
+        return self._settings
+
+    @settings.setter
+    def settings(self, value) -> None:
+        self._settings = value
+
+    @property
+    def nanddevice(self) -> "NandDevice":
+        if self._nanddevice is None:
+            raise RuntimeError("Streaming isn't connected yet, no NAND device available")
+        return self._nanddevice
+
+    @nanddevice.setter
+    def nanddevice(self, value) -> None:
+        self._nanddevice = value
+
+    @property
+    def memread(self) -> "Callable":
+        if self._memread is None:
+            raise RuntimeError("Streaming isn't connected yet, no memory reader available")
+        return self._memread
+
+    @memread.setter
+    def memread(self, value) -> None:
+        self._memread = value
+
     def __init__(self, cdc, sahara, loglevel=logging.INFO):
         self.__logger = self.__logger
-        self.regs = None
+        self._regs = None
         self.cdc = cdc
         self.hdlc = hdlc(self.cdc)
         self.mode = sahara.mode
         self.sahara = sahara
-        self.settings = None
+        self._settings = None
         self.flashinfo = None
         self.bbtbl = {}
-        self.nanddevice = None
+        self._nanddevice = None
         self.nandbase = 0
         self.__logger.setLevel(loglevel)
         self.info = self.__logger.info
@@ -38,7 +90,7 @@ class Streaming(metaclass=LogBase):
         self.Qualcomm = 0
         self.Patched = 1
         self.streaming_mode = None
-        self.memread = None
+        self._memread = None
 
         if loglevel == logging.DEBUG:
             logfilename = "log.txt"
@@ -188,54 +240,64 @@ class Streaming(metaclass=LogBase):
 
     def write_flash(self, lba: int = 0, partname="", filename="", info=True):
         wbsize = 1024
-        filesize = os.stat(filename).st_size
+        try:
+            filesize = os.stat(filename).st_size
+        except OSError as err:
+            self.error(f"Failed to access {filename}: {err}")
+            return False
         total = filesize
         progbar = progress(1)
         progbar.show_progress(prefix="Write", pos=0, total=total, display=info)
-        with open(filename, 'rb') as rf:
-            if self.send_section_header(partname):
-                adr = lba
-                while filesize > 0:
-                    subdata = rf.read(wbsize)
-                    if len(subdata) < 1024:
-                        subdata += (1024 - len(subdata)) * b'\xFF'
-                    scmd = b"\x07" + pack("<I", adr) + subdata
-                    resp = self.send(scmd)
-                    if len(resp) == 0 or resp[0] != 0x8:
-                        self.error("Error on sending data at address %08X" % adr)
-                        return False
-                    progbar.show_progress(prefix="Write", pos=adr, total=total, display=info)
-                    adr += 1024
-                    filesize -= len(subdata)
-            progbar.show_progress(prefix="Write", pos=total, total=total, display=info)
-            if not self.qclose(1):
-                self.error("Error on closing data stream")
-                return False
-            else:
-                return True
+        try:
+            with open(filename, 'rb') as rf:
+                if self.send_section_header(partname):
+                    adr = lba
+                    while filesize > 0:
+                        subdata = rf.read(wbsize)
+                        if len(subdata) < 1024:
+                            subdata += (1024 - len(subdata)) * b'\xFF'
+                        scmd = b"\x07" + pack("<I", adr) + subdata
+                        resp = self.send(scmd)
+                        if len(resp) == 0 or resp[0] != 0x8:
+                            self.error("Error on sending data at address %08X" % adr)
+                            return False
+                        progbar.show_progress(prefix="Write", pos=adr, total=total, display=info)
+                        adr += 1024
+                        filesize -= len(subdata)
+                progbar.show_progress(prefix="Write", pos=total, total=total, display=info)
+                if not self.qclose(1):
+                    self.error("Error on closing data stream")
+                    return False
+                else:
+                    return True
 
+        except OSError as err:
+            self.error(f"File access failed: {err}")
     def read_sectors(self, sector, sectors, filename, info=False):
         old = 0
         sectorsize = self.settings.PAGESIZE // self.settings.sectors_per_page
         progbar = progress(sectorsize)
         progbar.show_progress(prefix="Read", pos=0, total=sectors, display=info)
-        with open(filename, "wb") as write_handle:
-            while sector < sectors:
-                offset = (sector // self.settings.sectors_per_page) * self.settings.PAGESIZE
-                page = int(offset / self.settings.PAGESIZE)
-                curblock = int(page / self.settings.num_pages_per_blk)
-                curpage = int(page - curblock * self.settings.num_pages_per_blk)
-                if sectors - sector < self.settings.sectors_per_page:
-                    sectorstoread = sectors - sector
-                else:
-                    sectorstoread = self.settings.sectors_per_page
-                data, extra = self.flash_read(curblock, curpage, sectorstoread,
-                                              self.settings.UD_SIZE_BYTES)
-                if sector % self.settings.sectors_per_page != 0:
-                    data = data[sectorsize * sector:]
-                write_handle.write(data)
-                sector += sectorstoread
-                progbar.show_progress(prefix="Read", pos=sector, total=sectors, display=info)
+        try:
+            with open(filename, "wb") as write_handle:
+                while sector < sectors:
+                    offset = (sector // self.settings.sectors_per_page) * self.settings.PAGESIZE
+                    page = int(offset / self.settings.PAGESIZE)
+                    curblock = int(page / self.settings.num_pages_per_blk)
+                    curpage = int(page - curblock * self.settings.num_pages_per_blk)
+                    if sectors - sector < self.settings.sectors_per_page:
+                        sectorstoread = sectors - sector
+                    else:
+                        sectorstoread = self.settings.sectors_per_page
+                    data, extra = self.flash_read(curblock, curpage, sectorstoread,
+                                                  self.settings.UD_SIZE_BYTES)
+                    if sector % self.settings.sectors_per_page != 0:
+                        data = data[sectorsize * sector:]
+                    write_handle.write(data)
+                    sector += sectorstoread
+                    progbar.show_progress(prefix="Read", pos=sector, total=sectors, display=info)
+        except OSError as err:
+            self.error(f"File access failed: {err}")
         self.nand_post()
         progbar.show_progress(prefix="Read", pos=sectors, total=sectors, display=info)
         return True
@@ -256,24 +318,32 @@ class Streaming(metaclass=LogBase):
         self.error("Partition tables do not match - you need to fully flash the modem")
         return False
 
-    def qc_memread(self, address, length):
+    def qc_memread(self, address, length, info=False):
         self.debug("memread %08X:%08X" % (address, length))
         data = bytearray()
         cmdbuf = b"\x03"
         toread = length
+        pos = 0
+        progbar = progress(1)
+        progbar.show_progress(prefix="Read", pos=0, total=length, display=info)
         for i in range(0, length, 512):
             size = 512
-            if toread < size:
-                size = toread
+            size = min(size, toread)
             tmp = self.send(cmdbuf + pack("<I", address + i) + pack("<H", size), True)
-            if tmp[1] == 0x04:
-                data.extend(tmp[6:])
-            else:
-                return b""
+            if tmp[1] != 0x04:
+                self.error(f"Error reading memory at addr {hex(address + i)}, "
+                           f"{size!s} bytes requested.")
+                break
+            data.extend(tmp[6:])
             toread -= size
-        return data
+            pos += size
+            progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
+        if pos < length:
+            self.warning(f"Partial memory read: 0x{pos:X} of 0x{length:X} bytes "
+                         f"(0x{address:08X}-0x{address + pos:08X}) - target stopped responding")
+        return bytes(data)
 
-    def patched_memread(self, address, length):
+    def patched_memread(self, address, length, info=False):
         self.debug("memread %08X:%08X" % (address, length))
         result = b""
         """
@@ -291,8 +361,10 @@ class Streaming(metaclass=LogBase):
         """
         readt = unhexlify("24309fe524409fe51200a0e3040081e4040083e0042093e4042081e4000053e1fbffff3a044084e21eff2fe1")
         cmdbuf = b"\x11\x00" + readt
-        errcount = 0
+        pos = 0
         blklen = 1000
+        progbar = progress(1)
+        progbar.show_progress(prefix="Read", pos=0, total=length, display=info)
         for i in range(0, length, 1000):
             tries = 20
             if (i + 1000) > length:
@@ -309,20 +381,24 @@ class Streaming(metaclass=LogBase):
                     break
             if tries == 0:
                 self.error(
-                    f"Error reading memory at addr {hex(address)}, {str(blklen)} bytes required, {str(iolen)} bytes "
+                    f"Error reading memory at addr {hex(address + i)}, {blklen!s} bytes required, {iolen!s} bytes "
                     f"received.")
-                errcount += 1
-                result += b"\xeb" * blklen
-            else:
-                result += resp[5:]
+                # The target stopped responding at this block. Everything behind it is unreachable
+                # as well, so stop here and hand back what was read successfully instead of
+                # discarding the whole transfer (and hammering a dead target for each block).
+                break
+            result += resp[5:]
+            pos = i + blklen
+            progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
 
-        if errcount > 0:
-            return b""
+        if pos < length:
+            self.warning(f"Partial memory read: 0x{pos:X} of 0x{length:X} bytes "
+                         f"(0x{address:08X}-0x{address + pos:08X}) - target stopped responding")
         return result
 
     def mempeek(self, address):
         res = self.memread(address, 4)
-        if res != b"":
+        if len(res) >= 4:
             data = unpack("<I", res[:4])[0]
             self.debug("memread %08X:%08X" % (address, data))
             return data
@@ -459,7 +535,7 @@ class Streaming(metaclass=LogBase):
         self.nandwait()
         self.set_address(block, 0)
         self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PRG_PAGE_ALL
-        for i in range(0, self.settings.sectors_per_page):
+        for _ in range(self.settings.sectors_per_page):
             self.memwrite(self.nanddevice.NAND_FLASH_BUFFER, buf[:udsize])
             self.regs.NAND_EXEC_CMD = 1
             self.nandwait()
@@ -507,12 +583,12 @@ class Streaming(metaclass=LogBase):
                         res = 1
                     self.bbtbl[block] = res
                 if res == 1:
-                    for i in range(0, self.settings.PAGESIZE):
+                    for _ in range(self.settings.PAGESIZE):
                         buffer.append(0xbb)
                     return buffer, spare
 
             self.nand_reset()
-            if self.settings.ECC_MODE == 1:
+            if self.settings.ECC_MODE == 1 and cwsize is not None:
                 if cwsize >= self.settings.sectorsize + 4:
                     self.regs.NAND_FLASH_CMD = self.nanddevice.NAND_CMD_PAGE_READ_ALL
                 else:
@@ -523,7 +599,7 @@ class Streaming(metaclass=LogBase):
 
         self.set_address(block, page)
         bad_ecc = False
-        for sector in range(0, sectors):
+        for _ in range(sectors):
             self.regs.NAND_EXEC_CMD = 0x1
             self.nandwait()
             ecc_status = self.check_ecc_status()
@@ -631,11 +707,11 @@ class Streaming(metaclass=LogBase):
             self.mempoke(addr, value)
         self.regs.NAND_EXEC_CMD = 1
 
-    def read_partition_table(self):
+    def read_partition_table(self) -> bytes:
         cwsize = self.settings.sectorsize
         if self.settings.ECC_MODE == 1:
             cwsize = self.settings.UD_SIZE_BYTES
-        for block in range(0, 12):
+        for block in range(12):
             buffer, spare = self.flash_read(block, 0, 1, cwsize)
             if buffer[0:8] != b"\xac\x9f\x56\xfe\x7a\x12\x7f\xcd":
                 continue
@@ -643,17 +719,22 @@ class Streaming(metaclass=LogBase):
             buffer, spare = self.flash_read(block, 1, 2, cwsize)
             magic1, magic2, version, numparts = unpack("<IIII", buffer[0:0x10])
             if magic1 == 0x55EE73AA or magic2 == 0xE35EBDDB:
-                return buffer
-        return -1
+                return bytes(buffer)
+        self.error("Couldn't find a partition table")
+        return b""
 
     def get_partitions(self, filename=""):
         partitions = {}
+        partdata = b""
         if filename == "":
             partdata = self.read_partition_table()
         else:
-            with open(filename, "rb") as rf:
-                partdata = rf.read()
-        if partdata != -1:
+            try:
+                with open(filename, "rb") as rf:
+                    partdata = rf.read()
+            except OSError as err:
+                self.error(f"File access failed: {err}")
+        if partdata:
             data = partdata[0x10:]
             magic1, magic2, version, partcount = unpack("<IIII", partdata[:0x10])
             partitions["magic1"] = magic1
@@ -717,18 +798,18 @@ class Streaming(metaclass=LogBase):
 
     def hello(self):
         class hellopacket:
-            command = 0
-            magic = b""
-            version = 0
-            compatibleVersion = 0
-            maxPreferredBlockSize = 0
-            baseFlashAddress = 0
-            flashIdLength = 0
-            flashId = b""
-            windowSize = 0
-            numberOfSectors = 0
-            sectorSizes = 0
-            featureBits = 0
+            command: int = 0
+            magic: bytes | bytearray = b""
+            version: int = 0
+            compatibleVersion: int = 0
+            maxPreferredBlockSize: int = 0
+            baseFlashAddress: int = 0
+            flashIdLength: int = 0
+            flashId: bytes | bytearray = b""
+            windowSize: int = 0
+            numberOfSectors: int = 0
+            sectorSizes: tuple = ()
+            featureBits: bytes | bytearray = b""
 
         hp = hellopacket()
         info = b"\x01QCOM fast download protocol host\x03\x23\x23\x23\x20"
@@ -880,7 +961,7 @@ class Streaming(metaclass=LogBase):
 
     def load_block(self, block, cwsize):
         buffer = bytearray()
-        for page in range(0, self.settings.num_pages_per_blk):
+        for page in range(self.settings.num_pages_per_blk):
             tmp, spare = self.flash_read(block, page, self.settings.sectors_per_page, cwsize)
             buffer.extend(tmp)
         return buffer
@@ -889,30 +970,42 @@ class Streaming(metaclass=LogBase):
         old = 0
         pos = 0
         toread = length
+        # The patched (streaming) reader draws its own block-accurate progress bar, the plain
+        # Qualcomm path reads 512 byte chunks and keeps the outer bar here.
+        inner = self.streaming_mode != self.Qualcomm
         progbar = progress(1)
-        progbar.show_progress(prefix="Read", pos=0, total=length, display=info)
-        with open(filename, "wb") as wf:
-            while toread > 0:
-                size = 0x20000
-                if self.streaming_mode == self.Qualcomm:
-                    size = 0x200
-                if toread < size:
-                    size = toread
-                data = self.memread(offset + pos, size)
-                if data != b"":
+        if not inner:
+            progbar.show_progress(prefix="Read", pos=0, total=length, display=info)
+        try:
+            with open(filename, "wb") as wf:
+                while toread > 0:
+                    size = 0x20000
+                    if not inner:
+                        size = 0x200
+                    size = min(size, toread)
+                    data = self.memread(offset + pos, size, info=info and inner)
+                    if data == b"":
+                        break
                     wf.write(data)
-                else:
-                    break
-                toread -= size
-                pos += size
-                progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
-                if info:
-                    prog = round(float(pos) / float(length) * float(100), 1)
-                    if prog > old:
-                        print_progress(prog, 100, prefix='Progress:', suffix='Complete (Offset: %08X)' % (offset + pos),
-                                       bar_length=50)
-                        old = prog
-        progbar.show_progress(prefix="Read", pos=length, total=length, display=info)
+                    pos += len(data)
+                    toread -= len(data)
+                    if not inner:
+                        progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
+                        if info:
+                            prog = round(float(pos) / float(length) * float(100), 1)
+                            if prog > old:
+                                print_progress(prog, 100, prefix='Progress:',
+                                               suffix='Complete (Offset: %08X)' % (offset + pos),
+                                               bar_length=50)
+                                old = prog
+                    if len(data) < size:
+                        self.error(f"Read stopped at 0x{offset + pos:08X}: "
+                                   f"0x{pos:X} of 0x{length:X} bytes written to {filename}")
+                        break
+        except OSError as err:
+            self.error(f"File access failed: {err}")
+        if not inner:
+            progbar.show_progress(prefix="Read", pos=pos, total=length, display=info)
         return True
 
     def read_blocks(self, fw, block, length, cwsize, savespare=False, info=True):
@@ -932,9 +1025,8 @@ class Streaming(metaclass=LogBase):
                     fw.write(data)
                     if savespare:
                         fw.write(spare)
-            else:
-                self.debug("Bad block at block %d" % curblock)
-                badblocks += 1
+            self.debug("Bad block at block %d" % curblock)
+            badblocks += 1
             pos += self.settings.PAGESIZE
 
         progbar.show_progress(prefix="Read", pos=totallength, total=totallength, display=info)
@@ -985,20 +1077,24 @@ class Streaming(metaclass=LogBase):
     """
 
     def read_raw(self, start, length, cwsize, filename):
-        with open(filename, 'wb') as fw:
-            if self.settings.rflag == 0:  # normal
-                self.read_blocks(fw, start, length, cwsize)
-            """
-            elif self.settings.rflag == 1:  # linux
-                self.read_blocks_ext(fw, start, length, 0)  # Fixme
-            elif self.settings.rflag == 2:  # yaffs
-                self.read_blocks_ext(fw, start, length, 1)  # Fixme
-            """
+        try:
+            with open(filename, 'wb') as fw:
+                if self.settings.rflag == 0:  # normal
+                    self.read_blocks(fw, start, length, cwsize)
+                """
+                elif self.settings.rflag == 1:  # linux
+                    self.read_blocks_ext(fw, start, length, 0)  # Fixme
+                elif self.settings.rflag == 2:  # yaffs
+                    self.read_blocks_ext(fw, start, length, 1)  # Fixme
+                """
 
-    def send(self, cmd, nocrc=False):
+        except OSError as err:
+            self.error(f"File access failed: {err}")
+    def send(self, cmd, nocrc=False) -> bytes:
         if self.hdlc is not None:
             return self.hdlc.send_cmd_np(cmd, nocrc)
-        return False
+        self.error("No HDLC connection, can't send command")
+        return b""
 
     def identify_chipset(self):
         """

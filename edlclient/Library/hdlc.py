@@ -96,7 +96,7 @@ def escape(indata):
     return outdata
 
 
-def unescape(indata):
+def unescape(indata) -> bytearray:
     mescape = False
     out = bytearray()
     for buf in indata:
@@ -107,15 +107,13 @@ def unescape(indata):
                 out.append(0x7d)
             else:
                 logging.error("Fatal error unescaping buffer!")
-                return None
+                return bytearray()
             mescape = False
         else:
             if buf == 0x7d:
                 mescape = True
             else:
                 out.append(buf)
-    if len(out) == 0:
-        return None
     return out
 
 
@@ -133,7 +131,7 @@ class hdlc:
         self.programmer = None
         self.timeout = 1500
 
-    def receive_reply(self, timeout=None):
+    def receive_reply(self, timeout=None) -> bytes:
         replybuf = bytearray()
         if timeout is None:
             timeout = self.timeout
@@ -158,7 +156,8 @@ class hdlc:
             crc16val = crc16(0xFFFF, data[:-3])
             reccrc = int(data[-3]) + (int(data[-2]) << 8)
             if crc16val != reccrc:
-                return -1
+                logging.error("HDLC reply CRC mismatch, discarding packet")
+                return b""
         else:
             time.sleep(0.01)
             data = self.cdc.read(timeout=timeout)
@@ -166,11 +165,12 @@ class hdlc:
                 crc16val = crc16(0xFFFF, data[:-3])
                 reccrc = int(data[-3]) + (int(data[-2]) << 8)
                 if crc16val != reccrc:
-                    return -1
-                return data
-        return data[:-3]
+                    logging.error("HDLC reply CRC mismatch, discarding packet")
+                    return b""
+                return bytes(data)
+        return bytes(data[:-3])
 
-    def receive_reply_nocrc(self, timeout=None):
+    def receive_reply_nocrc(self, timeout=None) -> bytes:
         replybuf = bytearray()
         if timeout is None:
             timeout = self.timeout
@@ -192,16 +192,16 @@ class hdlc:
         if len(data) > 3:
             # crc16val = self.crc16(0xFFFF, data[:-3])
             # reccrc = int(data[-3]) + (int(data[-2]) << 8)
-            return data[:-3]
+            return bytes(data[:-3])
         else:
             time.sleep(0.5)
             data = self.cdc.read(timeout=timeout)
             if len(data) > 3:
                 # crc16val = self.crc16(0xFFFF, data[:-3])
                 # reccrc = int(data[-3]) + (int(data[-2]) << 8)
-                return data[:-3]
+                return bytes(data[:-3])
             else:
-                return data
+                return bytes(data)
 
     def send_unframed_buf(self, outdata, prefixflag):
         # ttyflush()
@@ -213,7 +213,7 @@ class hdlc:
         return self.cdc.write(outdata[:MAX_PACKET_LEN])
         # FlushFileBuffers(ser)
 
-    def send_cmd_base(self, outdata, prefixflag, nocrc=False):
+    def send_cmd_base(self, outdata, prefixflag, nocrc=False) -> bytes:
         if isinstance(outdata, str):
             outdata = bytes(outdata, 'utf-8')
         packet = convert_cmdbuf(bytearray(outdata))
@@ -225,10 +225,10 @@ class hdlc:
                 return self.receive_reply()
         return b""
 
-    def send_cmd(self, outdata, nocrc=False):
+    def send_cmd(self, outdata, nocrc=False) -> bytes:
         return self.send_cmd_base(outdata, 1, nocrc)
 
-    def send_cmd_np(self, outdata, nocrc=False):
+    def send_cmd_np(self, outdata, nocrc=False) -> bytes:
         return self.send_cmd_base(outdata, 0, nocrc)
 
     def show_errpacket(self, descr, pktbuf):

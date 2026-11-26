@@ -24,6 +24,8 @@ class xmlparser:
             except Exception as err:
                 continue
             e = ET.ElementTree(tree).getroot()
+            if e is None:
+                continue
             for atype in e.findall('response'):
                 for field in atype.attrib:
                     content[field] = atype.attrib[field]
@@ -44,6 +46,8 @@ class xmlparser:
             except Exception as err:
                 continue
             e = ET.ElementTree(tree).getroot()
+            if e is None:
+                continue
             for atype in e.findall('log'):
                 if 'value' in atype.attrib:
                     data.append(atype.attrib['value'])

@@ -89,15 +89,15 @@ def get_fld(mfld, level):
 
 
 class descriptor(object):
-    def get_name(self):
-        pass
+    def get_name(self) -> str:
+        return ""
 
     def __repr__(self):
         s = "%8s " % self.get_name()
         for attr, value in self.__dict__.items():
             try:
                 s += "%s=%s, " % (attr, hex(value))
-            except:
+            except TypeError:
                 s += "%s=%s, " % (attr, value)
 
         return s

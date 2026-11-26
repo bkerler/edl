@@ -6,20 +6,26 @@
 # !!!!! If you use this code in commercial products, your product is automatically
 # GPLv3 and has to be open sourced under GPLv3 as well. !!!!!
 import inspect
+import logging
+from typing import Any
+import os
 import traceback
 from binascii import hexlify
+from struct import unpack
 
 try:
-    from edlclient.Library.utils import *
-except:
-    from Library.utils import *
+    from edlclient.Library.utils import LogBase
+except ImportError:  # pragma: no cover - legacy in-tree layout
+    from Library.utils import LogBase  # type: ignore[import-not-found]
 
 
 class DeviceClass(metaclass=LogBase):
+    __logger: logging.Logger
 
-    def __init__(self, loglevel=logging.INFO, portconfig=None, devclass=-1):
+    def __init__(self, loglevel=logging.INFO, portconfig: list | None = None, devclass=-1):
         self.connected = False
-        self.timeout = 1000
+        # None means "wait forever", which is why it is optional
+        self.timeout: int | None = 1000
         self.maxsize = 512
         self.vid = None
         self.pid = None
@@ -28,7 +34,8 @@ class DeviceClass(metaclass=LogBase):
         self.parity = None
         self.baudrate = None
         self.configuration = None
-        self.device = None
+        # PyUSB device (usb_class) or pyserial Serial instance (serial_class)
+        self.device: Any = None
         self.devclass = -1
         self.loglevel = loglevel
         self.xmlread = True
@@ -44,7 +51,7 @@ class DeviceClass(metaclass=LogBase):
             fh = logging.FileHandler(logfilename, encoding='utf-8')
             self.__logger.addHandler(fh)
 
-    def connect(self, options):
+    def connect(self, EP_IN=-1, EP_OUT=-1, portname: str = ""):
         raise NotImplementedError()
 
     def close(self, reset=False):
@@ -88,7 +95,7 @@ class DeviceClass(metaclass=LogBase):
             timeout = self.timeout
         if length is None:
             length = self.maxsize
-        return self.usbread(length, timeout)
+        return self.usbread(length, timeout or 0)
 
     def rdword(self, count=1, little=False):
         rev = "<" if little else ">"

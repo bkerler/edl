@@ -28,6 +28,8 @@ EDL_ARGS = {
     "--skipwrite": False,
     "--tcpport": "1340",
     "--vid": "-1",
+    "--vip-table-path": None,
+    "--create-digests": None,
 
     "<command>": None,
     "<data>": None,
@@ -52,24 +54,30 @@ EDL_ARGS = {
 class edl_api():
     def __init__(self, args: dict = EDL_ARGS):
         self.edl = None
-        self.status = 0
+        self.status: int | None = 0
         self.args = {**args}
         return
+
+    def fh(self):
+        """Return the connected firehose client or fail with a clear message."""
+        if self.edl is None or self.edl.fh is None:
+            raise RuntimeError("EDL isn't connected, call init() first")
+        return self.edl.fh
 
     def init(self) -> int:
         self.edl = Edl(self.args)
         self.status = self.edl.run()
-        return self.status
+        return self.status if self.status is not None else 0
 
     def deinit(self) -> int:
-        if (self.edl != None):
+        if self.edl is not None:
             self.status = self.edl.exit()
             self.edl = None
-        return self.status
+        return self.status if self.status is not None else 0
 
     def reinit(self) -> int:
         if (self.deinit() == 1):
-            return self.status
+            return self.status if self.status is not None else 0
         return self.init()
 
     def set_arg(self, key: str, value, reset: bool = False):
@@ -80,7 +88,7 @@ class edl_api():
             value = EDL_ARGS[key]
 
         self.args[key] = value
-        if (self.edl != None):
+        if self.edl is not None:
             self.edl.args = self.args
         return self.args
 
@@ -93,176 +101,176 @@ class edl_api():
     # ----- Actual API -----
 
     def server(self):
-        return self.edl.fh.handle_firehose("server", self.edl.args)
+        return self.fh().handle_firehose("server", self.args)
 
     def memorydump(self):
-        return self.edl.fh.handle_firehose("memorydump", self.edl.args)
+        return self.fh().handle_firehose("memorydump", self.args)
 
     def printgpt(self):
-        return self.edl.fh.handle_firehose("printgpt", self.edl.args)
+        return self.fh().handle_firehose("printgpt", self.args)
 
     def gpt(self, directory: str):
         self.set_arg("<directory>", directory)
-        self.edl.fh.handle_firehose("printgpt", self.edl.args)
-        return self.edl.fh.handle_firehose("gpt", self.edl.args)
+        self.fh().handle_firehose("printgpt", self.args)
+        return self.fh().handle_firehose("gpt", self.args)
 
     def r(self, partitionname: str, filename: str):
         self.set_arg("<partitionname>", partitionname)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose('r', self.edl.args)
+        return self.fh().handle_firehose('r', self.args)
 
     def rl(self, directory: str):
         self.set_arg("<directory>", directory)
-        return self.edl.fh.handle_firehose("rl", self.edl.args)
+        return self.fh().handle_firehose("rl", self.args)
 
     def rf(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("rf", self.edl.args)
+        return self.fh().handle_firehose("rf", self.args)
 
     def rs(self, start_sector: str, sectors: str, filename: str):
         self.set_arg("<start_sector>", start_sector)
         self.set_arg("<sectors>", sectors)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("rs", self.edl.args)
+        return self.fh().handle_firehose("rs", self.args)
 
     def w(self, partitionname: str, filename: str):
         self.set_arg("<partitionname>", partitionname)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose('w', self.edl.args)
+        return self.fh().handle_firehose('w', self.args)
 
     def wl(self, directory: str):
         self.set_arg("<directory>", directory)
-        return self.edl.fh.handle_firehose("wl", self.edl.args)
+        return self.fh().handle_firehose("wl", self.args)
 
     def wf(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("wf", self.edl.args)
+        return self.fh().handle_firehose("wf", self.args)
 
     def ws(self, start_sector: str, filename: str):
         self.set_arg("<start_sector>", start_sector)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("ws", self.edl.args)
+        return self.fh().handle_firehose("ws", self.args)
 
     def e(self, partitionname: str):
         self.set_arg("<partitionname>", partitionname)
-        return self.edl.fh.handle_firehose('e', self.edl.args)
+        return self.fh().handle_firehose('e', self.args)
 
     def es(self, start_sector: str, sectors: str):
         self.set_arg("<start_sector>", start_sector)
         self.set_arg("<sectors>", sectors)
-        return self.edl.fh.handle_firehose("es", self.edl.args)
+        return self.fh().handle_firehose("es", self.args)
 
     def ep(self, partitionname: str, sectors: str):
         self.set_arg("<partitionname>", partitionname)
         self.set_arg("<sectors>", sectors)
-        return self.edl.fh.handle_firehose("ep", self.edl.args)
+        return self.fh().handle_firehose("ep", self.args)
 
     def footer(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("footer", self.edl.args)
+        return self.fh().handle_firehose("footer", self.args)
 
     def peek(self, offset: int, length: int, filename: str):
         self.set_arg("<offset>", offset)
         self.set_arg("<length>", length)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("peek", self.edl.args)
+        return self.fh().handle_firehose("peek", self.args)
 
     def peekhex(self, offset: int, length: int):
         self.set_arg("<offset>", offset)
         self.set_arg("<length>", length)
-        return self.edl.fh.handle_firehose("peekhex", self.edl.args)
+        return self.fh().handle_firehose("peekhex", self.args)
 
     def peekdword(self, offset: int):
         self.set_arg("<offset>", offset)
-        return self.edl.fh.handle_firehose("peekdword", self.edl.args)
+        return self.fh().handle_firehose("peekdword", self.args)
 
     def peekqword(self, offset: int):
         self.set_arg("<offset>", offset)
-        return self.edl.fh.handle_firehose("peekqword", self.edl.args)
+        return self.fh().handle_firehose("peekqword", self.args)
 
     def memtbl(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("memtbl", self.edl.args)
+        return self.fh().handle_firehose("memtbl", self.args)
 
     def poke(self, offset: int, filename: str):
         self.set_arg("<offset>", offset)
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("poke", self.edl.args)
+        return self.fh().handle_firehose("poke", self.args)
 
     def pokehex(self, offset: int, data: str):
         self.set_arg("<offset>", offset)
         self.set_arg("<data>", data)
-        return self.edl.fh.handle_firehose("pokehex", self.edl.args)
+        return self.fh().handle_firehose("pokehex", self.args)
 
     def pokedword(self, offset: int, data: str):
         self.set_arg("<offset>", offset)
         self.set_arg("<data>", data)
-        return self.edl.fh.handle_firehose("pokedword", self.edl.args)
+        return self.fh().handle_firehose("pokedword", self.args)
 
     def pokeqword(self, offset: int, data: str):
         self.set_arg("<offset>", offset)
         self.set_arg("<data>", data)
-        return self.edl.fh.handle_firehose("pokeqword", self.edl.args)
+        return self.fh().handle_firehose("pokeqword", self.args)
 
     def memcpy(self, offset: int, size: int):
         self.set_arg("<offset>", offset)
         self.set_arg("<size>", size)
-        return self.edl.fh.handle_firehose("memcpy", self.edl.args)
+        return self.fh().handle_firehose("memcpy", self.args)
 
     def secureboot(self):
-        return self.edl.fh.handle_firehose("server", self.edl.args)
+        return self.fh().handle_firehose("server", self.args)
 
     def pbl(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("pbl", self.edl.args)
+        return self.fh().handle_firehose("pbl", self.args)
 
     def qfp(self, filename: str):
         self.set_arg("<filename>", filename)
-        return self.edl.fh.handle_firehose("qfp", self.edl.args)
+        return self.fh().handle_firehose("qfp", self.args)
 
     def getstorageinfo(self):
-        return self.edl.fh.handle_firehose("getstorageinfo", self.edl.args)
+        return self.fh().handle_firehose("getstorageinfo", self.args)
 
     def setbootablestoragedrive(self, lun: str):
         self.set_arg("<lun>", lun)
-        return self.edl.fh.handle_firehose("setbootablestoragedrive", self.edl.args)
+        return self.fh().handle_firehose("setbootablestoragedrive", self.args)
 
     def getactiveslot(self):
-        return self.edl.fh.handle_firehose("getactiveslot", self.edl.args)
+        return self.fh().handle_firehose("getactiveslot", self.args)
 
     def setactiveslot(self, slot: str):
         self.set_arg("<slot>", slot)
-        return self.edl.fh.handle_firehose("setactiveslot", self.edl.args)
+        return self.fh().handle_firehose("setactiveslot", self.args)
 
     def send(self, command: str):
         self.set_arg("<command>", command)
-        return self.edl.fh.handle_firehose("send", self.edl.args)
+        return self.fh().handle_firehose("send", self.args)
 
     def xml(self, xmlfile: str):
         self.set_arg("<xmlfile>", xmlfile)
-        return self.edl.fh.handle_firehose("xml", self.edl.args)
+        return self.fh().handle_firehose("xml", self.args)
 
     def rawxml(self, xmlstring: str):
         self.set_arg("<xmlstring>", xmlstring)
-        return self.edl.fh.handle_firehose("rawxml", self.edl.args)
+        return self.fh().handle_firehose("rawxml", self.args)
 
     def reset(self):
-        return self.edl.fh.handle_firehose("reset", self.edl.args)
+        return self.fh().handle_firehose("reset", self.args)
 
     def nop(self):
-        return self.edl.fh.handle_firehose("nop", self.edl.args)
+        return self.fh().handle_firehose("nop", self.args)
 
     def modules(self, command: str, options: str):
         self.set_arg("<command>", command)
         self.set_arg("<options>", options)
-        return self.edl.fh.handle_firehose("modules", self.edl.args)
+        return self.fh().handle_firehose("modules", self.args)
 
     def provision(self, xmlfile: str):
         self.set_arg("<xmlfile>", xmlfile)
-        return self.edl.fh.handle_firehose("provision", self.edl.args)
+        return self.fh().handle_firehose("provision", self.args)
 
     def qfil(self, rawprogram: str, patch: str, imagedir: str):
         self.set_arg("<rawprogram>", rawprogram)
         self.set_arg("<patch>", patch)
         self.set_arg("<imagedir>", imagedir)
-        return self.edl.fh.handle_firehose("qfil", self.edl.args)
+        return self.fh().handle_firehose("qfil", self.args)

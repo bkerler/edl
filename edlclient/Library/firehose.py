@@ -8,22 +8,36 @@
 
 import binascii
 import json
+import logging
 import os.path
 import platform
+import sys
+import time
 from binascii import hexlify
+from io import BytesIO
 from queue import Queue
+from struct import unpack
 from threading import Thread
+from typing import Any
 
+from edlclient.Library.gpt import AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE, gpt
 from edlclient.Library.Modules.nothing import nothing
-from edlclient.Library.gpt import gpt, AB_FLAG_OFFSET, AB_PARTITION_ATTR_SLOT_ACTIVE
 from edlclient.Library.sparse import QCSparse
-from edlclient.Library.utils import *
-from edlclient.Library.utils import progress
+from edlclient.Library.utils import LogBase, print_progress, progress
+from edlclient.Library.vip import VIP_DISABLED, Vip
+
+# Programmers answer this when a raw/op command exists but is not enabled for the session
+rawmode_disabled_answer = b"opcmd is not enabled"
 
 
 def writedata(filename, rq):
     pos = 0
-    with open(filename, "wb") as wf:
+    try:
+        wf_ctx = open(filename, "wb")  # noqa: SIM115 - closed by the with below
+    except OSError as err:
+        print(f"Failed to write {filename}: {err}")
+        return
+    with wf_ctx as wf:  # noqa: SIM117 - opened above so the error is reported once
         while True:
             data = rq.get()
             if data is None:
@@ -34,12 +48,17 @@ def writedata(filename, rq):
 
 
 class response:
-    resp = False
-    data = b""
-    error = ""
-    log = None
+    """Result of a firehose command.
 
-    def __init__(self, resp=False, data=b"", error: str = "", log: dict = ""):
+    data carries raw bytes for reads and a parsed dict for xml responses, so it is
+    deliberately untyped here.
+    """
+    resp: bool = False
+    data: Any = b""
+    error: Any = ""
+    log: Any = None
+
+    def __init__(self, resp=False, data: Any = b"", error: Any = "", log: Any = None):
         self.resp = resp
         self.data = data
         self.error = error
@@ -49,7 +68,7 @@ class response:
 try:
     from edlclient.Library.Modules.init import modules
 except ImportError as e:
-    pass
+    modules = None
 
 
 class nand_partition:
@@ -61,7 +80,7 @@ class nand_partition:
         else:
             self.printer = printer
         self.partentries = {}
-        self.partitiontblsector = None
+        self.partitiontblsector: int | None = None
         self.parent = parent
         self.storage_info = {}
         self.totalsectors = None
@@ -156,36 +175,52 @@ class asyncwriter:
 
 
 class firehose(metaclass=LogBase):
-    class cfg:
-        TargetName = ""
-        Version = ""
-        ZLPAwareHost = 1
-        SkipStorageInit = 0
-        SkipWrite = 0
-        MaxPayloadSizeToTargetInBytes = 1048576
-        MaxPayloadSizeFromTargetInBytes = 8192
-        MaxXMLSizeInBytes = 4096
-        bit64 = True
+    __logger: logging.Logger
 
-        total_blocks = 0
-        num_physical = 0
-        block_size = 0
-        SECTOR_SIZE_IN_BYTES = 0
-        PAGES_PER_BLOCK = 0
-        MemoryName = "eMMC"
-        prod_name = "Unknown"
-        maxlun = 99
-        programmer = ""
+    class Cfg:
+        """Firehose session configuration (formerly named cfg, which collided with self.cfg)."""
+        TargetName: str = ""
+        Version: str = ""
+        ZLPAwareHost: int = 1
+        SkipStorageInit: int = 0
+        SkipWrite: int = 0
+        MaxPayloadSizeToTargetInBytes: int = 1048576
+        MaxPayloadSizeFromTargetInBytes: int = 8192
+        MaxPayloadSizeToTargetInBytesSupported: int = 1048576
+        MaxXMLSizeInBytes: int = 4096
+        bit64: bool = True
 
-    def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
+        total_blocks: int = 0
+        num_physical: int = 0
+        block_size: int = 0
+        SECTOR_SIZE_IN_BYTES: int = 0
+        PAGES_PER_BLOCK: int = 0
+        MemoryName: str = "eMMC"
+        prod_name: str = "Unknown"
+        maxlun: int = 99
+        programmer: str = ""
+        vip_table_path: str = ""
+        vip_digest_path: str = ""
+
+    def __init__(self, cdc, xml, cfgobj: "firehose.Cfg", loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
         self.lasterror = b""
         self.loglevel = loglevel
         self.args = args
         self.xml = xml
-        self.cfg = cfg
+        # cfg is an instance of the inner config class above
+        self.cfg: firehose.Cfg = cfgobj
         # Remember the loader we were started with, edl_config.json may override cfg.programmer later on
-        self.loader_programmer = cfg.programmer
+        self.loader_programmer = cfgobj.programmer
+        try:
+            self.vip = Vip(table_path=cfgobj.vip_table_path or None,
+                           digest_path=cfgobj.vip_digest_path or None,
+                           send_raw=self._vip_send_raw,
+                           recv_response=self._recv_response,
+                           loglevel=self.__logger.level)
+        except ValueError as err:
+            self.error(str(err))
+            self.vip = Vip()
         self.prog = 0
         self.progtime = 0
         self.progpos = 0
@@ -244,8 +279,8 @@ class firehose(metaclass=LogBase):
                 return False
         return True
 
-    def decoder(self, data):
-        if isinstance(data, bytes) or isinstance(data, bytearray):
+    def decoder(self, data) -> str:
+        if isinstance(data, (bytes, bytearray)):
             if data[:5] == b"<?xml":
                 try:
                     rdata = ""
@@ -258,16 +293,52 @@ class firehose(metaclass=LogBase):
                     return rdata
                 except Exception as err:  # pylint: disable=broad-except
                     self.debug(str(err))
-                    pass
-        return data
+            return data.decode('utf-8', errors='replace')
+        return str(data)
+
+    def _vip_send_raw(self, data: bytes) -> bool:
+        """Write a raw VIP digest table (not XML, and not part of the digest stream)."""
+        return bool(self.cdc.write(data))
+
+    def _recv_response(self, timeout: int = 30) -> bool:
+        """Read one firehose <response> and report whether the target ACKed."""
+        rdata = bytearray()
+        deadline = time.time() + timeout
+        while b"<response value" not in rdata and time.time() < deadline:
+            try:
+                tmp = self.cdc.read(timeout=None)
+            except Exception as err:  # pylint: disable=broad-except
+                self.error(str(err))
+                return False
+            if tmp == b"":
+                time.sleep(0.05)
+                continue
+            rdata += tmp
+        if not rdata:
+            self.error("No response received for the VIP digest table")
+            return False
+        for line in self.xml.getlog(rdata):
+            self.info(line)
+            self.vip.check_log(line)
+        resp = self.xml.getresponse(rdata)
+        value = resp.get("value") if isinstance(resp, dict) else None
+        if value is None:
+            self.error(f"Unexpected VIP table response: {rdata[:200]!r}")
+            return False
+        return value == "ACK"
 
     def xmlsend(self, data, skipresponse=False) -> response:
         self.cdc.flush()
         self.cdc.xmlread = True
         if isinstance(data, bytes) or isinstance(data, bytearray):
-            self.cdc.write(data[:self.cfg.MaxXMLSizeInBytes])
+            payload = bytes(data[:self.cfg.MaxXMLSizeInBytes])
         else:
-            self.cdc.write(bytes(data, 'utf-8')[:self.cfg.MaxXMLSizeInBytes])
+            payload = bytes(data, 'utf-8')[:self.cfg.MaxXMLSizeInBytes]
+        if self.vip.enabled and not self.vip.begin_packet(payload):
+            return response(resp=False, error="VIP table transfer failed")
+        self.cdc.write(payload)
+        if self.vip.enabled:
+            self.vip.end_packet()
         rdata = bytearray()
         counter = 0
         timeout = 3
@@ -306,6 +377,8 @@ class firehose(metaclass=LogBase):
                         if status:
                             if b"log value=" in rdata:
                                 log = self.xml.getlog(rdata)
+                                for line in log:
+                                    self.vip.check_log(line)
                                 return response(resp=resp, data=rdata, log=log)
                             return response(resp=status, data=rdata)
                 except Exception as e:  # pylint: disable=broad-except
@@ -360,15 +433,18 @@ class firehose(metaclass=LogBase):
             return False
 
     def cmd_xml(self, filename):
-        with open(filename, 'rb') as rf:
-            data = rf.read()
-            val = self.xmlsend(data)
-            if val.resp:
-                self.info("Command succeeded." + str(val.data))
-                return val.data
-            else:
-                self.error("Command failed:" + str(val.error))
-                return val.error
+        try:
+            with open(filename, 'rb') as rf:
+                data = rf.read()
+        except OSError as err:
+            self.error(f"Couldn't read {filename}: {err}")
+            return None
+        val = self.xmlsend(data)
+        if val.resp:
+            self.info("Command succeeded." + str(val.data))
+            return val.data
+        self.error("Command failed:" + str(val.error))
+        return val.error
 
     def cmd_nop(self):
         data = '<?xml version="1.0" ?><data><nop /></data>'
@@ -478,15 +554,28 @@ class firehose(metaclass=LogBase):
         return ""
 
     def cmd_program(self, physical_partition_number, start_sector, filename, display=True):
-        total = os.stat(filename).st_size
+        try:
+            total = os.stat(filename).st_size
+        except OSError as err:
+            self.error(f"Couldn't access {filename}: {err}")
+            return response(resp=False, error=str(err))
         sparse = QCSparse(filename, self.loglevel)
         sparseformat = False
-        if sparse.readheader():
-            sparseformat = True
-            total = sparse.getsize()
+        try:
+            if sparse.readheader():
+                sparseformat = True
+                total = sparse.getsize()
+        finally:
+            if not sparseformat:
+                sparse.close()
         bytestowrite = total
         progbar = progress(self.cfg.SECTOR_SIZE_IN_BYTES)
-        with open(filename, "rb") as rf:
+        try:
+            rf_ctx = open(filename, "rb")  # noqa: SIM115 - closed by the with below
+        except OSError as err:
+            self.error(f"Couldn't read {filename}: {err}")
+            return response(resp=False, error=str(err))
+        with rf_ctx as rf:
             # Make sure we fill data up to the sector size
             num_partition_sectors = total // self.cfg.SECTOR_SIZE_IN_BYTES
             if (total % self.cfg.SECTOR_SIZE_IN_BYTES) != 0:
@@ -519,9 +608,14 @@ class firehose(metaclass=LogBase):
                     if wlen % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
                         filllen = (wlen // self.cfg.SECTOR_SIZE_IN_BYTES * self.cfg.SECTOR_SIZE_IN_BYTES) + \
                                   self.cfg.SECTOR_SIZE_IN_BYTES
-                        wdata += b"\x00" * (filllen - wlen)
+                        wdata = bytes(wdata or b"") + b"\x00" * (filllen - wlen)
 
+                    if self.vip.enabled and not self.vip.begin_packet(bytes(wdata or b"")):
+                        self.error("VIP table transfer failed")
+                        return response(resp=False, error="VIP table transfer failed")
                     self.cdc.write(wdata)
+                    if self.vip.enabled:
+                        self.vip.end_packet()
                     progbar.show_progress(prefix="Write", pos=total - bytestowrite, total=total, display=display)
                     self.cdc.write(b'')
                 # time.sleep(0.2)
@@ -836,7 +930,7 @@ class firehose(metaclass=LogBase):
             try:
                 sectorsize = self.cfg.SECTOR_SIZE_IN_BYTES
                 header = guid_gpt.parseheader(data, sectorsize)
-                if header.signature == b"EFI PART":
+                if header is not None and header.signature == b"EFI PART":
                     part_table_size = header.num_part_entries * header.part_entry_size
                     sectors = part_table_size // self.cfg.SECTOR_SIZE_IN_BYTES
                     if part_table_size % self.cfg.SECTOR_SIZE_IN_BYTES != 0:
@@ -868,7 +962,9 @@ class firehose(metaclass=LogBase):
             loglevel=self.__logger.level
         )
         header = guid_gpt.parseheader(resp.data, self.cfg.SECTOR_SIZE_IN_BYTES)
-        if "backup_lba" in header:
+        if header is None:
+            return None
+        if header.backup_lba:
             sectors = header.first_usable_lba - 1
             data = self.cmd_read_buffer(lun, header.backup_lba, sectors, False)
             if data == b"":
@@ -921,6 +1017,11 @@ class firehose(metaclass=LogBase):
         TargetName=\"8953\" />" \
         "</data>"
         '''
+        if self.vip.transfer is not None and self.vip.transfer.programmer_requires_vip \
+                and self.vip.transfer.state == VIP_DISABLED:
+            self.error("Programmer requires VIP, but no VIP table path was provided")
+            return False
+
         rsp = self.xmlsend(connectcmd)
         if not rsp.resp:
             if not rsp.data and not rsp.error:
@@ -963,14 +1064,17 @@ class firehose(metaclass=LogBase):
                     return self.configure(lvl + 1)
                 elif "Only nop and sig tag can be" in line:
                     self.info("Xiaomi EDL Auth detected.")
-                    try:
-                        self.modules = modules(fh=self, serial=self.serial,
-                                               supported_functions=self.supported_functions,
-                                               loglevel=self.__logger.level,
-                                               devicemodel=self.devicemodel, args=self.args)
-                    except Exception as err:  # pylint: disable=broad-except
-                        self.modules = None
-                    if self.modules.edlauth():
+                    self.modules = None
+                    if modules is not None:
+                        try:
+                            self.modules = modules(fh=self, serial=self.serial,
+                                                   supported_functions=self.supported_functions,
+                                                   loglevel=self.__logger.level,
+                                                   devicemodel=self.devicemodel, args=self.args)
+                        except Exception as err:  # pylint: disable=broad-except
+                            self.debug(str(err))
+                            self.modules = None
+                    if self.modules is not None and self.modules.edlauth():
                         self.info("EDL Authenticated successfully.")
                         rsp = self.xmlsend(connectcmd)
                         return rsp.resp
@@ -1060,7 +1164,7 @@ class firehose(metaclass=LogBase):
                 if "Version" in field:
                     self.cfg.Version = field["Version"]
                 else:
-                    self.cfg.Version = 0
+                    self.cfg.Version = ""
                     self.warning("Couldn't detect Version")
             self.info(f"TargetName={self.cfg.TargetName}")
             self.info(f"MemoryName={self.cfg.MemoryName}")
@@ -1189,6 +1293,8 @@ class firehose(metaclass=LogBase):
                     break
                 data = self.xml.getlog(v)
                 if len(data) > 0:
+                    for line in data:
+                        self.vip.check_log(line)
                     info.append(data[0])
                 if not info:
                     break
@@ -1252,10 +1358,10 @@ class firehose(metaclass=LogBase):
                     self.devicemodel = '20111'
                 elif "000b80e100020000_467f3020c4cc788d_fhprg.bin" in self.cfg.programmer:
                     self.devicemodel = '22111'
-            except:
-                pass
+            except Exception as err:  # pylint: disable=broad-except
+                self.debug(f"Couldn't cache the session config: {err}")
 
-        elif self.serial is None or self.supported_functions is []:
+        elif self.serial is None or not self.supported_functions:
             try:
                 if os.path.exists("edl_config.json"):
                     pinfo = json.loads(open("edl_config.json", "rb").read())
@@ -1267,9 +1373,9 @@ class firehose(metaclass=LogBase):
                             self.serial = pinfo["serial"]
                 else:
                     self.get_supported_functions()
-            except:
+            except Exception as err:  # pylint: disable=broad-except
+                self.debug(f"Couldn't read edl_config.json: {err}")
                 self.get_supported_functions()
-                pass
 
         # rsp = self.xmlsend(data, self.skipresponse)
 
@@ -1317,7 +1423,7 @@ class firehose(metaclass=LogBase):
         data = '<?xml version="1.0" ?><data><getstorageinfo physical_partition_number="0"/></data>'
         val = self.xmlsend(data)
         if val.data == '' and val.log == '' and val.resp:
-            return None
+            return None, None
         if isinstance(val.data, dict):
             if "bNumberLu" in val.data:
                 self.cfg.maxlun = int(val.data["bNumberLu"])
@@ -1592,9 +1698,11 @@ class firehose(metaclass=LogBase):
         data = f'<?xml version="1.0" ?>\n<data>\n<{cmd} token="{token}" pk="{pk}" />\n</data>'
         val = self.xmlsend(data)
         if val.resp:
-            if b"raw hex token" in val[2]:
+            rdata = val.data if isinstance(val.data, (bytes, bytearray)) else b""
+            # Both answers mean the command reached a programmer that supports it
+            if b"raw hex token" in rdata:
                 return True
-            if b"opcmd is not enabled" in val[2]:
+            if rawmode_disabled_answer in rdata:
                 return True
         return False
 
@@ -1614,8 +1722,12 @@ class firehose(metaclass=LogBase):
     def cmd_poke(self, address, data, filename="", info=False):
         rf = None
         if filename != "":
-            rf = open(filename, "rb")
-            SizeInBytes = os.stat(filename).st_size
+            try:
+                SizeInBytes = os.stat(filename).st_size
+                rf = open(filename, "rb")  # noqa: SIM115 - closed at the end of this call
+            except OSError as err:
+                self.error(f"Couldn't read {filename}: {err}")
+                return response(resp=False, error=str(err))
         else:
             SizeInBytes = len(data)
         if info:
@@ -1696,7 +1808,11 @@ class firehose(metaclass=LogBase):
             self.info(f"Peek: Address({hex(address)}),Size({hex(SizeInBytes)})")
         wf = None
         if filename != "":
-            wf = open(filename, "wb")
+            try:
+                wf = open(filename, "wb")  # noqa: SIM115 - closed at the end of this call
+            except OSError as err:
+                self.error(f"Couldn't write {filename}: {err}")
+                return response(resp=False, error=str(err))
         '''
             <?xml version="1.0" ?><data><peek address64="1048576" SizeInBytes="90112" /></data>
             '''
@@ -1752,9 +1868,9 @@ class firehose(metaclass=LogBase):
             tmp2 = b""
             try:
                 tmp2 = binascii.unhexlify(rdata)
-            except:  # pylint: disable=broad-except
+            except (binascii.Error, ValueError):
                 print(rdata)
-                exit(0)
+                sys.exit(1)
             dataread += len(tmp2)
             if wf is not None:
                 wf.write(tmp2)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2024 under GPLv3 license
 # If you use my code, make sure you refer to my name
 #
@@ -8,52 +7,37 @@
 import argparse
 import copy
 import hashlib
-import time
-import os
-import sys
-import requests
-import serial
-import serial.tools.list_ports
-from Exscript.protocols.telnetlib import Telnet
-
-try:
-    from edlclient.Tools.qc_diag import qcdiag
-except ImportError as e:
-    script_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-    sys.path.insert(0, script_path)
-    try:
-        from edlclient.Tools.qc_diag import qcdiag
-    except ImportError as e:
-        print("ImportError: %s" % e)
-
-import usb.core
-from enum import Enum
-
-from passlib.hash import md5_crypt
-
-try:
-    from edlclient.Tools.sierrakeygen import SierraKeygen
-except ImportError:
-    import os, sys, inspect
-
-    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-    parent_dir = os.path.dirname(current_dir)
-    sys.path.insert(0, parent_dir)
-    from sierrakeygen import SierraKeygen
-
 import logging
 import logging.config
 import logging.handlers
+import os
+import sys
+import time
+from enum import Enum
+from typing import Any
+
 import colorama
+import requests
+import serial
+import serial.tools.list_ports
+import usb.core
+from Exscript.protocols.telnetlib import Telnet
+from passlib.hash import md5_crypt  # type: ignore[import-not-found]
 
-itoa64 = bytearray(b"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+# Optional in-tree tools; the legacy (non package) layout needs a sys.path tweak first
+qcdiag: Any = None
+SierraKeygen: Any = None
 
-
-def _crypt_to64(s, v, n):
-    out = bytearray()
-    while --n >= 0:
-        out.append(itoa64[v & 0x3f])
-        v >>= 6
+try:
+    from edlclient.Tools.qc_diag import qcdiag
+    from edlclient.Tools.sierrakeygen import SierraKeygen
+except ImportError:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    try:
+        from edlclient.Tools.qc_diag import qcdiag
+        from edlclient.Tools.sierrakeygen import SierraKeygen
+    except ImportError as err:
+        print(f"ImportError: {err}")
 
 
 class ColorFormatter(logging.Formatter):
@@ -73,14 +57,9 @@ class ColorFormatter(logging.Formatter):
                 print(new_record.name)
                 pad = "[LIB]: "
             # we want levelname to be in different color, so let's modify it
-            new_record.msg = "{pad}{color_begin}{msg}{color_end}".format(
-                pad=pad,
-                msg=new_record.msg,
-                color_begin=self.LOG_COLORS[new_record.levelno],
-                color_end=colorama.Style.RESET_ALL,
-            )
+            new_record.msg = f"{pad}{self.LOG_COLORS[new_record.levelno]}{new_record.msg}{colorama.Style.RESET_ALL}"
         # now we can let standart formatting take care of the rest
-        return super(ColorFormatter, self).format(new_record, *args, **kwargs)
+        return super().format(new_record, *args, **kwargs)
 
 
 class LogBase(type):
@@ -151,26 +130,26 @@ class connection:
             try:
                 self.serial = serial.Serial(port=port, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=1)
                 self.connected = self.serial.is_open
-            except:
+            except (OSError, serial.SerialException) as err:
+                print(f"Failed to open {port}: {err}")
                 self.connected = False
 
     def waitforusb(self, vid, pid):
         timeout = 0
         while timeout < 10:
             for device in self.detectusbdevices():
-                if device.vid == vid:
-                    if device.pid == pid:
-                        return True
+                if device.vid == vid and device.pid == pid:
+                    return True
             time.sleep(1)
             timeout += 1
         return False
 
     def websend(self, url):
         headers = {'Referer': 'http://192.168.0.1/index.html', 'Accept-Charset': 'UTF-8'}
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=10)
         if b"FACTORY:ok" in r.content or b"success" in r.content:
             print(
-                f"Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
+                "Detected a ZTE in web mode .... switching mode success (convert back by sending \"AT+ZCDRUN=F\" via AT port)")
             return self.waitforusb(vendor.zte.value, 0x0016)
         return False
 
@@ -178,8 +157,8 @@ class connection:
         return [port for port in serial.tools.list_ports.comports()]
 
     def detectusbdevices(self):
-        dev = usb.core.find(find_all=True)
-        ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev]
+        dev: Any = usb.core.find(find_all=True)
+        ids = [deviceclass(cfg.idVendor, cfg.idProduct) for cfg in dev or []]
         return ids
 
     def detect(self, port):
@@ -210,22 +189,22 @@ class connection:
                         # vid 0846, netgear mr1100, mr5100
                         self.tn = Telnet("192.168.1.1", 5510)
                         self.connected = True
-                    except:
+                    except (OSError, Exception) as err:
+                        print(f"Telnet connection failed: {err}")
                         self.connected = False
-        except:
+        except Exception:
             print("No libusb driver found. Trying Telnet instead.")
             try:
                 # vid 0846, netgear mr1100, mr5100
                 self.tn = Telnet("192.168.1.1", 5510)
                 self.connected = True
-            except:
+            except Exception as err:
                 self.connected = False
-                print("Failed to connect to Telnet.")
+                print(f"Failed to connect to Telnet: {err}")
                 return
-            pass
         if mode in ["AT", "Unknown"]:
             for port in self.getserialports():
-                if port.vid in atvendortable:
+                if port.location and port.vid in atvendortable:
                     portid = port.location[-1:]
                     if int(portid) == atvendortable[port.vid][1]:
                         print(f"Detected a {atvendortable[port.vid][0]} at interface at: " + port.device)
@@ -237,7 +216,7 @@ class connection:
         if self.websend(url):
             print("Successfully enabled adb.")
 
-    def readreply(self):
+    def readreply(self) -> list[str] | None:
         info = []
         timeout = 0
         if self.serial is not None:
@@ -247,7 +226,7 @@ class connection:
                     info.append(tmp)
                     return info
                 elif "ERROR" in tmp:
-                    return -1
+                    return None
                 if tmp != "":
                     info.append(tmp)
                 else:
@@ -256,7 +235,7 @@ class connection:
                         break
         return info
 
-    def send(self, cmd):
+    def send(self, cmd) -> list[str] | None:
         if self.tn is not None:
             self.tn.write(bytes(cmd + "\r", 'utf-8'))
             time.sleep(0.05)
@@ -268,13 +247,13 @@ class connection:
                 else:
                     break
             if "ERROR" in data:
-                return -1
+                return None
             return data.split("\r\n")
         elif self.serial is not None:
             self.serial.write(bytes(cmd + "\r", 'utf-8'))
             time.sleep(0.05)
-            resp = self.readreply()
-            return resp
+            return self.readreply()
+        return None
 
     def close(self):
         if self.tn is not None:
@@ -287,7 +266,7 @@ class connection:
     def ati(self):
         data = {}
         info = self.send("ATI")
-        if info != -1:
+        if info is not None:
             for line in info:
                 if "Revision" in line:
                     data["revision"] = line.split(":")[1].strip()
@@ -310,7 +289,7 @@ class connection:
                     elif "SAMSUNG" in data["manufacturer"]:
                         data["vendor"] = "Samsung"
         info = self.send("AT+CGMI")
-        if info != -1:
+        if info is not None:
             for line in info:
                 if "Quectel" in line:
                     data["vendor"] = "Quectel"
@@ -325,13 +304,14 @@ class connection:
                     data["vendor"] = "Samsung"
                     break
         info = self.send("AT+CGMR")
-        if info != -1:
-            if len(info) > 1:
-                data["model"] = info[1]
+        if info is not None and len(info) > 1:
+            data["model"] = info[1]
         return data
 
 
 class adbtools(metaclass=LogBase):
+    __logger: logging.Logger
+
     def sendcmd(self, tn, cmd):
         tn.write(bytes(cmd, 'utf-8') + b"\n")
         time.sleep(0.05)
@@ -344,9 +324,8 @@ class adbtools(metaclass=LogBase):
                 challenge = res[4:4 + 8]
                 response = hashlib.md5(challenge).digest()
                 res = diag.send(b"\x4B\xA3\x07\x00" + response)
-                if res[0] == 0x4B:
-                    if res[3] == 0x00:
-                        print("Auth success")
+                if res[0] == 0x4B and res[3] == 0x00:
+                    print("Auth success")
             res = diag.send(b"\x41" + b"\x30\x30\x30\x30\x30\x30")
             if res[1] == 0x01:
                 print("SPC success")
@@ -367,9 +346,13 @@ class adbtools(metaclass=LogBase):
             cn = connection(port)
             if cn.connected:
                 while True:
+                    if cn.serial is None:
+                        break
                     resp2 = cn.serial.read(8)
                     if len(resp2) > 0:
                         break
+                if cn.serial is None:
+                    break
                 cn.serial.write(mode)
                 response = cn.serial.read(8)
                 if len(response) == 0:
@@ -428,18 +411,17 @@ class adbtools(metaclass=LogBase):
                     info = tn.read_eager()
                     print(info)
                     return True
-                if kg.openlock():
-                    if info["vendor"] == "Netgear":
-                        print("Enabling new port config")
-                        if cn.send("AT!UDPID=68E2"):
-                            print("Successfully enabled PID 68E2")
-                            return True
+                if kg.openlock() and info["vendor"] == "Netgear":
+                    print("Enabling new port config")
+                    if cn.send("AT!UDPID=68E2"):
+                        print("Successfully enabled PID 68E2")
+                        return True
 
             index = -1
             type = -1
             bitmask = -1
             resp = cn.send("AT!USBCOMP?")
-            if resp != -1:
+            if resp is not None:
                 print(resp)
                 for val in resp:
                     if "Config Index" in val:
@@ -450,10 +432,10 @@ class adbtools(metaclass=LogBase):
                         bitmask = val[val.find("Interface bitmask: ") + 19:]
                         if " " in bitmask:
                             bitmask = "0x" + bitmask.split(" ")[0]
-                if index != -1 and type != -1 and bitmask != 1:
+                if index is not None and type is not None and bitmask != 1:
                     index = int(index)
                     type = int(type)
-                    bitmask = int(bitmask, 16)
+                    bitmask = int(bitmask, 16) if isinstance(bitmask, str) else bitmask
                     # AT!USBCOMP=<Config Index>,<Config Type>,<Interface bitmask>
                     #  <Config Index>      - configuration index to which the composition applies, should be 1
                     #  <Config Type>       - 1:Generic, 2:USBIF-MBIM, 3:RNDIS
@@ -476,9 +458,9 @@ class adbtools(metaclass=LogBase):
                     #else:
                     #    cmd = f"AT!USBCOMP={index},{type},%08X" % 0x0000010D
                     resp = cn.send(cmd)
-                    if resp != -1:
+                    if resp is not None:
                         resp = cn.send("AT!RESET")
-                        if resp != -1:
+                        if resp is not None:
                             return True
                     return False
                 return True
@@ -492,14 +474,10 @@ class adbtools(metaclass=LogBase):
 
     def Samsung(self, cn, enable):
         if enable:
-            if cn.send("AT+USBMODEM=1"):
-                return True
-            elif cn.send("AT+SYSSCOPE=1,0,0"):
+            if cn.send("AT+USBMODEM=1") or cn.send("AT+SYSSCOPE=1,0,0"):
                 return True
         else:
-            if cn.send("AT+USBMODEM=0"):
-                return True
-            elif cn.send("AT+SYSSCOPE=1,0,0"):
+            if cn.send("AT+USBMODEM=0") or cn.send("AT+SYSSCOPE=1,0,0"):
                 return True
         return False
 
@@ -570,7 +548,7 @@ class adbtools(metaclass=LogBase):
             cc = md5_crypt(salt="")
             code = cc.encrypt("SH_adb_quectel", salt=str(sn))
             code = code[12:28]
-            cn.send("AT+QADBKEY=\"%s\"\r" % code)
+            cn.send(f"AT+QADBKEY=\"{code}\"\r")
         if enable:
             if cn.send("AT+QCFG=\"usbcfg\",0x2C7C,0x125,1,1,1,1,1,1,0\r") == -1:
                 if cn.send("AT+QLINUXCMD=\"adbd\"") != -1:  # echo test > /dev/ttyGS0
