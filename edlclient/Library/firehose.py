@@ -175,6 +175,7 @@ class firehose(metaclass=LogBase):
         MemoryName = "eMMC"
         prod_name = "Unknown"
         maxlun = 99
+        programmer = ""
 
     def __init__(self, cdc, xml, cfg, loglevel, devicemodel, serial, skipresponse, luns, args):
         self.cdc = cdc
@@ -183,6 +184,8 @@ class firehose(metaclass=LogBase):
         self.args = args
         self.xml = xml
         self.cfg = cfg
+        # Remember the loader we were started with, edl_config.json may override cfg.programmer later on
+        self.loader_programmer = cfg.programmer
         self.prog = 0
         self.progtime = 0
         self.progpos = 0
@@ -272,7 +275,7 @@ class firehose(metaclass=LogBase):
             while b"<response value" not in rdata:
                 try:
                     tmp = self.cdc.read(timeout=None)
-                    if tmp == b"" in rdata:
+                    if tmp == b"":
                         counter += 1
                         time.sleep(0.05)
                         if counter > timeout:
@@ -281,6 +284,10 @@ class firehose(metaclass=LogBase):
                 except Exception as err:
                     self.error(err)
                     return response(resp=False, error=str(err))
+            if not rdata:
+                # Target didn't answer at all, so give the caller a chance to react
+                self.debug("No response received from target")
+                return response(resp=False)
             try:
                 if b"raw hex token" in rdata:
                     rdata = rdata
@@ -916,6 +923,19 @@ class firehose(metaclass=LogBase):
         '''
         rsp = self.xmlsend(connectcmd)
         if not rsp.resp:
+            if not rsp.data and not rsp.error:
+                # Target is completely silent. Most loaders hang in storage_device_open() in this case,
+                # which they tell you themselves: "If this hangs use SkipStorageInit='1' for configure"
+                if not self.cfg.SkipStorageInit:
+                    self.warning("Loader didn't respond to configure, retrying with SkipStorageInit=1 " +
+                                 "(loader seems to hang in storage_device_open)")
+                    self.cfg.SkipStorageInit = 1
+                    return self.configure(lvl + 1)
+                self.error("Loader didn't respond to configure even with SkipStorageInit=1, it seems to be " +
+                           "incompatible with this device.\n" +
+                           f"Loader used: {self.loader_programmer}\n" +
+                           "Try another loader with --loader, or another memory type with --memory.")
+                return False
             if rsp.error == "":
                 try:
                     if "MemoryName" in rsp.data:
@@ -932,6 +952,9 @@ class firehose(metaclass=LogBase):
                         rsp.data["MaxPayloadSizeToTargetInBytesSupported"])
                 if "TargetName" in rsp.data:
                     self.cfg.TargetName = rsp.data["TargetName"]
+                if lvl >= 4:
+                    self.error(f"Loader didn't accept configure ({rsp.data})")
+                    return False
                 return self.configure(lvl + 1)
             for line in rsp.error:
                 if "Not support configure MemoryName eMMC" in line:
