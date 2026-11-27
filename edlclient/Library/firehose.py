@@ -698,7 +698,10 @@ class firehose(metaclass=LogBase):
             self.info(f"\nErasing from physical partition {str(physical_partition_number)}, " +
                       f"sector {str(start_sector)}, sectors {str(num_partition_sectors)}")
 
-        if "erase" in self.supported_functions:
+        # Only use XML <erase> for NAND, where block-level erase is required.
+        # Many Qualcomm eMMC/UFS Firehose loaders ignore start_sector and
+        # num_partition_sectors in <erase> and wipe the entire physical partition (LUN).
+        if self.cfg.MemoryName.lower() == "nand" and "erase" in self.supported_functions:
             data = f"<?xml version=\"1.0\" ?><data>\n" + \
                    f"<erase SECTOR_SIZE_IN_BYTES=\"{self.cfg.SECTOR_SIZE_IN_BYTES}\"" + \
                    f" num_partition_sectors=\"{num_partition_sectors}\"" + \
